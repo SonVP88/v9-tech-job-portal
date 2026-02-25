@@ -43,6 +43,8 @@ public partial class Job
 
     public DateTime? ClosedAt { get; set; }
 
+    public DateTime? Deadline { get; set; }
+
     public bool IsDeleted { get; set; }
 
     public virtual ICollection<Application> Applications { get; set; } = new List<Application>();

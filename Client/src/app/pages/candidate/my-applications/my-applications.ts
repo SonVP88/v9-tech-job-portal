@@ -3,11 +3,12 @@ import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { ChangeDetectorRef, Component, OnInit, PLATFORM_ID, inject } from '@angular/core';
 import { ApplicationService, MyApplicationDto } from '../../../services/application.service';
 import { Router, RouterModule } from '@angular/router';
+import { CandidateHeaderComponent } from '../../../components/shared/candidate-header/candidate-header';
 
 @Component({
   selector: 'app-my-applications',
   standalone: true,
-  imports: [CommonModule, RouterModule],
+  imports: [CommonModule, RouterModule, CandidateHeaderComponent],
   templateUrl: './my-applications.html',
   styleUrl: './my-applications.scss',
 })

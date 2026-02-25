@@ -1,11 +1,14 @@
 <div
   class="bg-white dark:bg-[#1a202c] rounded-xl shadow-lg border border-gray-100 dark:border-gray-800 overflow-hidden">
   <div class="border-b border-gray-100 dark:border-gray-800 p-8 pb-6">
-    <h2 class="text-2xl font-bold text-[#0d121b] dark:text-white mb-2">Tạo Tin Tuyển Dụng</h2>
-    <p class="text-[#4c669a] dark:text-gray-400">Điền thông tin bên dưới để đăng vị trí tuyển dụng mới lên trang tuyển
-      dụng.</p>
+    <h2 class="text-2xl font-bold text-[#0d121b] dark:text-white mb-2">{{ isEditMode ? 'Cập Nhật Tin Tuyển Dụng' : 'Tạo
+      Tin Tuyển Dụng' }}</h2>
+    <p class="text-[#4c669a] dark:text-gray-400">Điền thông tin bên dưới để {{ isEditMode ? 'cập nhật' : 'đăng' }} vị
+      trí tuyển dụng lên trang tuyển dụng.</p>
   </div>
   <form class="p-8 pt-6" [formGroup]="jobForm" (ngSubmit)="onSubmit($event)">
+    <!-- ... form content unchanged ... -->
+
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
       <div class="col-span-1 md:col-span-2 space-y-2">
         <label class="text-sm font-medium text-[#0d121b] dark:text-gray-200" for="job-title">Tên Vị Trí <span
@@ -33,15 +36,39 @@
         </div>
       </div>
       <div class="col-span-1 space-y-2">
-        <label class="text-sm font-medium text-[#0d121b] dark:text-gray-200" for="location">Địa Điểm <span
-            class="text-red-500">*</span></label>
+        <label class="text-sm font-medium text-[#0d121b] dark:text-gray-200" for="province">
+          Tỉnh/Thành phố <span class="text-red-500">*</span>
+        </label>
         <div class="relative">
-          <div class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-primary">
-            <span class="material-symbols-outlined text-[20px]">location_on</span>
+          <select formControlName="province"
+            class="w-full appearance-none rounded-lg border border-[#cfd7e7] dark:border-gray-600 bg-background-light dark:bg-background-dark px-4 py-3 pr-10 text-sm text-[#0d121b] dark:text-white focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none transition-all"
+            id="province">
+            <option [ngValue]="null">Chọn tỉnh/thành phố</option>
+            <option *ngFor="let province of provinces$ | async" [value]="province.code">
+              {{ province.name }}
+            </option>
+          </select>
+          <div class="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-[#4c669a]">
+            <span class="material-symbols-outlined text-[20px]">expand_more</span>
           </div>
-          <input formControlName="location"
-            class="w-full rounded-lg border border-[#cfd7e7] dark:border-gray-600 bg-background-light dark:bg-background-dark pl-10 pr-4 py-3 text-sm text-[#0d121b] dark:text-white placeholder:text-[#4c669a] focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none transition-all"
-            id="location" placeholder="VD: Hà Nội (Remote)" type="text" />
+        </div>
+      </div>
+      <div class="col-span-1 space-y-2">
+        <label class="text-sm font-medium text-[#0d121b] dark:text-gray-200" for="ward">
+          Phường/Xã
+        </label>
+        <div class="relative">
+          <select formControlName="ward"
+            class="w-full appearance-none rounded-lg border border-[#cfd7e7] dark:border-gray-600 bg-background-light dark:bg-background-dark px-4 py-3 pr-10 text-sm text-[#0d121b] dark:text-white focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            id="ward">
+            <option [ngValue]="null">Chọn phường/xã</option>
+            <option *ngFor="let ward of wards$ | async" [value]="ward.code">
+              {{ ward.name }}
+            </option>
+          </select>
+          <div class="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-[#4c669a]">
+            <span class="material-symbols-outlined text-[20px]">expand_more</span>
+          </div>
         </div>
       </div>
       <div class="col-span-1 space-y-2">
@@ -69,8 +96,8 @@
             <span class="material-symbols-outlined text-[20px]">calendar_today</span>
           </div>
           <input formControlName="deadline"
-            class="w-full rounded-lg border border-[#cfd7e7] dark:border-gray-600 bg-background-light dark:bg-background-dark pl-10 pr-4 py-3 text-sm text-[#0d121b] dark:text-white placeholder:text-[#4c669a] focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none transition-all text-gray-500"
-            id="deadline" type="date" />
+            class="w-full rounded-lg border border-[#cfd7e7] dark:border-gray-600 bg-background-light dark:bg-background-dark pl-10 pr-4 py-3 text-sm text-[#0d121b] dark:text-white placeholder:text-[#4c669a] focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none transition-all text-gray-500 [&::-webkit-calendar-picker-indicator]:opacity-70"
+            style="color-scheme: light;" id="deadline" type="date" />
         </div>
       </div>
       <div class="col-span-1 md:col-span-2 space-y-2">
@@ -128,9 +155,10 @@
       <button [disabled]="isSubmitting"
         class="w-full md:w-auto flex items-center justify-center gap-2 rounded-lg bg-primary px-8 py-3 text-sm font-bold text-white shadow-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 dark:focus:ring-offset-[#1a202c] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
         type="submit">
-        <span class="material-symbols-outlined text-[20px]" *ngIf="!isSubmitting">send</span>
+        <span class="material-symbols-outlined text-[20px]" *ngIf="!isSubmitting">{{ isEditMode ? 'save' : 'send'
+          }}</span>
         <span class="material-symbols-outlined text-[20px] animate-spin" *ngIf="isSubmitting">progress_activity</span>
-        {{ isSubmitting ? 'Đang đăng...' : 'Đăng Tin' }}
+        {{ isSubmitting ? (isEditMode ? 'Đang cập nhật...' : 'Đang đăng...') : (isEditMode ? 'Cập Nhật' : 'Đăng Tin') }}
       </button>
     </div>
   </form>

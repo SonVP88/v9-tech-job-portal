@@ -58,15 +58,142 @@ public class JobsController : ControllerBase
     }
 
     /// <summary>
-    /// API lấy danh sách job mới nhất cho trang chủ
+    /// API cập nhật tin tuyển dụng
     /// </summary>
-    [HttpGet("latest/{count}")]
-    [AllowAnonymous] // Cho phép truy cập không cần token
-    public async Task<IActionResult> GetLatestJobs(int count = 10)
+    [HttpPut("{id}")]
+    public async Task<IActionResult> UpdateJob(Guid id, [FromBody] UpdateJobRequest request)
     {
         try
         {
-            var jobs = await _jobService.GetLatestJobsAsync(count);
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            var result = await _jobService.UpdateJobAsync(id, request);
+
+            if (result)
+            {
+                return Ok(new { message = "Cập nhật tin tuyển dụng thành công" });
+            }
+            else
+            {
+                return BadRequest(new { message = "Cập nhật thất bại hoặc không tìm thấy tin tuyển dụng" });
+            }
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { message = $"Lỗi: {ex.Message}" });
+        }
+    }
+
+    /// <summary>
+    /// API xóa tin tuyển dụng
+    /// </summary>
+    [HttpDelete("{id}")]
+    public async Task<IActionResult> DeleteJob(Guid id)
+    {
+        try
+        {
+            var result = await _jobService.DeleteJobAsync(id);
+
+            if (result)
+            {
+                return Ok(new { message = "Xóa tin tuyển dụng thành công" });
+            }
+            else
+            {
+                return BadRequest(new { message = "Xóa thất bại hoặc không tìm thấy tin tuyển dụng" });
+            }
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { message = $"Lỗi: {ex.Message}" });
+        }
+    }
+
+    /// <summary>
+    /// API đóng tin tuyển dụng (Ngừng đăng)
+    /// </summary>
+    [HttpPut("{id}/close")]
+    public async Task<IActionResult> CloseJob(Guid id)
+    {
+        try
+        {
+            var result = await _jobService.CloseJobAsync(id);
+
+            if (result)
+            {
+                return Ok(new { message = "Đã ngừng đăng tin tuyển dụng" });
+            }
+            else
+            {
+                return BadRequest(new { message = "Thao tác thất bại hoặc không tìm thấy tin tuyển dụng" });
+            }
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { message = $"Lỗi: {ex.Message}" });
+        }
+    }
+
+    /// <summary>
+    /// API mở lại tin tuyển dụng
+    /// </summary>
+    [HttpPut("{id}/open")]
+    public async Task<IActionResult> OpenJob(Guid id)
+    {
+        try
+        {
+            var result = await _jobService.OpenJobAsync(id);
+
+            if (result)
+            {
+                return Ok(new { message = "Đã mở lại tin tuyển dụng" });
+            }
+            else
+            {
+                return BadRequest(new { message = "Thao tác thất bại hoặc không tìm thấy tin tuyển dụng" });
+            }
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { message = $"Lỗi: {ex.Message}" });
+        }
+    }
+
+    /// <summary>
+    /// API lấy danh sách tất cả job (cho admin/HR quản lý)
+    /// </summary>
+    [HttpGet]
+    // [Authorize(Roles = "ADMIN,HR")] 
+    public async Task<IActionResult> GetAllJobs()
+    {
+        try
+        {
+            var jobs = await _jobService.GetAllJobsAsync();
+            return Ok(jobs);
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { message = $"Lỗi: {ex.Message}" });
+        }
+    }
+
+    /// <summary>
+    /// API lấy danh sách job mới nhất cho trang chủ
+    /// Hỗ trợ tìm kiếm theo keyword (title, company, skills) và location
+    /// </summary>
+    [HttpGet("latest/{count}")]
+    [AllowAnonymous] // Cho phép truy cập không cần token
+    public async Task<IActionResult> GetLatestJobs(
+        int count = 10,
+        [FromQuery] string? keyword = null,
+        [FromQuery] string? location = null)
+    {
+        try
+        {
+            var jobs = await _jobService.GetLatestJobsAsync(count, keyword, location);
             return Ok(jobs);
         }
         catch (Exception ex)
@@ -79,7 +206,7 @@ public class JobsController : ControllerBase
     /// API lấy chi tiết job theo ID
     /// </summary>
     [HttpGet("{id}")]
-    [AllowAnonymous] // Cho phép truy cập không cần token
+    [AllowAnonymous] 
     public async Task<IActionResult> GetJobById(Guid id)
     {
         try

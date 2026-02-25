@@ -14,6 +14,21 @@ export interface Skill {
     name: string;
 }
 
+// Interface cho Province/City
+export interface Province {
+    code: number;  // Backend trả về int
+    name: string;
+    fullName: string;
+    nameEn?: string;
+}
+
+// Ward DTO - V2 API bỏ cấp huyện, wards thuộc trực tiếp province
+export interface Ward {
+    code: number;  // Backend trả về int
+    name: string;
+    provinceCode: number;  // Thuộc tỉnh, không còn district
+}
+
 @Injectable({
     providedIn: 'root'
 })
@@ -34,5 +49,19 @@ export class MasterDataService {
      */
     getSkills(): Observable<Skill[]> {
         return this.http.get<Skill[]>(`${this.apiUrl}/master-data/skills`);
+    }
+
+    /**
+     * Lấy danh sách tỉnh/thành phố
+     */
+    getProvinces(): Observable<Province[]> {
+        return this.http.get<Province[]>(`${this.apiUrl}/master-data/provinces`);
+    }
+
+    /**
+     * Lấy danh sách phường/xã theo mã tỉnh (V2 API - bỏ cấp huyện)
+     */
+    getWards(provinceCode: number): Observable<Ward[]> {
+        return this.http.get<Ward[]>(`${this.apiUrl}/master-data/provinces/${provinceCode}/wards`);
     }
 }

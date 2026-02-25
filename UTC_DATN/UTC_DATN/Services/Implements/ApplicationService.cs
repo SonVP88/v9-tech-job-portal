@@ -13,6 +13,7 @@ public class ApplicationService : IApplicationService
     private readonly ILogger<ApplicationService> _logger;
     private readonly IAiMatchingService _aiMatchingService;
     private readonly IEmailService _emailService;
+    private readonly INotificationService _notificationService;
 
     // Các extension được phép
     private static readonly string[] AllowedExtensions = { ".pdf", ".docx" };
@@ -25,13 +26,15 @@ public class ApplicationService : IApplicationService
         IWebHostEnvironment environment,
         ILogger<ApplicationService> logger,
         IAiMatchingService aiMatchingService,
-        IEmailService emailService)
+        IEmailService emailService,
+        INotificationService notificationService)
     {
         _context = context;
         _environment = environment;
         _logger = logger;
         _aiMatchingService = aiMatchingService;
         _emailService = emailService;
+        _notificationService = notificationService;
     }
 
 
@@ -320,6 +323,54 @@ public class ApplicationService : IApplicationService
                 }
                 // ===== END AI SCORING =====
 
+                // 9. TẠO THÔNG BÁO CHO ỨNG VIÊN (NEW)
+                if (userId.HasValue)
+                {
+                    try
+                    {
+                        await _notificationService.CreateNotificationAsync(
+                            userId.Value,
+                            "Ứng tuyển thành công",
+                            $"Bạn đã nộp hồ sơ thành công cho vị trí {job.Title}. Chúc bạn may mắn!",
+                            "APPLICATION_SUBMITTED",
+                            application.ApplicationId.ToString()
+                        );
+                        _logger.LogInformation("🔔 Đã tạo thông báo ứng tuyển thành công cho User {UserId}", userId);
+                    }
+                    catch (Exception notifEx)
+                    {
+                        _logger.LogError(notifEx, "❌ Lỗi khi tạo thông báo cho User {UserId}", userId);
+                    }
+                }
+
+                // 10. TẠO THÔNG BÁO CHO ADMIN & HR (NEW - USER REQUEST)
+                try
+                {
+                    // Lấy danh sách User có role ADMIN hoặc HR
+                    var adminAndHrUsers = await _context.UserRoles
+                        .Include(ur => ur.Role)
+                        .Where(ur => ur.Role.Code == "ADMIN" || ur.Role.Code == "HR")
+                        .Select(ur => ur.UserId)
+                        .Distinct()
+                        .ToListAsync();
+
+                    foreach (var adminId in adminAndHrUsers)
+                    {
+                        await _notificationService.CreateNotificationAsync(
+                            adminId,
+                            "Có hồ sơ ứng tuyển mới",
+                            $"Ứng viên {candidate.FullName} vừa nộp hồ sơ vào vị trí {job.Title}.",
+                            "NEW_APPLICATION",
+                            application.ApplicationId.ToString()
+                        );
+                    }
+                    _logger.LogInformation("🔔 Đã tạo thông báo cho {Count} Users (ADMIN/HR)", adminAndHrUsers.Count);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "❌ Lỗi khi tạo thông báo cho Admin/HR");
+                }
+
                 // Commit transaction
                 await transaction.CommitAsync();
                 _logger.LogInformation("Hoàn thành nộp hồ sơ thành công cho JobId: {JobId}", request.JobId);
@@ -382,6 +433,7 @@ public class ApplicationService : IApplicationService
                     ? a.ResumeDocument.File.Url 
                     : "",
                 JobTitle = a.Job.Title,
+                JobId = a.JobId,
                 // Get latest AI score (avoid loading all scores)
                 LatestScore = a.ApplicationAiScores
                     .OrderByDescending(s => s.CreatedAt)
@@ -425,6 +477,7 @@ public class ApplicationService : IApplicationService
                 Status = a.Status,
                 CvUrl = a.CvUrl,
                 JobTitle = a.JobTitle,
+                JobId = a.JobId,
                 MatchScore = (int?)a.LatestScore?.MatchingScore,
                 AiExplanation = explanation
             };
@@ -502,6 +555,68 @@ public class ApplicationService : IApplicationService
             }
         }
 
+        // 8. TẠO THÔNG BÁO CHO ỨNG VIÊN (NEW)
+        if (saveResult && application.Candidate != null && application.Candidate.UserId.HasValue)
+        {
+            try
+            {
+                string notifTitle = "";
+                string notifMessage = "";
+                string notifType = "APPLICATION_UPDATE";
+
+                switch (newStatus)
+                {
+                    case "HIRED":
+                        notifTitle = "🎉 Chúc mừng! Bạn đã trúng tuyển";
+                        notifMessage = $"Chúc mừng bạn đã trúng tuyển vị trí {application.Job?.Title}. Vui lòng kiểm tra email để biết thêm chi tiết.";
+                        notifType = "OFFER";
+                        break;
+                    case "REJECTED":
+                        notifTitle = "Thông báo kết quả ứng tuyển";
+                        notifMessage = $"Cảm ơn bạn đã quan tâm đến vị trí {application.Job?.Title}. Rất tiếc hiện tại hồ sơ của bạn chưa phù hợp.";
+                        break;
+                    case "Pending_Offer":
+                        notifTitle = "Cập nhật trạng thái ứng tuyển";
+                        notifMessage = $"Bạn đã vượt qua vòng phỏng vấn vị trí {application.Job?.Title}. Chúng tôi đang chuẩn bị Offer cho bạn.";
+                        notifType = "OFFER";
+                        break;
+                    case "Waitlist":
+                        notifTitle = "Cập nhật trạng thái ứng tuyển";
+                        notifMessage = $"Hồ sơ ứng tuyển vị trí {application.Job?.Title} của bạn đã được đưa vào danh sách chờ.";
+                        break;
+                    case "INTERVIEW":
+                        notifTitle = "Lịch phỏng vấn mới";
+                        notifMessage = $"Bạn có lịch phỏng vấn mới cho vị trí {application.Job?.Title}. Vui lòng kiểm tra email.";
+                        notifType = "INTERVIEW";
+                        break;
+                    case "Offer_Sent":
+                        notifTitle = "Bạn nhận được Offer!";
+                        notifMessage = $"Công ty đã gửi Offer cho vị trí {application.Job?.Title}. Vui lòng kiểm tra email để xác nhận.";
+                        notifType = "OFFER";
+                        break;
+                    default:
+                        // Các status khác có thể không cần thông báo hoặc thông báo chung
+                        break;
+                }
+
+                if (!string.IsNullOrEmpty(notifTitle))
+                {
+                    await _notificationService.CreateNotificationAsync(
+                        application.Candidate.UserId.Value,
+                        notifTitle,
+                        notifMessage,
+                        notifType,
+                        application.ApplicationId.ToString()
+                    );
+                    _logger.LogInformation("🔔 Đã tạo thông báo '{Title}' cho Candidate UserId: {UserId}", notifTitle, application.Candidate.UserId);
+                }
+            }
+            catch (Exception notifEx)
+            {
+                _logger.LogError(notifEx, "❌ Lỗi khi tạo thông báo cho User {UserId}", application.Candidate.UserId);
+            }
+        }
+
         return saveResult;
     }
 
@@ -553,5 +668,70 @@ public class ApplicationService : IApplicationService
             applications.Count, candidate.CandidateId);
 
         return applications;
+    }
+
+    public async Task<List<ApplicationDto>> GetAllApplicationsAsync()
+    {
+        // Similar to GetApplicationsByJobIdAsync but WITHOUT jobId filter
+        var applications = await _context.Applications
+            .AsNoTracking()
+            .Select(a => new
+            {
+                ApplicationId = a.ApplicationId,
+                CandidateId = a.CandidateId,
+                CandidateName = a.Candidate.FullName ?? "Unknown",
+                Email = a.Candidate.Email ?? "",
+                Phone = a.Candidate.Phone ?? "",
+                AppliedAt = a.AppliedAt,
+                Status = a.Status,
+                CvUrl = a.ResumeDocument != null && a.ResumeDocument.File != null 
+                    ? a.ResumeDocument.File.Url 
+                    : "",
+                JobTitle = a.Job.Title,
+                JobId = a.JobId,
+                LatestScore = a.ApplicationAiScores
+                    .OrderByDescending(s => s.CreatedAt)
+                    .Select(s => new { s.MatchingScore, s.MatchedSkillsJson })
+                    .FirstOrDefault()
+            })
+            .OrderByDescending(a => a.AppliedAt) // Default sort by date descending
+            .ToListAsync();
+
+        var result = applications.Select(a =>
+        {
+            string explanation = null;
+            if (a.LatestScore != null && !string.IsNullOrEmpty(a.LatestScore.MatchedSkillsJson))
+            {
+                try
+                {
+                    using (var doc = System.Text.Json.JsonDocument.Parse(a.LatestScore.MatchedSkillsJson))
+                    {
+                        if (doc.RootElement.TryGetProperty("explanation", out var expElement))
+                        {
+                            explanation = expElement.GetString();
+                        }
+                    }
+                }
+                catch { /* Ignore JSON parse error */ }
+            }
+
+            return new ApplicationDto
+            {
+                ApplicationId = a.ApplicationId,
+                CandidateId = a.CandidateId,
+                CandidateName = a.CandidateName,
+                Email = a.Email,
+                Phone = a.Phone,
+                AppliedAt = a.AppliedAt,
+                Status = a.Status,
+                CvUrl = a.CvUrl,
+                JobTitle = a.JobTitle,
+                JobId = a.JobId,
+                MatchScore = (int?)a.LatestScore?.MatchingScore,
+                AiExplanation = explanation
+            };
+        }).ToList();
+
+        return result;
     }
 }

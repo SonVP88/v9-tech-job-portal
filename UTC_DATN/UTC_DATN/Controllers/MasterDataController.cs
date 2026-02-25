@@ -51,5 +51,42 @@ namespace UTC_DATN.Controllers
                 return BadRequest(new { message = "Lỗi khi lấy danh sách JobTypes", error = ex.Message });
             }
         }
+
+        /// <summary>
+        /// Lấy danh sách tất cả Tỉnh/Thành phố từ API công khai
+        /// </summary>
+        /// <returns>Danh sách Tỉnh/Thành phố</returns>
+        [HttpGet("provinces")]
+        public async Task<IActionResult> GetProvinces()
+        {
+            try
+            {
+                var provinces = await _masterDataService.GetProvincesAsync();
+                return Ok(provinces);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = "Lỗi khi lấy danh sách tỉnh/thành phố", error = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Lấy danh sách Phường/Xã theo mã tỉnh (V2 API - bỏ cấp huyện)
+        /// </summary>
+        /// <param name="provinceCode">Mã tỉnh</param>
+        /// <returns>Danh sách Phường/Xã</returns>
+        [HttpGet("provinces/{provinceCode}/wards")]
+        public async Task<IActionResult> GetWardsByProvince(int provinceCode)
+        {
+            try
+            {
+                var wards = await _masterDataService.GetWardsAsync(provinceCode);
+                return Ok(wards);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = "Lỗi khi lấy danh sách phường/xã", error = ex.Message });
+            }
+        }
     }
 }

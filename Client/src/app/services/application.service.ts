@@ -11,6 +11,7 @@ export interface ApplicationDto {
     appliedAt: string;
     cvUrl: string;
     status: string;
+    jobId: string;         // Thêm để xác định job khi view all
     matchScore?: number;
     aiExplanation?: string;
     jobTitle?: string;     // Thêm để hiển thị trong email
@@ -53,6 +54,13 @@ export class ApplicationService {
      */
     updateApplicationStatus(applicationId: string, status: string): Observable<ApiResponse<any>> {
         return this.http.put<ApiResponse<any>>(`${this.apiUrl}/applications/${applicationId}/status?status=${status}`, {});
+    }
+
+    /**
+     * Lấy toàn bộ danh sách hồ sơ ứng tuyển (Dành cho HR)
+     */
+    getAllApplications(): Observable<ApiResponse<ApplicationDto[]>> {
+        return this.http.get<ApiResponse<ApplicationDto[]>>(`${this.apiUrl}/applications`);
     }
 
     /**

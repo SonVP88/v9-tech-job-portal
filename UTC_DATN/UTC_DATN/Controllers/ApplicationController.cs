@@ -230,6 +230,33 @@ public class ApplicationController : ControllerBase
     }
 
     /// <summary>
+    /// Lấy toàn bộ danh sách hồ sơ ứng tuyển (Dành cho HR/Admin)
+    /// </summary>
+    [HttpGet]
+    [Authorize(Roles = "HR, ADMIN")]
+    public async Task<IActionResult> GetAllApplications()
+    {
+        try
+        {
+            var applications = await _applicationService.GetAllApplicationsAsync();
+            return Ok(new
+            {
+                success = true,
+                data = applications
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Lỗi khi lấy danh sách toàn bộ hồ sơ ứng tuyển");
+            return StatusCode(500, new
+            {
+                success = false,
+                message = "Có lỗi xảy ra khi lấy danh sách ứng viên."
+            });
+        }
+    }
+
+    /// <summary>
     /// API lên lịch phỏng vấn cho một Application (Dành cho HR/Admin)
     /// </summary>
     [HttpPost("{applicationId}/schedule-interview")]

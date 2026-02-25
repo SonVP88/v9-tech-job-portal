@@ -3,9 +3,10 @@ import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable, of } from 'rxjs';
 import { isPlatformBrowser } from '@angular/common';
 
-
+// DTO for interview schedule
 export interface MyInterviewDto {
     interviewId: string;
+    interviewerId: string;
     candidateName: string;
     jobTitle: string;
     position: string;
@@ -18,6 +19,8 @@ export interface MyInterviewDto {
     status: 'upcoming' | 'ongoing' | 'completed';
     candidateEmail?: string;
     candidatePhone?: string;
+    interviewerName?: string;
+    interviewerEmail?: string;
 }
 
 export interface ApiResponse<T> {

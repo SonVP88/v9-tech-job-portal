@@ -88,6 +88,7 @@ namespace UTC_DATN.DTOs
     public class DashboardCandidateDto
     {
         public Guid ApplicationId { get; set; }
+        public Guid JobId { get; set; }
         public string CandidateName { get; set; } = string.Empty;
         public string JobTitle { get; set; } = string.Empty;
         public string Status { get; set; } = string.Empty;

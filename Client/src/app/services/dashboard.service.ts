@@ -25,6 +25,7 @@ export interface DashboardActivityDto {
 
 export interface DashboardCandidateDto {
     applicationId: string;
+    jobId: string;
     candidateName: string;
     jobTitle: string;
     status: string;

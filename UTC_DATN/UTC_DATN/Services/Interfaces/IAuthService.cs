@@ -17,5 +17,6 @@ namespace UTC_DATN.Services.Interfaces
         /// <param name="request">Thông tin đăng nhập</param>
         /// <returns>JWT token string nếu thành công, null nếu thất bại</returns>
         Task<string?> LoginAsync(LoginRequest request);
+        Task<bool> ChangePasswordAsync(Guid userId, ChangePasswordDto request); // New method
     }
 }

@@ -1,75 +1,4 @@
-<header
-  class="sticky top-0 z-50 w-full bg-white/80 dark:bg-[#101622]/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800">
-  <div class="px-4 md:px-10 lg:px-40 flex items-center justify-between py-3">
-    <div class="flex items-center gap-4 text-[#0d121b] dark:text-white">
-      <div class="size-8 text-primary">
-        <svg class="w-full h-full" fill="none" viewbox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
-          <path clip-rule="evenodd"
-            d="M24 18.4228L42 11.475V34.3663C42 34.7796 41.7457 35.1504 41.3601 35.2992L24 42V18.4228Z"
-            fill="currentColor" fill-rule="evenodd"></path>
-          <path clip-rule="evenodd"
-            d="M24 8.18819L33.4123 11.574L24 15.2071L14.5877 11.574L24 8.18819ZM9 15.8487L21 20.4805V37.6263L9 32.9945V15.8487ZM27 37.6263V20.4805L39 15.8487V32.9945L27 37.6263ZM25.354 2.29885C24.4788 1.98402 23.5212 1.98402 22.646 2.29885L4.98454 8.65208C3.7939 9.08038 3 10.2097 3 11.475V34.3663C3 36.0196 4.01719 37.5026 5.55962 38.098L22.9197 44.7987C23.6149 45.0671 24.3851 45.0671 25.0803 44.7987L42.4404 38.098C43.9828 37.5026 45 36.0196 45 34.3663V11.475C45 10.2097 44.2061 9.08038 43.0155 8.65208L25.354 2.29885Z"
-            fill="currentColor" fill-rule="evenodd"></path>
-        </svg>
-      </div>
-      <h2 class="text-xl font-bold tracking-tight">Job Portal</h2>
-    </div>
-    <div class="hidden md:flex items-center gap-9">
-      <a class="text-sm font-medium hover:text-primary transition-colors" [routerLink]="['/candidate/home']">Tìm việc
-        làm</a>
-      <a class="text-sm font-medium hover:text-primary transition-colors" [routerLink]="['/candidate/home']">Công ty</a>
-      <a *ngIf="userRole !== 'HR' && userRole !== 'ADMIN' && userRole !== 'INTERVIEWER'"
-        class="text-sm font-medium hover:text-primary transition-colors"
-        [routerLink]="['/candidate/my-applications']">Hồ sơ của tôi</a>
-    </div>
-    <div class="flex items-center gap-4">
-      <!-- Nếu chưa đăng nhập: hiển thị nút Sign In -->
-      <button *ngIf="!isLoggedIn"
-        class="hidden sm:flex cursor-pointer items-center justify-center rounded-xl h-10 px-6 bg-primary text-white text-sm font-bold shadow-lg shadow-primary/20 hover:bg-primary/90 transition-all">
-        Đăng nhập
-      </button>
-
-      <!-- Nếu đã đăng nhập: hiển thị user menu -->
-      <div *ngIf="isLoggedIn" class="hidden sm:flex items-center gap-3">
-        <!-- Notification Icon -->
-        <button class="relative p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors">
-          <span class="material-symbols-outlined text-slate-600 dark:text-slate-400">notifications</span>
-          <span class="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
-        </button>
-
-        <!-- User Avatar/Menu with Dropdown -->
-        <div class="relative group">
-          <div
-            class="flex items-center gap-2 p-1 pr-3 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg cursor-pointer transition-colors">
-            <div class="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
-              <span class="material-symbols-outlined text-primary text-xl">person</span>
-            </div>
-            <span class="text-sm font-medium text-slate-700 dark:text-slate-300">{{ userFullName }}</span>
-            <span class="material-symbols-outlined text-slate-400 text-sm">expand_more</span>
-          </div>
-
-          <!-- Dropdown Menu -->
-          <div
-            class="absolute right-0 mt-2 w-48 bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 py-1 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
-            <div class="px-4 py-2 border-b border-slate-200 dark:border-slate-700">
-              <p class="text-xs text-slate-500 dark:text-slate-400">Role:</p>
-              <p class="text-sm font-semibold text-primary">{{ userRole }}</p>
-            </div>
-            <button (click)="logout()"
-              class="w-full px-4 py-2 text-left text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center gap-2">
-              <span class="material-symbols-outlined text-red-500 text-lg">logout</span>
-              <span>Đăng xuất</span>
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <button class="md:hidden text-slate-800 dark:text-white">
-        <span class="material-symbols-outlined">menu</span>
-      </button>
-    </div>
-  </div>
-</header>
+<app-candidate-header></app-candidate-header>
 
 <main class="flex-grow">
   <section class="relative w-full overflow-hidden bg-slate-50 dark:bg-slate-900">
@@ -80,17 +9,17 @@
     </div>
     <div class="relative z-10 px-4 md:px-10 lg:px-40 py-20 md:py-32 flex flex-col items-center text-center">
       <h1 class="text-white text-4xl md:text-5xl lg:text-6xl font-black leading-tight tracking-tight mb-4 max-w-4xl">
-        Tìm công việc mơ ước của bạn ngay hôm nay
+        Gia nhập đội ngũ của chúng tôi ngay hôm nay
       </h1>
       <h2 class="text-blue-100 text-base md:text-lg font-normal mb-10 max-w-2xl">
-        Khám phá hàng nghìn công việc từ các công ty hàng đầu và khởi đầu sự nghiệp của bạn.
+        Khám phá cơ hội nghề nghiệp và phát triển bản thân cùng chúng tôi.
       </h2>
       <div
         class="w-full max-w-4xl bg-white dark:bg-slate-800 rounded-2xl shadow-xl p-2 md:p-3 flex flex-col md:flex-row gap-2">
         <div
           class="flex-1 flex items-center px-4 h-12 md:h-14 bg-slate-50 dark:bg-slate-700/50 rounded-xl border border-transparent focus-within:border-primary/50 focus-within:bg-white dark:focus-within:bg-slate-700 transition-all">
           <span class="material-symbols-outlined text-slate-400 mr-3">search</span>
-          <input
+          <input [(ngModel)]="searchKeyword" (keyup.enter)="onSearch()"
             class="flex-1 bg-transparent border-none focus:ring-0 text-slate-800 dark:text-white placeholder:text-slate-400 text-sm md:text-base p-0"
             placeholder="Vị trí, từ khóa hoặc tên công ty" type="text" />
         </div>
@@ -98,17 +27,16 @@
         <div
           class="flex-1 flex items-center px-4 h-12 md:h-14 bg-slate-50 dark:bg-slate-700/50 rounded-xl border border-transparent focus-within:border-primary/50 focus-within:bg-white dark:focus-within:bg-slate-700 transition-all">
           <span class="material-symbols-outlined text-slate-400 mr-3">location_on</span>
-          <select
+          <select [(ngModel)]="selectedLocation"
             class="flex-1 bg-transparent border-none focus:ring-0 text-slate-800 dark:text-white text-sm md:text-base p-0 cursor-pointer">
-            <option disabled="" selected="" value="">Chọn địa điểm</option>
-            <option>Làm việc từ xa</option>
-            <option>Hà Nội</option>
-            <option>Hồ Chí Minh</option>
-            <option>Đà Nẵng</option>
-            <option>Khác</option>
+            <option value="">Chọn địa điểm</option>
+            <option value="remote">Làm việc từ xa</option>
+            <option *ngFor="let province of provinces" [value]="province.name">
+              {{ province.name }}
+            </option>
           </select>
         </div>
-        <button
+        <button (click)="onSearch()"
           class="h-12 md:h-14 px-8 bg-primary hover:bg-blue-600 text-white font-bold rounded-xl transition-colors shadow-lg shadow-blue-500/30 flex items-center justify-center gap-2">
           Tìm kiếm
         </button>
@@ -120,17 +48,17 @@
     <div class="px-4 md:px-10 lg:px-40 py-8">
       <div class="flex flex-wrap justify-center md:justify-between gap-6 max-w-4xl mx-auto text-center md:text-left">
         <div class="flex flex-col items-center md:items-start gap-1 min-w-[140px]">
-          <p class="text-4xl font-black text-slate-900 dark:text-white tracking-tight">1k+</p>
+          <p class="text-4xl font-black text-slate-900 dark:text-white tracking-tight">{{ stats.jobCount }}+</p>
           <p class="text-slate-500 dark:text-slate-400 font-medium">Việc làm</p>
         </div>
         <div class="hidden md:block w-px h-12 bg-slate-200 dark:bg-slate-800 self-center"></div>
         <div class="flex flex-col items-center md:items-start gap-1 min-w-[140px]">
-          <p class="text-4xl font-black text-slate-900 dark:text-white tracking-tight">500+</p>
-          <p class="text-slate-500 dark:text-slate-400 font-medium">Công ty</p>
+          <p class="text-4xl font-black text-slate-900 dark:text-white tracking-tight">{{ stats.applicationCount }}+</p>
+          <p class="text-slate-500 dark:text-slate-400 font-medium">Lượt ứng tuyển</p>
         </div>
         <div class="hidden md:block w-px h-12 bg-slate-200 dark:bg-slate-800 self-center"></div>
         <div class="flex flex-col items-center md:items-start gap-1 min-w-[140px]">
-          <p class="text-4xl font-black text-slate-900 dark:text-white tracking-tight">10k+</p>
+          <p class="text-4xl font-black text-slate-900 dark:text-white tracking-tight">{{ stats.candidateCount }}+</p>
           <p class="text-slate-500 dark:text-slate-400 font-medium">Ứng viên</p>
         </div>
       </div>
@@ -143,7 +71,7 @@
         <h2 class="text-2xl md:text-3xl font-bold text-slate-900 dark:text-white tracking-tight">Việc làm mới nhất
         </h2>
         <a class="text-primary font-semibold hover:underline flex items-center gap-1"
-          [routerLink]="['/candidate/home']">
+          [routerLink]="['/candidate/jobs']">
           Xem tất cả <span class="material-symbols-outlined text-sm">arrow_forward</span>
         </a>
       </div>
@@ -156,10 +84,12 @@
 
         <!-- Error State -->
         <div *ngIf="error && !loading" class="col-span-full text-center py-12">
-          <p class="text-red-600 dark:text-red-400">{{ error }}</p>
-          <button (click)="loadLatestJobs()"
-            class="mt-4 px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors">
-            Thử lại
+          <span class="material-symbols-outlined text-6xl text-slate-300 dark:text-slate-600 mb-4">search_off</span>
+          <p class="text-slate-600 dark:text-slate-400 mb-4">{{ error }}</p>
+          <button (click)="clearSearch()"
+            class="inline-flex items-center gap-2 px-6 py-3 bg-primary hover:bg-blue-600 text-white font-semibold rounded-lg transition-colors shadow-md">
+            <span class="material-symbols-outlined">refresh</span>
+            Xem tất cả việc làm
           </button>
         </div>
 
@@ -171,8 +101,11 @@
               class="size-12 rounded-lg bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 dark:text-blue-400">
               <span class="material-symbols-outlined text-3xl">work</span>
             </div>
-            <button class="text-slate-400 hover:text-primary transition-colors">
-              <span class="material-symbols-outlined">bookmark</span>
+            <button (click)="toggleSaveJob(job.jobId, $event)" [class.text-primary]="savedJobIds.has(job.jobId)"
+              [class.text-slate-400]="!savedJobIds.has(job.jobId)" class="hover:text-primary transition-colors"
+              title="Lưu việc làm">
+              <span class="material-symbols-outlined">{{ savedJobIds.has(job.jobId) ? 'bookmark' : 'bookmark_border'
+                }}</span>
             </button>
           </div>
 

@@ -17,6 +17,10 @@ public partial class CandidateDocument
 
     public string ParsedJson { get; set; }
 
+    public bool IsPrimary { get; set; }
+
+    public string DisplayName { get; set; }
+
     public DateTime CreatedAt { get; set; }
 
     public virtual ICollection<Application> Applications { get; set; } = new List<Application>();

@@ -1,7 +1,10 @@
 import { Injectable, PLATFORM_ID, inject } from '@angular/core';
 import { Router } from '@angular/router';
+import { HttpClient } from '@angular/common/http';
+import { Observable } from 'rxjs';
 import { jwtDecode } from 'jwt-decode';
 import { isPlatformBrowser } from '@angular/common';
+import { environment } from '../../environments/environment';
 
 @Injectable({
     providedIn: 'root'
@@ -9,7 +12,7 @@ import { isPlatformBrowser } from '@angular/common';
 export class AuthService {
     private platformId = inject(PLATFORM_ID);
 
-    constructor(private router: Router) { }
+    constructor(private router: Router, private http: HttpClient) { }
 
     isAuthenticated(): boolean {
         // ⚡ SSR Fix: Only access localStorage in browser
@@ -79,5 +82,10 @@ export class AuthService {
             console.error('❌ Error saving token:', error);
             return false;
         }
+    }
+
+    // New method for Change Password
+    changePassword(data: any): Observable<any> {
+        return this.http.post(`${environment.apiUrl}/auth/change-password`, data);
     }
 }

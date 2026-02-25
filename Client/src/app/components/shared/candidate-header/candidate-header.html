@@ -1,0 +1,179 @@
+<header
+    class="sticky top-0 z-50 w-full bg-white/80 dark:bg-[#101622]/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800">
+    <!-- Admin Preview Banner -->
+    <div *ngIf="isAdminPreview"
+        class="w-full bg-gradient-to-r from-purple-600 to-blue-600 text-white py-2 px-4 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+            <span class="material-symbols-outlined text-[20px] animate-pulse">visibility</span>
+            <span class="text-sm font-semibold">⚠️ Chế độ Admin Preview - Bạn đang xem giao diện Candidate</span>
+        </div>
+        <button (click)="backToAdmin()"
+            class="px-4 py-1.5 bg-white/20 hover:bg-white/30 rounded-lg text-sm font-medium transition-colors backdrop-blur-sm border border-white/30">
+            ← Quay lại Admin
+        </button>
+    </div>
+
+    <div class="px-4 md:px-10 lg:px-40 flex items-center justify-between py-3">
+        <div class="flex items-center gap-4 text-[#0d121b] dark:text-white">
+            <div class="size-8 text-primary">
+                <svg class="w-full h-full" fill="none" viewbox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+                    <path clip-rule="evenodd"
+                        d="M24 18.4228L42 11.475V34.3663C42 34.7796 41.7457 35.1504 41.3601 35.2992L24 42V18.4228Z"
+                        fill="currentColor" fill-rule="evenodd"></path>
+                    <path clip-rule="evenodd"
+                        d="M24 8.18819L33.4123 11.574L24 15.2071L14.5877 11.574L24 8.18819ZM9 15.8487L21 20.4805V37.6263L9 32.9945V15.8487ZM27 37.6263V20.4805L39 15.8487V32.9945L27 37.6263ZM25.354 2.29885C24.4788 1.98402 23.5212 1.98402 22.646 2.29885L4.98454 8.65208C3.7939 9.08038 3 10.2097 3 11.475V34.3663C3 36.0196 4.01719 37.5026 5.55962 38.098L22.9197 44.7987C23.6149 45.0671 24.3851 45.0671 25.0803 44.7987L42.4404 38.098C43.9828 37.5026 45 36.0196 45 34.3663V11.475C45 10.2097 44.2061 9.08038 43.0155 8.65208L25.354 2.29885Z"
+                        fill="currentColor" fill-rule="evenodd"></path>
+                </svg>
+            </div>
+            <h2 class="text-xl font-bold tracking-tight">Job Portal</h2>
+        </div>
+        <div class="hidden md:flex items-center gap-9">
+            <a class="text-sm font-medium hover:text-primary transition-colors" [routerLink]="['/candidate/home']">Tìm
+                việc làm</a>
+            <a class="text-sm font-medium hover:text-primary transition-colors" [routerLink]="['/candidate/jobs']">Công
+                việc</a>
+            <a class="text-sm font-medium hover:text-primary transition-colors"
+                [routerLink]="['/candidate/company']">Công
+                ty</a>
+            <a *ngIf="userRole !== 'HR' && userRole !== 'ADMIN' && userRole !== 'INTERVIEWER'"
+                class="text-sm font-medium hover:text-primary transition-colors"
+                [routerLink]="['/candidate/my-applications']">Hồ sơ của tôi</a>
+        </div>
+        <div class="flex items-center gap-4">
+            <!-- Nếu chưa đăng nhập: hiển thị nút Sign In -->
+            <button *ngIf="!isLoggedIn"
+                class="hidden sm:flex cursor-pointer items-center justify-center rounded-xl h-10 px-6 bg-primary text-white text-sm font-bold shadow-lg shadow-primary/20 hover:bg-primary/90 transition-all">
+                Đăng nhập
+            </button>
+
+            <!-- Nếu đã đăng nhập: hiển thị user menu -->
+            <div *ngIf="isLoggedIn" class="hidden sm:flex items-center gap-3">
+                <!-- Notification Icon -->
+                <div class="relative">
+                    <button (click)="toggleNotificationDropdown()"
+                        class="relative p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors">
+                        <span class="material-symbols-outlined text-slate-600 dark:text-slate-400">notifications</span>
+                        <!-- Unread Badge -->
+                        <span *ngIf="unreadCount > 0"
+                            class="absolute top-1 right-1 w-4 h-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-white dark:border-slate-900">
+                            {{ unreadCount > 9 ? '9+' : unreadCount }}
+                        </span>
+                    </button>
+
+                    <!-- Notification Dropdown -->
+                    <div *ngIf="isNotificationDropdownOpen"
+                        class="absolute right-0 mt-3 w-80 bg-white dark:bg-slate-900 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-800 py-2 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
+                        <div
+                            class="px-4 py-2 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center">
+                            <h3 class="font-bold text-slate-900 dark:text-white">Thông báo</h3>
+                            <button *ngIf="unreadCount > 0" (click)="markAllAsRead()"
+                                class="text-xs text-primary hover:underline">Đã xem hết</button>
+                        </div>
+
+                        <div class="max-h-[350px] overflow-y-auto">
+                            <div *ngIf="notifications.length === 0" class="p-8 text-center text-slate-500">
+                                <span
+                                    class="material-symbols-outlined text-slate-300 text-4xl mb-2">notifications_off</span>
+                                <p class="text-sm">Chưa có thông báo nào</p>
+                            </div>
+
+                            <div *ngFor="let n of notifications" (click)="markAsRead(n)" [class.bg-blue-50]="!n.isRead"
+                                [class.dark:bg-blue-900\/10]="!n.isRead"
+                                class="px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer transition-colors border-b border-slate-50 dark:border-slate-800 last:border-0 relative">
+                                <div class="flex gap-3">
+                                    <div
+                                        [class]="'w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ' + 
+                                        (n.type === 'JOB_OPPORTUNITY' ? 'bg-green-100 text-green-600' : 
+                                         n.type === 'APPLICATION_UPDATE' ? 'bg-blue-100 text-blue-600' : 
+                                         n.type === 'SECURITY' ? 'bg-amber-100 text-amber-600' : 'bg-slate-100 text-slate-600')">
+                                        <span class="material-symbols-outlined text-xl">
+                                            {{ n.type === 'JOB_OPPORTUNITY' ? 'work' :
+                                            n.type === 'APPLICATION_UPDATE' ? 'assignment' :
+                                            n.type === 'SECURITY' ? 'security' : 'notifications' }}
+                                        </span>
+                                    </div>
+                                    <div class="flex-1 min-w-0">
+                                        <p class="text-sm font-bold text-slate-900 dark:text-white truncate">{{ n.title
+                                            }}</p>
+                                        <p class="text-xs text-slate-600 dark:text-slate-400 line-clamp-2 mt-0.5">{{
+                                            n.message }}</p>
+                                        <p class="text-[10px] text-slate-400 mt-1">{{ formatDate(n.createdAt) }}</p>
+                                    </div>
+                                    <div *ngIf="!n.isRead" class="w-2 h-2 bg-blue-600 rounded-full mt-1"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="px-4 py-2 border-t border-slate-100 dark:border-slate-800 text-center">
+                            <button class="text-xs text-slate-500 hover:text-primary transition-colors">Xem tất
+                                cả</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- User Avatar/Menu with Dropdown -->
+                <div class="relative group">
+                    <div
+                        class="flex items-center gap-2 p-1 pr-3 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg cursor-pointer transition-colors">
+                        <!-- Avatar Image -->
+                        <div class="w-8 h-8 rounded-full overflow-hidden border-2 border-primary/20">
+                            <img src="https://ui-avatars.com/api/?name={{ userFullName }}&background=3B82F6&color=fff&bold=true"
+                                alt="Avatar" class="w-full h-full object-cover" />
+                        </div>
+                        <span class="text-sm font-medium text-slate-700 dark:text-slate-300">{{ userFullName }}</span>
+                        <span class="material-symbols-outlined text-slate-400 text-sm">expand_more</span>
+                    </div>
+
+                    <!-- Dropdown Menu -->
+                    <div
+                        class="absolute right-0 mt-2 w-56 bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 py-1 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+                        <div class="px-4 py-3 border-b border-slate-200 dark:border-slate-700">
+                            <p class="text-sm font-semibold text-slate-800 dark:text-slate-200">{{ userFullName }}</p>
+                            <p class="text-xs text-slate-500 dark:text-slate-400">{{ userRole }}</p>
+                        </div>
+
+                        <!-- Menu Items -->
+                        <!-- Hồ sơ cá nhân -->
+                        <a [routerLink]="['/candidate/profile']"
+                            class="w-full px-4 py-2 text-left text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center gap-3 transition-colors">
+                            <span class="material-symbols-outlined text-primary text-lg">person</span>
+                            <span>Hồ sơ cá nhân</span>
+                        </a>
+
+                        <a [routerLink]="['/candidate/my-applications']"
+                            class="w-full px-4 py-2 text-left text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center gap-3 transition-colors">
+                            <span class="material-symbols-outlined text-blue-600 text-lg">work</span>
+                            <span>Đơn ứng tuyển</span>
+                        </a>
+
+                        <!-- Việc đã lưu -->
+                        <a [routerLink]="['/candidate/saved-jobs']" (click)="toggleUserMenu()"
+                            class="w-full px-4 py-2 text-left text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-3 transition-colors">
+                            <span class="material-symbols-outlined text-amber-500 text-lg">bookmark</span>
+                            <span>Việc đã lưu</span>
+                        </a>
+
+                        <!-- Cài đặt -->
+                        <a [routerLink]="['/candidate/settings']" (click)="toggleUserMenu()"
+                            class="w-full px-4 py-2 text-left text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-3 transition-colors">
+                            <span class="material-symbols-outlined text-slate-500 text-lg">settings</span>
+                            <span>Cài đặt</span>
+                        </a>
+
+                        <div class="border-t border-slate-200 dark:border-slate-700 my-1"></div>
+
+                        <button (click)="logout()"
+                            class="w-full px-4 py-2 text-left text-sm text-slate-700 dark:text-slate-300 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-3 transition-colors">
+                            <span class="material-symbols-outlined text-red-500 text-lg">logout</span>
+                            <span class="text-red-500 font-medium">Đăng xuất</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <button class="md:hidden text-slate-800 dark:text-white">
+                <span class="material-symbols-outlined">menu</span>
+            </button>
+        </div>
+    </div>
+</header>

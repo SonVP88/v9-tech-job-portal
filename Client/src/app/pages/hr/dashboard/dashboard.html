@@ -1,30 +1,3 @@
-<!-- Latest Jobs Section -->
-<div class="mt-8 bg-white dark:bg-slate-950 rounded-xl border border-gray-200 dark:border-slate-800 shadow-sm">
-  <div
-    class="px-6 py-4 border-b border-gray-100 dark:border-slate-800 flex justify-between items-center bg-gray-50/50 dark:bg-slate-900/50">
-    <h3 class="text-lg font-bold text-slate-900 dark:text-white">Việc Làm Mới Nhất</h3>
-    <button routerLink="/hr/post-job"
-      class="px-3 py-1.5 text-xs font-bold text-white bg-primary hover:bg-blue-700 rounded-lg transition-colors">Đăng
-      Tin Mới</button>
-  </div>
-  <div class="p-6 text-center text-gray-500">
-    <p *ngIf="isLoadingJobs" class="text-gray-500">Đang tải...</p>
-    <p *ngIf="errorMessage" class="text-red-600 font-bold">{{ errorMessage }}</p>
-    <div *ngIf="!isLoadingJobs && latestJobs.length > 0" class="space-y-3">
-      <div *ngFor="let job of latestJobs"
-        class="flex justify-between items-center p-4 bg-gray-50 dark:bg-slate-900 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors">
-        <div>
-          <p class="font-bold text-slate-900 dark:text-white">{{ job.title }}</p>
-          <p class="text-sm text-gray-500 dark:text-slate-400">{{ job.location || 'Remote' }}</p>
-        </div>
-        <a [routerLink]="['/hr/manage-applications', job.jobId]"
-          class="px-4 py-2 bg-primary hover:bg-blue-700 text-white text-sm font-bold rounded-lg transition-colors">Xem
-          Hồ Sơ</a>
-      </div>
-    </div>
-    <p *ngIf="!isLoadingJobs && latestJobs.length === 0">Chưa có việc làm nào</p>
-  </div>
-</div>
 <div class="mb-10 flex flex-col gap-1 animate-fade-in-up">
   <h2 class="text-3xl font-black leading-tight tracking-tight text-slate-900 dark:text-white">Tổng Quan Dashboard
   </h2>
@@ -234,10 +207,13 @@
           </td>
           <td class="px-6 py-4 text-gray-500 dark:text-slate-400">{{ formatDate(candidate.appliedAt) }}</td>
           <td class="px-6 py-4 text-right">
-            <a [routerLink]="['/hr/manage-applications', candidate.applicationId]"
+            <a *ngIf="candidate.jobId" [routerLink]="['/hr/manage-applications', candidate.jobId]"
               class="text-gray-400 hover:text-primary transition-colors">
               <span class="material-symbols-outlined text-[20px]">more_vert</span>
             </a>
+            <span *ngIf="!candidate.jobId" class="text-gray-300 cursor-wait">
+              <span class="material-symbols-outlined text-[20px]">more_vert</span>
+            </span>
           </td>
         </tr>
 

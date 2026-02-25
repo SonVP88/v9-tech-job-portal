@@ -39,6 +39,7 @@
           <tr
             class="text-xs text-gray-500 uppercase bg-gray-50 dark:bg-slate-900 dark:text-slate-400 border-b border-gray-100 dark:border-slate-800">
             <th class="px-6 py-4 font-semibold">Ứng viên</th>
+            <th class="px-6 py-4 font-semibold">Người phỏng vấn</th>
             <th class="px-6 py-4 font-semibold">Thời gian</th>
             <th class="px-6 py-4 font-semibold">Địa điểm/Link</th>
             <th class="px-6 py-4 font-semibold">Trạng thái</th>
@@ -60,6 +61,18 @@
                     }}</span>
                   <span class="text-xs text-gray-500 dark:text-slate-400">{{ interview.position }}</span>
                 </div>
+              </div>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap overflow-hidden">
+              <div class="flex flex-col gap-0">
+                <span class="text-sm font-bold text-slate-900 dark:text-white truncate max-w-[150px]"
+                  [title]="interview.interviewerName || 'N/A'">
+                  {{ interview.interviewerName || 'Chưa phân công' }}
+                </span>
+                <span class="text-xs text-gray-500 dark:text-slate-400 truncate max-w-[150px]"
+                  [title]="interview.interviewerEmail || ''">
+                  {{ interview.interviewerEmail || 'Không có email' }}
+                </span>
               </div>
             </td>
             <td class="px-6 py-4 whitespace-nowrap">
@@ -106,7 +119,7 @@
           </tr>
           <!-- Empty state -->
           <tr *ngIf="!isLoading && interviews.length === 0">
-            <td colspan="5" class="px-6 py-12 text-center">
+            <td colspan="6" class="px-6 py-12 text-center">
               <div class="flex flex-col items-center gap-2">
                 <span class="material-symbols-outlined text-4xl text-gray-300 dark:text-slate-600">calendar_today</span>
                 <p class="text-gray-500 dark:text-slate-400">Không có lịch phỏng vấn nào</p>
@@ -115,7 +128,7 @@
           </tr>
           <!-- Loading state -->
           <tr *ngIf="isLoading">
-            <td colspan="5" class="px-6 py-12 text-center">
+            <td colspan="6" class="px-6 py-12 text-center">
               <div class="flex justify-center items-center gap-2">
                 <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
                 <span class="text-gray-500 dark:text-slate-400">Đang tải...</span>
@@ -221,193 +234,216 @@
           </div>
         </div>
       </div>
-      <!-- Modal Content -->
-      <div class="p-6 space-y-6">
-        <!-- 1. Star Rating Section -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <!-- Technical Skills -->
-          <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Kỹ năng chuyên môn <span class="text-red-500">*</span>
-            </label>
-            <div class="flex items-center space-x-1">
-              <ng-container *ngFor="let star of [1, 2, 3, 4, 5]">
-                <button type="button" (click)="!isReadOnly && setRating('technicalSkills', star)"
-                  [disabled]="isReadOnly" [class.cursor-default]="isReadOnly"
-                  class="focus:outline-none transition-transform hover:scale-110 disabled:hover:scale-100">
-                  <span class="material-symbols-outlined text-3xl"
-                    [class.text-amber-400]="star <= evaluationForm.technicalSkills"
-                    [class.text-gray-300]="star > evaluationForm.technicalSkills"
-                    [class.dark:text-slate-600]="star > evaluationForm.technicalSkills">
-                    star
-                  </span>
-                </button>
-              </ng-container>
-              <span class="ml-2 text-sm text-gray-500 font-medium">
-                {{ evaluationForm.technicalSkills }}/5
-              </span>
-            </div>
-          </div>
 
-          <!-- Communication -->
-          <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Kỹ năng giao tiếp <span class="text-red-500">*</span>
-            </label>
-            <div class="flex items-center space-x-1">
-              <ng-container *ngFor="let star of [1, 2, 3, 4, 5]">
-                <button type="button" (click)="!isReadOnly && setRating('communication', star)" [disabled]="isReadOnly"
-                  [class.cursor-default]="isReadOnly"
-                  class="focus:outline-none transition-transform hover:scale-110 disabled:hover:scale-100">
-                  <span class="material-symbols-outlined text-3xl"
-                    [class.text-amber-400]="star <= evaluationForm.communication"
-                    [class.text-gray-300]="star > evaluationForm.communication"
-                    [class.dark:text-slate-600]="star > evaluationForm.communication">
-                    star
-                  </span>
-                </button>
-              </ng-container>
-              <span class="ml-2 text-sm text-gray-500 font-medium">
-                {{ evaluationForm.communication }}/5
-              </span>
-            </div>
-          </div>
-
-          <!-- Attitude -->
-          <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Thái độ & Văn hóa <span class="text-red-500">*</span>
-            </label>
-            <div class="flex items-center space-x-1">
-              <ng-container *ngFor="let star of [1, 2, 3, 4, 5]">
-                <button type="button" (click)="!isReadOnly && setRating('attitude', star)" [disabled]="isReadOnly"
-                  [class.cursor-default]="isReadOnly"
-                  class="focus:outline-none transition-transform hover:scale-110 disabled:hover:scale-100">
-                  <span class="material-symbols-outlined text-3xl"
-                    [class.text-amber-400]="star <= evaluationForm.attitude"
-                    [class.text-gray-300]="star > evaluationForm.attitude"
-                    [class.dark:text-slate-600]="star > evaluationForm.attitude">
-                    star
-                  </span>
-                </button>
-              </ng-container>
-              <span class="ml-2 text-sm text-gray-500 font-medium">
-                {{ evaluationForm.attitude }}/5
-              </span>
-            </div>
-          </div>
-
-          <!-- Experience -->
-          <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Kinh nghiệm làm việc <span class="text-red-500">*</span>
-            </label>
-            <div class="flex items-center space-x-1">
-              <ng-container *ngFor="let star of [1, 2, 3, 4, 5]">
-                <button type="button" (click)="!isReadOnly && setRating('experience', star)" [disabled]="isReadOnly"
-                  [class.cursor-default]="isReadOnly"
-                  class="focus:outline-none transition-transform hover:scale-110 disabled:hover:scale-100">
-                  <span class="material-symbols-outlined text-3xl"
-                    [class.text-amber-400]="star <= evaluationForm.experience"
-                    [class.text-gray-300]="star > evaluationForm.experience"
-                    [class.dark:text-slate-600]="star > evaluationForm.experience">
-                    star
-                  </span>
-                </button>
-              </ng-container>
-              <span class="ml-2 text-sm text-gray-500 font-medium">
-                {{ evaluationForm.experience }}/5
-              </span>
-            </div>
-          </div>
+      <!-- ℹ️ Info Notice for Evaluation on Behalf -->
+      <div *ngIf="!isReadOnly && isEvaluationOnBehalf()"
+        class="bg-blue-50 border-l-4 border-blue-400 p-4 flex items-center gap-3 rounded-r-xl">
+        <span class="material-symbols-outlined text-blue-500">info</span>
+        <div class="text-sm text-blue-700">
+          Bạn đang thực hiện <strong>Đánh giá thay</strong> cho người được phân công
+          (<b>{{selectedInterview?.interviewerName}}</b>).
         </div>
+      </div>
 
-        <!-- Overall Score Display -->
-        <div
-          class="bg-gray-50 dark:bg-slate-800/50 p-4 rounded-lg flex justify-between items-center border border-gray-100 dark:border-slate-700">
-          <span class="font-semibold text-gray-700 dark:text-gray-300">Tổng điểm trung bình</span>
-          <div class="text-2xl font-bold" [class.text-green-600]="evaluationForm.overallScore >= 80"
-            [class.text-amber-500]="evaluationForm.overallScore >= 50 && evaluationForm.overallScore < 80"
-            [class.text-red-500]="evaluationForm.overallScore < 50">
-            {{ evaluationForm.overallScore }}/100
-          </div>
-        </div>
+      <!-- ℹ️ Belated/On Behalf Status for History -->
+      <div *ngIf="isReadOnly && (evaluationForm.isBelated || evaluationForm.submittedByName)"
+        class="flex flex-wrap gap-2">
+        <span *ngIf="evaluationForm.isBelated"
+          class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-800 border border-red-200 shadow-sm">
+          <span class="material-symbols-outlined text-sm">history</span> Lịch sử: Chấm bù
+        </span>
+        <span *ngIf="evaluationForm.submittedByName"
+          class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 border border-amber-200 shadow-sm">
+          <span class="material-symbols-outlined text-sm">person_edit</span> Được lưu bởi:
+          {{evaluationForm.submittedByName}}
+        </span>
+      </div>
 
-        <!-- 2. Comment Section -->
-        <div>
-          <label for="comment" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            Nhận xét chi tiết <span class="text-red-500">*</span>
-          </label>
-          <textarea id="comment" [(ngModel)]="evaluationForm.comment" rows="4" [readonly]="isReadOnly"
-            class="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-primary sm:text-sm sm:leading-6 dark:bg-slate-800 dark:text-white dark:ring-slate-700 disabled:bg-gray-100 disabled:cursor-not-allowed"
-            placeholder="Nhập đánh giá chi tiết về ứng viên..."></textarea>
-        </div>
-
-        <!-- 3. Decision Section -->
+      <!-- 1. Star Rating Section -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <!-- Technical Skills -->
         <div>
           <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            Kết quả phỏng vấn <span class="text-red-500">*</span>
+            Kỹ năng chuyên môn <span class="text-red-500">*</span>
           </label>
-          <div class="grid grid-cols-3 gap-4">
-            <!-- Passed -->
-            <button type="button" (click)="!isReadOnly && evaluationForm.decision = 'Passed'"
-              [disabled]="isReadOnly && evaluationForm.decision !== 'Passed'"
-              class="relative flex flex-col items-center p-4 cursor-pointer rounded-lg border-2 transition-all focus:outline-none"
-              [class.border-green-500]="evaluationForm.decision === 'Passed'"
-              [class.bg-green-50]="evaluationForm.decision === 'Passed'"
-              [class.text-green-700]="evaluationForm.decision === 'Passed'"
-              [class.border-gray-200]="evaluationForm.decision !== 'Passed'"
-              [class.hover:border-green-200]="!isReadOnly && evaluationForm.decision !== 'Passed'"
-              [class.opacity-50]="isReadOnly && evaluationForm.decision !== 'Passed'">
-              <span class="material-symbols-outlined text-3xl mb-1">check_circle</span>
-              <span class="text-sm font-semibold">Đạt (Passed)</span>
-            </button>
+          <div class="flex items-center space-x-1">
+            <ng-container *ngFor="let star of [1, 2, 3, 4, 5]">
+              <button type="button" (click)="!isReadOnly && setRating('technicalSkills', star)" [disabled]="isReadOnly"
+                [class.cursor-default]="isReadOnly"
+                class="focus:outline-none transition-transform hover:scale-110 disabled:hover:scale-100">
+                <span class="material-symbols-outlined text-3xl"
+                  [class.text-amber-400]="star <= evaluationForm.technicalSkills"
+                  [class.text-gray-300]="star > evaluationForm.technicalSkills"
+                  [class.dark:text-slate-600]="star > evaluationForm.technicalSkills">
+                  star
+                </span>
+              </button>
+            </ng-container>
+            <span class="ml-2 text-sm text-gray-500 font-medium">
+              {{ evaluationForm.technicalSkills }}/5
+            </span>
+          </div>
+        </div>
 
-            <!-- Consider -->
-            <button type="button" (click)="!isReadOnly && evaluationForm.decision = 'Consider'"
-              [disabled]="isReadOnly && evaluationForm.decision !== 'Consider'"
-              class="relative flex flex-col items-center p-4 cursor-pointer rounded-lg border-2 transition-all focus:outline-none"
-              [class.border-amber-500]="evaluationForm.decision === 'Consider'"
-              [class.bg-amber-50]="evaluationForm.decision === 'Consider'"
-              [class.text-amber-700]="evaluationForm.decision === 'Consider'"
-              [class.border-gray-200]="evaluationForm.decision !== 'Consider'"
-              [class.hover:border-amber-200]="!isReadOnly && evaluationForm.decision !== 'Consider'"
-              [class.opacity-50]="isReadOnly && evaluationForm.decision !== 'Consider'">
-              <span class="material-symbols-outlined text-3xl mb-1">help</span>
-              <span class="text-sm font-semibold">Cân nhắc (Consider)</span>
-            </button>
+        <!-- Communication -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            Kỹ năng giao tiếp <span class="text-red-500">*</span>
+          </label>
+          <div class="flex items-center space-x-1">
+            <ng-container *ngFor="let star of [1, 2, 3, 4, 5]">
+              <button type="button" (click)="!isReadOnly && setRating('communication', star)" [disabled]="isReadOnly"
+                [class.cursor-default]="isReadOnly"
+                class="focus:outline-none transition-transform hover:scale-110 disabled:hover:scale-100">
+                <span class="material-symbols-outlined text-3xl"
+                  [class.text-amber-400]="star <= evaluationForm.communication"
+                  [class.text-gray-300]="star > evaluationForm.communication"
+                  [class.dark:text-slate-600]="star > evaluationForm.communication">
+                  star
+                </span>
+              </button>
+            </ng-container>
+            <span class="ml-2 text-sm text-gray-500 font-medium">
+              {{ evaluationForm.communication }}/5
+            </span>
+          </div>
+        </div>
 
-            <!-- Failed -->
-            <button type="button" (click)="!isReadOnly && evaluationForm.decision = 'Failed'"
-              [disabled]="isReadOnly && evaluationForm.decision !== 'Failed'"
-              class="relative flex flex-col items-center p-4 cursor-pointer rounded-lg border-2 transition-all focus:outline-none"
-              [class.border-red-500]="evaluationForm.decision === 'Failed'"
-              [class.bg-red-50]="evaluationForm.decision === 'Failed'"
-              [class.text-red-700]="evaluationForm.decision === 'Failed'"
-              [class.border-gray-200]="evaluationForm.decision !== 'Failed'"
-              [class.hover:border-red-200]="!isReadOnly && evaluationForm.decision !== 'Failed'"
-              [class.opacity-50]="isReadOnly && evaluationForm.decision !== 'Failed'">
-              <span class="material-symbols-outlined text-3xl mb-1">cancel</span>
-              <span class="text-sm font-semibold">Không đạt (Failed)</span>
-            </button>
+        <!-- Attitude -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            Thái độ & Văn hóa <span class="text-red-500">*</span>
+          </label>
+          <div class="flex items-center space-x-1">
+            <ng-container *ngFor="let star of [1, 2, 3, 4, 5]">
+              <button type="button" (click)="!isReadOnly && setRating('attitude', star)" [disabled]="isReadOnly"
+                [class.cursor-default]="isReadOnly"
+                class="focus:outline-none transition-transform hover:scale-110 disabled:hover:scale-100">
+                <span class="material-symbols-outlined text-3xl"
+                  [class.text-amber-400]="star <= evaluationForm.attitude"
+                  [class.text-gray-300]="star > evaluationForm.attitude"
+                  [class.dark:text-slate-600]="star > evaluationForm.attitude">
+                  star
+                </span>
+              </button>
+            </ng-container>
+            <span class="ml-2 text-sm text-gray-500 font-medium">
+              {{ evaluationForm.attitude }}/5
+            </span>
+          </div>
+        </div>
+
+        <!-- Experience -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            Kinh nghiệm làm việc <span class="text-red-500">*</span>
+          </label>
+          <div class="flex items-center space-x-1">
+            <ng-container *ngFor="let star of [1, 2, 3, 4, 5]">
+              <button type="button" (click)="!isReadOnly && setRating('experience', star)" [disabled]="isReadOnly"
+                [class.cursor-default]="isReadOnly"
+                class="focus:outline-none transition-transform hover:scale-110 disabled:hover:scale-100">
+                <span class="material-symbols-outlined text-3xl"
+                  [class.text-amber-400]="star <= evaluationForm.experience"
+                  [class.text-gray-300]="star > evaluationForm.experience"
+                  [class.dark:text-slate-600]="star > evaluationForm.experience">
+                  star
+                </span>
+              </button>
+            </ng-container>
+            <span class="ml-2 text-sm text-gray-500 font-medium">
+              {{ evaluationForm.experience }}/5
+            </span>
           </div>
         </div>
       </div>
 
-      <!-- Modal Footer -->
+      <!-- Overall Score Display -->
       <div
-        class="px-6 py-4 bg-gray-50 dark:bg-slate-800/50 flex justify-end gap-3 rounded-b-lg border-t border-gray-100 dark:border-slate-700">
-        <button type="button" (click)="closeEvaluationModal()"
-          class="rounded-md bg-white px-3.5 py-2.5 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 dark:bg-slate-700 dark:text-white dark:ring-slate-600 dark:hover:bg-slate-600">
-          {{ isReadOnly ? 'Đóng' : 'Hủy bỏ' }}
-        </button>
+        class="bg-gray-50 dark:bg-slate-800/50 p-4 rounded-lg flex justify-between items-center border border-gray-100 dark:border-slate-700">
+        <span class="font-semibold text-gray-700 dark:text-gray-300">Tổng điểm trung bình</span>
+        <div class="text-2xl font-bold" [class.text-green-600]="evaluationForm.overallScore >= 80"
+          [class.text-amber-500]="evaluationForm.overallScore >= 50 && evaluationForm.overallScore < 80"
+          [class.text-red-500]="evaluationForm.overallScore < 50">
+          {{ evaluationForm.overallScore }}/100
+        </div>
+      </div>
 
-        <button *ngIf="!isReadOnly" type="button" (click)="submitEvaluation()"
-          [disabled]="isSubmitting || !validateForm()"
-          class="inline-flex items-center gap-x-2 rounded-md bg-primary px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-primary/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:opacity-50 disabled:cursor-not-allowed">
-          <span *ngIf="isSubmitting" class="material-symbols-outlined animate-spin text-sm">progress_activity</span>
-          {{ isSubmitting ? 'Đang lưu...' : 'Lưu đánh giá' }}
-        </button>
+      <!-- 2. Comment Section -->
+      <div>
+        <label for="comment" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+          Nhận xét chi tiết <span class="text-red-500">*</span>
+        </label>
+        <textarea id="comment" [(ngModel)]="evaluationForm.comment" rows="4" [readonly]="isReadOnly"
+          class="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-primary sm:text-sm sm:leading-6 dark:bg-slate-800 dark:text-white dark:ring-slate-700 disabled:bg-gray-100 disabled:cursor-not-allowed"
+          placeholder="Nhập đánh giá chi tiết về ứng viên..."></textarea>
+      </div>
+
+      <!-- 3. Decision Section -->
+      <div>
+        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+          Kết quả phỏng vấn <span class="text-red-500">*</span>
+        </label>
+        <div class="grid grid-cols-3 gap-4">
+          <!-- Passed -->
+          <button type="button" (click)="!isReadOnly && evaluationForm.decision = 'Passed'"
+            [disabled]="isReadOnly && evaluationForm.decision !== 'Passed'"
+            class="relative flex flex-col items-center p-4 cursor-pointer rounded-lg border-2 transition-all focus:outline-none"
+            [class.border-green-500]="evaluationForm.decision === 'Passed'"
+            [class.bg-green-50]="evaluationForm.decision === 'Passed'"
+            [class.text-green-700]="evaluationForm.decision === 'Passed'"
+            [class.border-gray-200]="evaluationForm.decision !== 'Passed'"
+            [class.hover:border-green-200]="!isReadOnly && evaluationForm.decision !== 'Passed'"
+            [class.opacity-50]="isReadOnly && evaluationForm.decision !== 'Passed'">
+            <span class="material-symbols-outlined text-3xl mb-1">check_circle</span>
+            <span class="text-sm font-semibold">Đạt (Passed)</span>
+          </button>
+
+          <!-- Consider -->
+          <button type="button" (click)="!isReadOnly && evaluationForm.decision = 'Consider'"
+            [disabled]="isReadOnly && evaluationForm.decision !== 'Consider'"
+            class="relative flex flex-col items-center p-4 cursor-pointer rounded-lg border-2 transition-all focus:outline-none"
+            [class.border-amber-500]="evaluationForm.decision === 'Consider'"
+            [class.bg-amber-50]="evaluationForm.decision === 'Consider'"
+            [class.text-amber-700]="evaluationForm.decision === 'Consider'"
+            [class.border-gray-200]="evaluationForm.decision !== 'Consider'"
+            [class.hover:border-amber-200]="!isReadOnly && evaluationForm.decision !== 'Consider'"
+            [class.opacity-50]="isReadOnly && evaluationForm.decision !== 'Consider'">
+            <span class="material-symbols-outlined text-3xl mb-1">help</span>
+            <span class="text-sm font-semibold">Cân nhắc (Consider)</span>
+          </button>
+
+          <!-- Failed -->
+          <button type="button" (click)="!isReadOnly && evaluationForm.decision = 'Failed'"
+            [disabled]="isReadOnly && evaluationForm.decision !== 'Failed'"
+            class="relative flex flex-col items-center p-4 cursor-pointer rounded-lg border-2 transition-all focus:outline-none"
+            [class.border-red-500]="evaluationForm.decision === 'Failed'"
+            [class.bg-red-50]="evaluationForm.decision === 'Failed'"
+            [class.text-red-700]="evaluationForm.decision === 'Failed'"
+            [class.border-gray-200]="evaluationForm.decision !== 'Failed'"
+            [class.hover:border-red-200]="!isReadOnly && evaluationForm.decision !== 'Failed'"
+            [class.opacity-50]="isReadOnly && evaluationForm.decision !== 'Failed'">
+            <span class="material-symbols-outlined text-3xl mb-1">cancel</span>
+            <span class="text-sm font-semibold">Không đạt (Failed)</span>
+          </button>
+        </div>
       </div>
     </div>
+
+    <!-- Modal Footer -->
+    <div
+      class="px-6 py-4 bg-gray-50 dark:bg-slate-800/50 flex justify-end gap-3 rounded-b-lg border-t border-gray-100 dark:border-slate-700">
+      <button type="button" (click)="closeEvaluationModal()"
+        class="rounded-md bg-white px-3.5 py-2.5 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 dark:bg-slate-700 dark:text-white dark:ring-slate-600 dark:hover:bg-slate-600">
+        {{ isReadOnly ? 'Đóng' : 'Hủy bỏ' }}
+      </button>
+
+      <button *ngIf="!isReadOnly" type="button" (click)="submitEvaluation()"
+        [disabled]="isSubmitting || !validateForm()"
+        class="inline-flex items-center gap-x-2 rounded-md bg-primary px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-primary/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:opacity-50 disabled:cursor-not-allowed">
+        <span *ngIf="isSubmitting" class="material-symbols-outlined animate-spin text-sm">progress_activity</span>
+        {{ isSubmitting ? 'Đang lưu...' : 'Lưu đánh giá' }}
+      </button>
+    </div>
   </div>
+</div>

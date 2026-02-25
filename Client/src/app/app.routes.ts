@@ -12,6 +12,8 @@ import { EmployeeManagement } from './pages/admin/employee-management/employee-m
 import { ForbiddenComponent } from './pages/forbidden/forbidden.component';
 import { roleGuard } from './guards/role.guard';
 import { CandidateDetail } from './components/admin/candidate-detail/candidate-detail';
+import { jobResolver } from './resolvers/job-search.resolver';
+import { profileResolver } from './resolvers/profile.resolver';
 
 export const routes: Routes = [
 
@@ -23,8 +25,30 @@ export const routes: Routes = [
     path: 'candidate',
     children: [
       { path: 'home', component: Home },
+      {
+        path: 'jobs',
+        loadComponent: () => import('./components/candidate/job-search/job-search').then(m => m.JobSearchComponent),
+        resolve: { jobs: jobResolver }
+      },
       { path: 'job-detail/:id', component: JobDetail },
       { path: 'my-applications', component: MyApplications },
+      {
+        path: 'profile',
+        loadComponent: () => import('./components/candidate/candidate-profile/candidate-profile').then(m => m.CandidateProfile),
+        resolve: { profile: profileResolver }
+      },
+      {
+        path: 'company',
+        loadComponent: () => import('./pages/candidate/company/company').then(m => m.CompanyComponent)
+      },
+      {
+        path: 'saved-jobs',
+        loadComponent: () => import('./pages/candidate/saved-jobs/saved-jobs').then(m => m.SavedJobsComponent)
+      },
+      {
+        path: 'settings',
+        loadComponent: () => import('./pages/candidate/candidate-settings/candidate-settings').then(m => m.CandidateSettingsComponent)
+      },
       { path: '', redirectTo: 'home', pathMatch: 'full' }
     ]
   },
@@ -35,8 +59,26 @@ export const routes: Routes = [
       // Link: /hr/dashboard
       { path: 'dashboard', component: Dashboard },
 
+      // Quản lý việc làm - Job List (New)
+      {
+        path: 'jobs',
+        loadComponent: () => import('./pages/hr/job-list/job-list').then(m => m.JobListComponent)
+      },
+
       // Link: /hr/post-job (Khớp với logic chuyển trang khi Login)
-      { path: 'post-job', component: PostJob },
+      {
+        path: 'post-job',
+        component: PostJob
+      },
+      // Cài đặt hệ thống
+      {
+        path: 'settings',
+        loadComponent: () => import('./pages/hr/settings/settings').then(m => m.SettingsComponent)
+      },
+      {
+        path: 'post-job/:id',
+        component: PostJob
+      },
 
       // Quản lý hồ sơ
       { path: 'manage-applications/:jobId', component: ManageApplications },
@@ -64,6 +106,14 @@ export const routes: Routes = [
       {
         path: 'employees',
         component: EmployeeManagement,
+        canActivate: [roleGuard],
+        data: { roles: ['ADMIN'] }
+      },
+
+      // Quản lý kỹ năng (Chỉ ADMIN)
+      {
+        path: 'skills',
+        loadComponent: () => import('./pages/admin/skill-management/skill-management').then(m => m.SkillManagementComponent),
         canActivate: [roleGuard],
         data: { roles: ['ADMIN'] }
       },

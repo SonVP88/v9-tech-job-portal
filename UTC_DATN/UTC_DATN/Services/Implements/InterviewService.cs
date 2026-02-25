@@ -12,15 +12,18 @@ public class InterviewService : IInterviewService
     private readonly UTC_DATNContext _context;
     private readonly ILogger<InterviewService> _logger;
     private readonly IEmailService _emailService;
+    private readonly INotificationService _notificationService;
 
     public InterviewService(
         UTC_DATNContext context, 
         ILogger<InterviewService> logger,
-        IEmailService emailService)
+        IEmailService emailService,
+        INotificationService notificationService)
     {
         _context = context;
         _logger = logger;
         _emailService = emailService;
+        _notificationService = notificationService;
     }
 
     /// <summary>
@@ -138,6 +141,43 @@ public class InterviewService : IInterviewService
             {
                 _logger.LogWarning(emailEx, "⚠️ Đã lên lịch phỏng vấn nhưng gửi email thất bại");
                 // Không throw exception vì interview đã được tạo thành công
+            }
+
+            // 8. TẠO THÔNG BÁO CHO ỨNG VIÊN (NEW)
+            if (application.Candidate != null && application.Candidate.UserId.HasValue)
+            {
+                try 
+                {
+                    await _notificationService.CreateNotificationAsync(
+                        application.Candidate.UserId.Value,
+                        "Lịch phỏng vấn mới",
+                        $"Bạn có lịch phỏng vấn vị trí {application.Job?.Title ?? "N/A"} vào lúc {dto.ScheduledStart:HH:mm dd/MM/yyyy}",
+                        "INTERVIEW",
+                        application.ApplicationId.ToString()
+                    );
+                    _logger.LogInformation("🔔 Đã tạo thông báo cho Candidate UserId: {UserId}", application.Candidate.UserId);
+                }
+                catch (Exception notifEx)
+                {
+                    _logger.LogError(notifEx, "❌ Lỗi khi tạo thông báo cho User {UserId}", application.Candidate.UserId);
+                }
+            }
+
+            // 9. TẠO THÔNG BÁO CHO INTERVIEWER (NEW - USER REQUEST)
+            try
+            {
+                await _notificationService.CreateNotificationAsync(
+                    dto.InterviewerId,
+                    "Lịch phỏng vấn mới được phân công",
+                    $"Bạn được phân công phỏng vấn ứng viên {application.Candidate?.FullName ?? "N/A"} cho vị trí {application.Job?.Title ?? "N/A"} vào lúc {dto.ScheduledStart:HH:mm dd/MM/yyyy}",
+                    "INTERVIEW_ASSIGNED",
+                    interview.InterviewId.ToString()
+                );
+                _logger.LogInformation("🔔 Đã tạo thông báo cho Interviewer UserId: {UserId}", dto.InterviewerId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ Lỗi khi tạo thông báo cho Interviewer {UserId}", dto.InterviewerId);
             }
 
             return interview.InterviewId;
@@ -258,6 +298,7 @@ public class InterviewService : IInterviewService
                 Comment = dto.Comment,
                 Result = dto.Result,
                 Details = dto.Details,
+                SubmittedById = dto.SubmittedById,
                 CreatedAt = DateTime.UtcNow
             };
 
@@ -307,6 +348,8 @@ public class InterviewService : IInterviewService
     public async Task<EvaluationDto?> GetEvaluationByInterviewIdAsync(Guid interviewId)
     {
         var evaluation = await _context.InterviewEvaluations
+            .Include(e => e.Interview)
+            .Include(e => e.SubmittedByNavigation)
             .FirstOrDefaultAsync(e => e.InterviewId == interviewId);
 
         if (evaluation == null)
@@ -319,7 +362,10 @@ public class InterviewService : IInterviewService
             Score = evaluation.Score,
             Comment = evaluation.Comment,
             Result = evaluation.Result,
-            Details = evaluation.Details // ✅ Include Details for frontend
+            Details = evaluation.Details, // ✅ Include Details for frontend
+            SubmittedById = evaluation.SubmittedById,
+            SubmittedByName = evaluation.SubmittedByNavigation?.FullName,
+            IsBelated = evaluation.CreatedAt > evaluation.Interview.ScheduledEnd
         };
     }
 
@@ -340,7 +386,8 @@ public class InterviewService : IInterviewService
                     .ThenInclude(a => a.Candidate)
                 .Include(i => i.Application)
                     .ThenInclude(a => a.Job)
-                .Where(i => i.InterviewerId == interviewerId) // SECURITY: Chỉ lấy lịch phỏng vấn của người phỏng vấn hiện tại
+                .Include(i => i.InterviewerUser) // NEW: Include Interviewer info
+                // .Where(i => i.InterviewerId == interviewerId) // REMOVED: Now gets ALL interviews
                 .OrderBy(i => i.ScheduledStart) // Sắp xếp theo thời gian
                 .ToListAsync();
             querySw.Stop();
@@ -355,25 +402,28 @@ public class InterviewService : IInterviewService
                 var job = interview.Application?.Job;
                 var now = DateTime.UtcNow;
 
-                // Xác định status dựa trên thời gian
+                // Xác định status dựa trên trạng thái gốc và thời gian
                 string status;
-                // Case-insensitive check for robustness
-                if (string.Equals(interview.Status, "COMPLETED", StringComparison.OrdinalIgnoreCase) || 
-                    string.Equals(interview.Status, "CANCELLED", StringComparison.OrdinalIgnoreCase))
+                // Nếu trong DB đã chốt là COMPLETED hoặc CANCELLED thì ưu tiên lấy luôn trạng thái đó
+                if (string.Equals(interview.Status, "COMPLETED", StringComparison.OrdinalIgnoreCase))
                 {
                     status = "completed";
+                }
+                else if (string.Equals(interview.Status, "CANCELLED", StringComparison.OrdinalIgnoreCase))
+                {
+                    status = "cancelled";
+                }
+                else if (now > interview.ScheduledEnd)
+                {
+                    status = "overdue"; // Đã qua thời gian nhưng DB chưa ghi nhận COMPLETED (nghĩa là chưa chấm điểm)
                 }
                 else if (now >= interview.ScheduledStart && now <= interview.ScheduledEnd)
                 {
                     status = "ongoing";
                 }
-                else if (now < interview.ScheduledStart)
-                {
-                    status = "upcoming";
-                }
                 else
                 {
-                    status = "completed"; // Đã qua thời gian
+                    status = "upcoming";
                 }
 
                 return new MyInterviewDto
@@ -390,7 +440,10 @@ public class InterviewService : IInterviewService
                     LocationType = !string.IsNullOrEmpty(interview.MeetingLink) ? "online" : "offline",
                     Status = status,
                     CandidateEmail = candidate?.Email ?? interview.Application?.ContactEmail,
-                    CandidatePhone = candidate?.Phone ?? interview.Application?.ContactPhone
+                    CandidatePhone = candidate?.Phone ?? interview.Application?.ContactPhone,
+                    InterviewerName = interview.InterviewerUser?.FullName ?? "N/A",
+                    InterviewerEmail = interview.InterviewerUser?.Email,
+                    InterviewerId = interview.InterviewerId ?? Guid.Empty
                 };
             }).ToList();
 

@@ -60,7 +60,9 @@ export class MyInterviews implements OnInit {
     experience: 0,        // 1-5 stars
     overallScore: 0,      // 0-100
     comment: '',
-    decision: '' as 'Passed' | 'Failed' | 'Consider' | ''
+    decision: '' as 'Passed' | 'Failed' | 'Consider' | '',
+    submittedByName: '' as string | undefined,
+    isBelated: false
   };
 
 
@@ -74,7 +76,7 @@ export class MyInterviews implements OnInit {
   constructor(
     private interviewService: InterviewService,
     private evaluationService: EvaluationService,
-    private authService: AuthService,
+    public authService: AuthService,
     private cdr: ChangeDetectorRef
   ) { }
 
@@ -355,7 +357,7 @@ export class MyInterviews implements OnInit {
   }
 
   /**
-   * 🚀 TrackBy function for ngFor optimization
+   * TrackBy function for ngFor optimization
    */
   trackByInterviewId(index: number, interview: MyInterviewDto): string {
     return interview.interviewId;
@@ -371,7 +373,7 @@ export class MyInterviews implements OnInit {
     const state = this.getInterviewState(interview);
 
     // Debug log
-    console.log('🔘 handleInterviewAction called', {
+    console.log(' handleInterviewAction called', {
       interviewId: interview.interviewId,
       statusType: state.statusType,
       isDisabled: state.isButtonDisabled
@@ -379,17 +381,17 @@ export class MyInterviews implements OnInit {
 
     // Nếu button bị disabled thì không làm gì
     if (state.isButtonDisabled) {
-      console.log('⚠️ Button is disabled, ignoring click');
+      console.log(' Button is disabled, ignoring click');
       return;
     }
 
     // Nếu là completed -> Xem lại
     if (state.statusType === 'completed') {
-      console.log('👁️ Opening view evaluation modal');
+      console.log(' Opening view evaluation modal');
       this.viewEvaluation(interview);
     } else {
       // Các trường hợp khác -> Chấm điểm
-      console.log('✏️ Opening evaluation modal for scoring');
+      console.log(' Opening evaluation modal for scoring');
       this.openEvaluationModal(interview);
     }
   }
@@ -401,7 +403,7 @@ export class MyInterviews implements OnInit {
     this.selectedInterview = interview;
     this.isEvaluationModalOpen = true;
     this.resetEvaluationForm();
-    this.cdr.detectChanges(); // ⚡ Force modal to open immediately
+    this.cdr.detectChanges();
   }
 
   /**
@@ -425,8 +427,20 @@ export class MyInterviews implements OnInit {
       experience: 0,
       overallScore: 0,
       comment: '',
-      decision: ''
+      decision: '',
+      submittedByName: undefined,
+      isBelated: false
     };
+  }
+
+  /**
+   * Kiểm tra xem đang thực hiện đánh giá hộ người khác hay không
+   */
+  isEvaluationOnBehalf(): boolean {
+    if (!this.selectedInterview || !this.selectedInterview.interviewerId) return false;
+    const currentUser = this.authService.getCurrentUser();
+    if (!currentUser || !currentUser.userId) return false;
+    return currentUser.userId.toLowerCase() !== this.selectedInterview.interviewerId.toLowerCase();
   }
 
   /**
@@ -500,7 +514,9 @@ export class MyInterviews implements OnInit {
             experience: getScore('Kinh nghiệm'),
             overallScore: data.score,
             comment: data.comment || '',
-            decision: data.result as 'Passed' | 'Failed' | 'Consider'
+            decision: data.result as 'Passed' | 'Failed' | 'Consider',
+            submittedByName: data.submittedByName,
+            isBelated: data.isBelated || false
           };
 
           console.log('📝 Populated Form:', this.evaluationForm); // 🔍 DEBUG LOG
@@ -571,28 +587,23 @@ export class MyInterviews implements OnInit {
 
       const dto: EvaluationSubmitDto = {
         interviewId: this.selectedInterview.interviewId,
-        interviewerId: currentUser.userId,
+        interviewerId: this.selectedInterview.interviewerId, // Luôn gửi đúng thẻ ID của người được phân công ban đầu
         score: this.evaluationForm.overallScore,
         comment: this.evaluationForm.comment.trim(),
         result: this.evaluationForm.decision as 'Passed' | 'Failed' | 'Consider',
-        details: JSON.stringify(details)
+        details: JSON.stringify(details),
+        submittedById: currentUser.userId
       };
 
-      console.log('📤 Submitting Evaluation Payload:', dto); // 🔍 DEBUG LOG
 
       await this.evaluationService.submitEvaluation(dto).toPromise();
 
-      console.log('✅ Evaluation submitted successfully');
-
-      // 🔄 OPTIMISTIC UPDATE: Update status immediately locally
       if (this.selectedInterview) {
-        // Update in allInterviews list
         const interview = this.allInterviews.find(i => i.interviewId === this.selectedInterview!.interviewId);
         if (interview) {
-          interview.status = 'completed'; // Force status update
+          interview.status = 'completed';
         }
 
-        // Clear cache for this interview to force recalculate state
         this.interviewStateCache.delete(this.selectedInterview.interviewId);
       }
 
@@ -608,8 +619,7 @@ export class MyInterviews implements OnInit {
       // TODO: Show success notification
     } catch (error) {
       console.error('❌ Error submitting evaluation:', error);
-      console.dir(error); // 🔍 DEBUG: Expand error object
-      // TODO: Show error notification
+      console.dir(error);
     } finally {
       this.isSubmitting = false;
       this.cdr.detectChanges();

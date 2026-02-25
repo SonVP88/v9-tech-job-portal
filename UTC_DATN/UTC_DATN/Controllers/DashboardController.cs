@@ -213,6 +213,7 @@ public class DashboardController : ControllerBase
                 .Select(a => new DashboardCandidateDto
                 {
                     ApplicationId = a.ApplicationId,
+                    JobId = a.JobId,
                     CandidateName = a.Candidate!.FullName,
                     JobTitle = a.Job!.Title,
                     Status = a.Status,

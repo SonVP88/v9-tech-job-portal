@@ -19,6 +19,12 @@ public class EvaluationDto
     /// Chi tiết đánh giá từng câu hỏi dạng JSON
     /// </summary>
     public string? Details { get; set; }
+
+    public Guid? SubmittedById { get; set; }
+
+    public string? SubmittedByName { get; set; }
+
+    public bool IsBelated { get; set; }
 }
 
 public class AiJudgeRequestDto

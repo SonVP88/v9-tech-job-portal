@@ -6,7 +6,7 @@ import { DashboardService, DashboardSummaryDto, DashboardActivityDto, DashboardC
 import { filter } from 'rxjs/operators';
 import { Subscription } from 'rxjs';
 import { BaseChartDirective } from 'ng2-charts';
-import { ChartConfiguration, ChartData } from 'chart.js';
+import { ChartConfiguration, ChartData, Chart, registerables } from 'chart.js';
 
 @Component({
   selector: 'app-dashboard',
@@ -16,10 +16,6 @@ import { ChartConfiguration, ChartData } from 'chart.js';
   styleUrl: './dashboard.scss',
 })
 export class Dashboard implements OnInit, OnDestroy {
-  // Latest Jobs (giữ nguyên)
-  latestJobs: JobDto[] = [];
-  isLoadingJobs = false;
-  errorMessage: string | null = null;
   private routerSubscription?: Subscription;
 
   // Dashboard Summary
@@ -103,11 +99,17 @@ export class Dashboard implements OnInit, OnDestroy {
     private dashboardService: DashboardService,
     private router: Router,
     private cdr: ChangeDetectorRef
-  ) { }
+  ) {
+    // Register Chart.js components
+    Chart.register(...registerables);
+  }
 
   ngOnInit(): void {
     console.log('🔄 Dashboard ngOnInit called');
     this.loadAllDashboardData();
+
+    // Pre-load jobs for Job List page
+    this.jobService.refreshJobs();
 
     // Subscribe to router events để reload khi navigate back
     this.routerSubscription = this.router.events
@@ -129,36 +131,10 @@ export class Dashboard implements OnInit, OnDestroy {
    * Load tất cả data cho dashboard
    */
   loadAllDashboardData(): void {
-    this.loadLatestJobs();
     this.loadSummary();
     this.loadRecentActivity();
     this.loadLatestCandidates();
     this.loadWeeklyActivity();
-  }
-
-  /**
-   * Load latest jobs (giữ nguyên)
-   */
-  loadLatestJobs(): void {
-    this.isLoadingJobs = true;
-    this.errorMessage = null;
-
-    console.log('🔍 Calling API: /api/jobs/latest/5');
-
-    this.jobService.getLatestJobs(5).subscribe({
-      next: (jobs) => {
-        console.log('✅ Jobs loaded:', jobs);
-        this.latestJobs = jobs;
-        this.isLoadingJobs = false;
-        this.cdr.detectChanges();
-      },
-      error: (error) => {
-        console.error('❌ API Error:', error);
-        this.errorMessage = `Cannot load jobs. Backend may not be running. Error: ${error.status || 'Unknown'}`;
-        this.isLoadingJobs = false;
-        this.cdr.detectChanges();
-      }
-    });
   }
 
   /**

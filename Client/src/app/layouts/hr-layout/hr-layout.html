@@ -21,10 +21,18 @@ bạn<aside
             </li>
             <li>
                 <a class="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-500 hover:bg-gray-50 hover:text-gray-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white transition-all duration-200"
+                    routerLink="/hr/jobs"
+                    routerLinkActive="bg-blue-50 text-blue-700 dark:bg-primary/20 dark:text-blue-400">
+                    <span class="material-symbols-outlined text-[22px]">format_list_bulleted</span>
+                    <span class="text-sm font-medium leading-normal">Danh Sách Việc Làm</span>
+                </a>
+            </li>
+            <li>
+                <a class="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-500 hover:bg-gray-50 hover:text-gray-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white transition-all duration-200"
                     routerLink="/hr/post-job"
                     routerLinkActive="bg-blue-50 text-blue-700 dark:bg-primary/20 dark:text-blue-400">
-                    <span class="material-symbols-outlined text-[22px]">work_outline</span>
-                    <span class="text-sm font-medium leading-normal">Việc Làm</span>
+                    <span class="material-symbols-outlined text-[22px]">post_add</span>
+                    <span class="text-sm font-medium leading-normal">Đăng Tin Mới</span>
                 </a>
             </li>
             <li>
@@ -45,6 +53,14 @@ bạn<aside
             </li>
             <li>
                 <a class="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-500 hover:bg-gray-50 hover:text-gray-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white transition-all duration-200"
+                    routerLink="/hr/skills"
+                    routerLinkActive="bg-blue-50 text-blue-700 dark:bg-primary/20 dark:text-blue-400">
+                    <span class="material-symbols-outlined text-[22px]">verified</span>
+                    <span class="text-sm font-medium leading-normal">Kỹ Năng</span>
+                </a>
+            </li>
+            <li>
+                <a class="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-500 hover:bg-gray-50 hover:text-gray-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white transition-all duration-200"
                     routerLink="/hr/my-interviews"
                     routerLinkActive="bg-blue-50 text-blue-700 dark:bg-primary/20 dark:text-blue-400">
                     <span class="material-symbols-outlined text-[22px]">calendar_month</span>
@@ -60,8 +76,16 @@ bạn<aside
                 </a>
             </li>
             <li class="pt-4 mt-4 border-t border-gray-100 dark:border-slate-800">
+                <a (click)="previewCandidateView()"
+                    class="flex items-center gap-3 px-4 py-3 rounded-lg text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-all duration-200 cursor-pointer group">
+                    <span class="material-symbols-outlined text-[22px]">visibility</span>
+                    <span class="text-sm font-medium leading-normal">👁️ Preview Candidate View</span>
+                </a>
+            </li>
+            <li>
                 <a class="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-500 hover:bg-gray-50 hover:text-gray-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white transition-all duration-200"
-                    href="#">
+                    routerLink="/hr/settings"
+                    routerLinkActive="bg-blue-50 text-blue-700 dark:bg-primary/20 dark:text-blue-400">
                     <span class="material-symbols-outlined text-[22px]">settings</span>
                     <span class="text-sm font-medium leading-normal">Cài Đặt</span>
                 </a>
@@ -98,12 +122,54 @@ bạn<aside
             </label>
         </div>
         <div class="flex items-center gap-4 ml-6">
-            <button
-                class="relative w-10 h-10 flex items-center justify-center rounded-xl text-gray-500 hover:text-slate-900 hover:bg-gray-100 dark:text-slate-400 dark:hover:text-white dark:hover:bg-slate-800 transition-all">
-                <span class="material-symbols-outlined">notifications</span>
-                <span
-                    class="absolute top-2.5 right-2.5 w-2 h-2 bg-red-500 rounded-full border-2 border-white dark:border-slate-950"></span>
-            </button>
+            <div class="relative">
+                <button (click)="toggleNotificationDropdown()"
+                    class="relative w-10 h-10 flex items-center justify-center rounded-xl text-gray-500 hover:text-slate-900 hover:bg-gray-100 dark:text-slate-400 dark:hover:text-white dark:hover:bg-slate-800 transition-all">
+                    <span class="material-symbols-outlined">notifications</span>
+                    <span *ngIf="unreadCount > 0"
+                        class="absolute top-2 right-2 w-4 h-4 bg-red-500 text-white text-[10px] font-bold flex items-center justify-center rounded-full border border-white dark:border-slate-950">
+                        {{ unreadCount > 99 ? '99+' : unreadCount }}
+                    </span>
+                </button>
+
+                <!-- Dropdown -->
+                <div *ngIf="isNotificationDropdownOpen"
+                    class="absolute right-0 top-12 w-80 bg-white dark:bg-slate-900 rounded-xl shadow-xl border border-gray-100 dark:border-slate-800 z-50 overflow-hidden">
+                    <div class="p-4 border-b border-gray-100 dark:border-slate-800 flex justify-between items-center">
+                        <h3 class="font-bold text-slate-900 dark:text-white">Thông báo</h3>
+                        <button (click)="markAllAsRead()" class="text-xs text-blue-600 hover:underline">Đã đọc tất
+                            cả</button>
+                    </div>
+                    <div class="max-h-96 overflow-y-auto">
+                        <div *ngIf="notifications.length === 0" class="p-8 text-center text-gray-500 text-sm">
+                            Không có thông báo mới
+                        </div>
+                        <div *ngFor="let n of notifications" (click)="markAsRead(n)" [class.bg-blue-50]="!n.isRead"
+                            [class.dark:bg-slate-800]="!n.isRead"
+                            class="p-4 border-b border-gray-50 dark:border-slate-800 last:border-0 hover:bg-gray-50 dark:hover:bg-slate-800 cursor-pointer transition-colors block">
+                            <div class="flex gap-3">
+                                <div
+                                    class="shrink-0 w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center">
+                                    <span class="material-symbols-outlined text-sm">notifications</span>
+                                </div>
+                                <div>
+                                    <p class="text-sm font-semibold text-slate-900 dark:text-white line-clamp-1">{{
+                                        n.title }}</p>
+                                    <p class="text-xs text-gray-600 dark:text-gray-400 mt-0.5 line-clamp-2">{{ n.message
+                                        }}</p>
+                                    <span class="text-[10px] text-gray-400 mt-1 block">{{ formatDate(n.createdAt)
+                                        }}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="p-2 border-t border-gray-100 dark:border-slate-800 text-center">
+                        <span
+                            class="text-xs font-medium text-gray-500 hover:text-blue-600 block py-1 cursor-pointer">Xem
+                            tất cả</span>
+                    </div>
+                </div>
+            </div>
             <button
                 class="w-10 h-10 flex items-center justify-center rounded-xl text-gray-500 hover:text-slate-900 hover:bg-gray-100 dark:text-slate-400 dark:hover:text-white dark:hover:bg-slate-800 transition-all">
                 <span class="material-symbols-outlined">help</span>

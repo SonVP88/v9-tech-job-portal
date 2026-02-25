@@ -80,6 +80,11 @@ export class ManageApplications implements OnInit, OnDestroy {
   filterDateRange = '';
   rejectEmailContent = '';
 
+  // ==================== PAGINATION ====================
+  currentPage = 1;
+  itemsPerPage = 9;
+  Math = Math; // Expose Math for template
+
   isGeneratingRejectEmail = false;
   isSendingRejectEmail = false;
 
@@ -107,21 +112,15 @@ export class ManageApplications implements OnInit, OnDestroy {
   ) { }
 
   ngOnInit(): void {
-    console.log('🔄 ManageApplications ngOnInit called');
+    console.log('� REFRESHED LOGIC LOADED: ManageApplications initialized');
     // Lấy jobId từ URL params
     this.route.params.subscribe(params => {
       this.jobId = params['jobId'];
-      console.log('📋 JobId from route:', this.jobId);
+      console.log('📋 JobId from route:', this.jobId || 'NONE (Loading all)');
 
-      if (!this.jobId) {
-        // Không có jobId trong URL
-        this.isLoading = false;
-        this.hasError = true;
-        this.errorMessage = 'Không tìm thấy thông tin công việc. Vui lòng chọn một công việc từ danh sách.';
-      } else {
-        this.loadApplications();
-        this.startAutoRefresh(); // Start auto-refresh after initial load
-      }
+      // Luôn load, loadApplications sẽ tự quyết định lấy theo JobId hay Tất cả
+      this.loadApplications();
+      this.startAutoRefresh();
     });
   }
 
@@ -178,12 +177,18 @@ export class ManageApplications implements OnInit, OnDestroy {
   }
 
   /**
-   * Gọi API để lấy danh sách hồ sơ theo JobId
+   * Gọi API để lấy danh sách hồ sơ (Theo JobId hoặc Tất cả)
    */
   loadApplications(): void {
-    console.log('🚀 Calling loadApplications for JobId:', this.jobId);
+    console.log('🚀 Calling loadApplications. JobId:', this.jobId || 'ALL');
     this.isLoading = true;
-    this.applicationService.getApplicationsByJobId(this.jobId).subscribe({
+
+    // Determine which service method to call
+    const request = this.jobId
+      ? this.applicationService.getApplicationsByJobId(this.jobId)
+      : this.applicationService.getAllApplications();
+
+    request.subscribe({
       next: (response) => {
         console.log('✅ loadApplications Success. Response:', response);
         if (response.success) {
@@ -228,7 +233,8 @@ export class ManageApplications implements OnInit, OnDestroy {
       'INTERVIEW': 'Phỏng vấn',
       'OFFER': 'Đề nghị',
       'HIRED': 'Đã tuyển',
-      'REJECTED': 'Từ chối'
+      'REJECTED': 'Từ chối',
+      'Waitlist': 'Danh sách chờ'
     };
     return statusMap[status] || status;
   }
@@ -247,6 +253,12 @@ export class ManageApplications implements OnInit, OnDestroy {
         return 'px-3 py-1 rounded-full bg-green-50 border border-green-200 text-green-700 text-xs font-semibold';
       case 'REJECTED':
         return 'px-3 py-1 rounded-full bg-red-50 border border-red-200 text-red-700 text-xs font-semibold';
+      case 'Waitlist':
+        return 'px-3 py-1 rounded-full bg-indigo-50 border border-indigo-200 text-indigo-700 text-xs font-semibold';
+      case 'Pending_Offer':
+        return 'px-3 py-1 rounded-full bg-purple-50 border border-purple-200 text-purple-700 text-xs font-semibold';
+      case 'Offer_Sent':
+        return 'px-3 py-1 rounded-full bg-orange-50 border border-orange-200 text-orange-700 text-xs font-semibold';
       default:
         return 'px-3 py-1 rounded-full bg-gray-50 border border-gray-200 text-gray-700 text-xs font-semibold';
     }
@@ -454,12 +466,12 @@ Phòng Nhân sự`;
 
     const body = {
       candidateId: this.selectedApplication.candidateId,
-      jobId: this.jobId
+      jobId: this.selectedApplication.jobId
     };
 
     console.log('🤖 Calling AI generate-opening API...', body);
 
-    this.http.post<{ opening: string }>(`${this.apiUrl}/Interview/generate-opening`, body, { headers })
+    this.http.post<{ opening: string }>(`${this.apiUrl}/interviews/generate-opening`, body, { headers })
       .subscribe({
         next: (response) => {
           console.log('✅ AI Opening generated:', response);
@@ -830,7 +842,7 @@ Phòng Nhân sự`;
 
     console.log('🤖 Calling AI generate-rejection API...', body);
 
-    this.http.post<{ body: string }>(`${this.apiUrl}/Interview/generate-rejection`, body, { headers })
+    this.http.post<{ body: string }>(`${this.apiUrl}/interviews/generate-rejection`, body, { headers })
       .subscribe({
         next: (response) => {
           console.log('✅ AI Rejection email generated:', response);
@@ -872,7 +884,7 @@ Phòng Nhân sự`;
 
     console.log('📧 Sending rejection email...', emailBody);
 
-    this.http.post(`${this.apiUrl}/Interview/send-email-manual`, emailBody, { headers })
+    this.http.post(`${this.apiUrl}/interviews/send-email-manual`, emailBody, { headers })
       .subscribe({
         next: (response) => {
           console.log('✅ Rejection email sent successfully:', response);
@@ -1062,5 +1074,81 @@ Phòng Nhân sự`;
     document.body.removeChild(link);
 
     console.log(`✅ Exported ${filtered.length} applications to CSV`);
+  }
+
+  // ==================== PAGINATION METHODS ====================
+
+  /**
+   * Calculate total pages
+   */
+  totalPages(): number {
+    return Math.ceil(this.filteredApplications().length / this.itemsPerPage);
+  }
+
+  /**
+   * Get paginated applications for current page
+   */
+  paginatedApplications(): ApplicationDto[] {
+    const filtered = this.filteredApplications();
+    const start = (this.currentPage - 1) * this.itemsPerPage;
+    return filtered.slice(start, start + this.itemsPerPage);
+  }
+
+  /**
+   * Change to specific page
+   */
+  changePage(page: number): void {
+    if (page >= 1 && page <= this.totalPages()) {
+      this.currentPage = page;
+      this.cdr.detectChanges();
+    }
+  }
+
+  /**
+   * Go to next page
+   */
+  nextPage(): void {
+    if (this.currentPage < this.totalPages()) {
+      this.currentPage++;
+      this.cdr.detectChanges();
+    }
+  }
+
+  /**
+   * Go to previous page
+   */
+  previousPage(): void {
+    if (this.currentPage > 1) {
+      this.currentPage--;
+      this.cdr.detectChanges();
+    }
+  }
+
+  /**
+   * Get page numbers for pagination UI
+   */
+  getPageNumbers(): number[] {
+    const total = this.totalPages();
+    const current = this.currentPage;
+    const delta = 2;
+
+    const range: number[] = [];
+    for (let i = Math.max(2, current - delta); i <= Math.min(total - 1, current + delta); i++) {
+      range.push(i);
+    }
+
+    if (current - delta > 2) {
+      range.unshift(-1); // ellipsis
+    }
+    if (current + delta < total - 1) {
+      range.push(-1); // ellipsis
+    }
+
+    range.unshift(1);
+    if (total > 1) {
+      range.push(total);
+    }
+
+    return range;
   }
 }

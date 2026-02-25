@@ -18,12 +18,17 @@ public class JobDetailDto
     public string? Location { get; set; }
     
     public string? EmploymentType { get; set; }
-    
-    public DateTime? Deadline { get; set; } // Map từ Job.ClosedAt
+
+    public string Status { get; set; }
+    public DateTime? Deadline { get; set; }
+    public DateTime CreatedAt { get; set; }
+ // Map từ Job.ClosedAt
     
     public DateTime CreatedDate { get; set; } // Map từ Job.CreatedAt
     
     public List<string> Skills { get; set; } = new List<string>(); // Danh sách tên skills
+    
+    public List<Guid> SkillIds { get; set; } = new List<Guid>(); // Danh sách ID skills (cho việc update)
     
     // Thông tin chi tiết thêm
     public string? Description { get; set; } // Mô tả công việc đầy đủ

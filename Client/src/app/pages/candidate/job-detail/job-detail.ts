@@ -3,6 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
+import { CandidateHeaderComponent } from '../../../components/shared/candidate-header/candidate-header';
 
 // Interface khớp với Backend JobDetailDto
 export interface JobDetailDto {
@@ -26,7 +27,7 @@ export interface JobDetailDto {
 @Component({
   selector: 'app-job-detail',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterModule],
+  imports: [CommonModule, ReactiveFormsModule, RouterModule, CandidateHeaderComponent],
   templateUrl: './job-detail.html',
   styleUrl: './job-detail.scss',
 })

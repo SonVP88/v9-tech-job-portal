@@ -147,5 +147,28 @@ namespace UTC_DATN.Services.Implements
             // Trả về chuỗi token
             return new JwtSecurityTokenHandler().WriteToken(token);
         }
+
+        public async Task<bool> ChangePasswordAsync(Guid userId, ChangePasswordDto request)
+        {
+            var user = await _context.Users.FindAsync(userId);
+            if (user == null) return false;
+
+            // Verify old password
+            if (!BCrypt.Net.BCrypt.Verify(request.CurrentPassword, user.PasswordHash))
+            {
+                return false;
+            }
+
+            // Hash new password
+            user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.NewPassword);
+            
+            // In a real scenario, we might increment a "TokenVersion" field here to invalidate old tokens
+            // user.TokenVersion++; 
+
+            _context.Users.Update(user);
+            await _context.SaveChangesAsync();
+
+            return true;
+        }
     }
 }

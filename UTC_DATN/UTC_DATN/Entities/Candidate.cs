@@ -25,6 +25,12 @@ public partial class Candidate
 
     public string Source { get; set; }
 
+    public string? LinkedIn { get; set; }
+
+    public string? GitHub { get; set; }
+
+    public string? Avatar { get; set; }
+
     public DateTime CreatedAt { get; set; }
 
     public DateTime? UpdatedAt { get; set; }

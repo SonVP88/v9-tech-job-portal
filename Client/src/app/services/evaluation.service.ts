@@ -5,10 +5,13 @@ import { Observable } from 'rxjs';
 export interface EvaluationSubmitDto {
     interviewId: string;
     interviewerId: string;
+    submittedById?: string;
     score: number;
     comment: string;
     result: 'Passed' | 'Failed' | 'Consider';
     details: string; // JSON string
+    submittedByName?: string;
+    isBelated?: boolean;
 }
 
 export interface EvaluationDetail {

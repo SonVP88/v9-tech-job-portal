@@ -26,4 +26,9 @@ public interface IApplicationService
     /// Lấy danh sách hồ sơ ứng tuyển của ứng viên đã đăng nhập
     /// </summary>
     Task<List<MyApplicationDto>> GetMyApplicationsAsync(Guid userId);
+
+    /// <summary>
+    /// Lấy toàn bộ danh sách hồ sơ ứng tuyển (Dành cho HR/Admin)
+    /// </summary>
+    Task<List<ApplicationDto>> GetAllApplicationsAsync();
 }

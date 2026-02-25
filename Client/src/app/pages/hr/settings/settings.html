@@ -1,0 +1,241 @@
+<div class="space-y-6">
+    <!-- Header -->
+    <div class="flex items-center justify-between">
+        <div>
+            <h2 class="text-2xl font-bold text-slate-900 dark:text-white">Cài Đặt</h2>
+            <p class="text-slate-500 dark:text-slate-400 mt-1">Quản lý thông tin tài khoản và cấu hình hệ thống</p>
+        </div>
+        <button (click)="saveSettings()" [disabled]="isLoading"
+            class="px-4 py-2 bg-primary hover:bg-blue-700 text-white rounded-lg font-bold transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
+            <span *ngIf="isLoading" class="material-symbols-outlined animate-spin text-[20px]">progress_activity</span>
+            <span *ngIf="!isLoading">Lưu Thay Đổi</span>
+        </button>
+    </div>
+
+    <!-- Tabs -->
+    <div class="border-b border-gray-200 dark:border-slate-700">
+        <nav class="-mb-px flex space-x-8" aria-label="Tabs">
+            <button (click)="activeTab = 'account'" [class.border-primary]="activeTab === 'account'"
+                [class.text-primary]="activeTab === 'account'" [class.border-transparent]="activeTab !== 'account'"
+                [class.text-gray-500]="activeTab !== 'account'"
+                class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors hover:text-gray-700 dark:hover:text-gray-300">
+                Tài Khoản
+            </button>
+            <button *ngIf="userRole === 'Admin'" (click)="activeTab = 'company'"
+                [class.border-primary]="activeTab === 'company'" [class.text-primary]="activeTab === 'company'"
+                [class.border-transparent]="activeTab !== 'company'" [class.text-gray-500]="activeTab !== 'company'"
+                class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors hover:text-gray-700 dark:hover:text-gray-300">
+                Thông Tin Công Ty
+            </button>
+            <button (click)="activeTab = 'notifications'" [class.border-primary]="activeTab === 'notifications'"
+                [class.text-primary]="activeTab === 'notifications'"
+                [class.border-transparent]="activeTab !== 'notifications'"
+                [class.text-gray-500]="activeTab !== 'notifications'"
+                class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors hover:text-gray-700 dark:hover:text-gray-300">
+                Thông Báo
+            </button>
+        </nav>
+    </div>
+
+    <!-- Tab Content -->
+    <div class="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-gray-200 dark:border-slate-800 p-6">
+
+        <!-- Tab: Account -->
+        <div *ngIf="activeTab === 'account'" class="space-y-6 max-w-2xl">
+            <h3 class="text-lg font-semibold text-slate-900 dark:text-white mb-4">Thông tin cá nhân</h3>
+
+            <div class="flex items-start gap-6 mb-8">
+                <div class="relative group">
+                    <!-- Hidden file input -->
+                    <input type="file" id="avatarInput" accept="image/*" class="hidden"
+                        (change)="onAvatarSelected($event)">
+
+                    <div
+                        class="w-24 h-24 rounded-full bg-gray-100 dark:bg-slate-800 flex items-center justify-center overflow-hidden border-2 border-white dark:border-slate-700 shadow">
+                        <img *ngIf="avatarPreview" [src]="avatarPreview" class="w-full h-full object-cover">
+                        <span *ngIf="!avatarPreview"
+                            class="material-symbols-outlined text-4xl text-gray-400">person</span>
+                        <!-- Uploading overlay -->
+                        <div *ngIf="isUploadingAvatar"
+                            class="absolute inset-0 rounded-full bg-black/40 flex items-center justify-center">
+                            <span
+                                class="material-symbols-outlined animate-spin text-white text-2xl">progress_activity</span>
+                        </div>
+                    </div>
+                    <button type="button" (click)="triggerAvatarUpload()" [disabled]="isUploadingAvatar"
+                        class="absolute bottom-0 right-0 w-8 h-8 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-full flex items-center justify-center shadow-sm hover:bg-gray-50 text-gray-600 dark:text-gray-300 disabled:opacity-50">
+                        <span class="material-symbols-outlined text-[16px]">edit</span>
+                    </button>
+                </div>
+                <div>
+                    <h4 class="font-bold text-slate-900 dark:text-white">{{ accountForm.get('fullName')?.value }}</h4>
+                    <p class="text-sm text-gray-500">{{ userRole }}</p>
+                    <p class="text-xs text-gray-400 mt-1">Nhấn vào biểu tượng bút để thay đổi ảnh đại diện</p>
+                </div>
+            </div>
+
+            <form [formGroup]="accountForm" autocomplete="off" class="grid grid-cols-1 gap-6">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Họ và tên</label>
+                    <input formControlName="fullName" type="text" autocomplete="name"
+                        class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-primary focus:border-primary">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Email</label>
+                    <input [value]="userProfileEmail" disabled type="email" autocomplete="username"
+                        class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-slate-700 bg-gray-100 dark:bg-slate-900 text-gray-500 cursor-not-allowed">
+                    <p class="text-xs text-gray-500 mt-1">Không thể thay đổi địa chỉ email.</p>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Số điện thoại</label>
+                    <input formControlName="phone" type="tel" autocomplete="off"
+                        class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-primary focus:border-primary">
+                </div>
+            </form>
+
+            <form [formGroup]="passwordFormGroup" autocomplete="off"
+                class="pt-6 border-t border-gray-100 dark:border-slate-800">
+                <h3 class="text-lg font-semibold text-slate-900 dark:text-white mb-4">Đổi mật khẩu</h3>
+                <div class="grid grid-cols-1 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Mật khẩu hiện
+                            tại</label>
+                        <input formControlName="oldPassword" type="password" autocomplete="new-password" readonly
+                            onfocus="this.removeAttribute('readonly');"
+                            class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-primary focus:border-primary">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Mật khẩu
+                            mới</label>
+                        <input formControlName="newPassword" type="password" autocomplete="new-password" readonly
+                            onfocus="this.removeAttribute('readonly');"
+                            class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-primary focus:border-primary">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Xác nhận mật khẩu
+                            mới</label>
+                        <input formControlName="confirmPassword" type="password" autocomplete="new-password" readonly
+                            onfocus="this.removeAttribute('readonly');"
+                            class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-primary focus:border-primary">
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <!-- Tab: Company Info -->
+        <div *ngIf="activeTab === 'company'" class="space-y-6 max-w-3xl">
+            <div class="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg flex gap-3 text-blue-700 dark:text-blue-300 mb-6">
+                <span class="material-symbols-outlined">info</span>
+                <p class="text-sm">Thông tin này sẽ được hiển thị công khai trên các tin tuyển dụng của bạn. Hãy chăm
+                    chút để thu hút ứng viên!</p>
+            </div>
+
+            <form [formGroup]="companyForm" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="md:col-span-2">
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Logo Công Ty</label>
+                    <div class="flex items-center gap-4">
+                        <input type="file" id="logoInput" accept="image/*" class="hidden"
+                            (change)="onLogoSelected($event)">
+                        <div
+                            class="relative w-20 h-20 rounded-lg bg-white border border-gray-200 flex items-center justify-center p-2 overflow-hidden">
+                            <img *ngIf="logoPreview" [src]="logoPreview" class="max-w-full max-h-full object-cover">
+                            <span *ngIf="!logoPreview"
+                                class="material-symbols-outlined text-gray-300 text-3xl">business</span>
+                            <div *ngIf="isUploadingLogo"
+                                class="absolute inset-0 bg-black/40 flex items-center justify-center">
+                                <span class="material-symbols-outlined animate-spin text-white">progress_activity</span>
+                            </div>
+                        </div>
+                        <button type="button" (click)="triggerLogoUpload()" [disabled]="isUploadingLogo"
+                            class="px-3 py-1.5 border border-gray-300 rounded text-sm hover:bg-gray-50 dark:hover:bg-slate-800 dark:border-slate-700 dark:text-gray-300 disabled:opacity-50">Tải
+                            ảnh
+                            lên</button>
+                    </div>
+                </div>
+
+                <div class="md:col-span-2">
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tên Công Ty</label>
+                    <input formControlName="name" autocomplete="off" type="text"
+                        class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-primary focus:border-primary">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Website</label>
+                    <input formControlName="website" autocomplete="off" type="url" placeholder="https://"
+                        class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-primary focus:border-primary">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Ngành Nghề</label>
+                    <input formControlName="industry" autocomplete="off" type="text"
+                        class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-primary focus:border-primary">
+                </div>
+
+                <div class="md:col-span-2">
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Địa Chỉ Trụ
+                        Sở</label>
+                    <input formControlName="address" autocomplete="off" type="text"
+                        class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-primary focus:border-primary">
+                </div>
+
+                <div class="md:col-span-2">
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Giới Thiệu Công
+                        Ty</label>
+                    <textarea formControlName="description" autocomplete="off" rows="5"
+                        class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-primary focus:border-primary"></textarea>
+                </div>
+            </form>
+        </div>
+
+        <!-- Tab: Notifications -->
+        <div *ngIf="activeTab === 'notifications'" class="space-y-6 max-w-2xl">
+            <h3 class="text-lg font-semibold text-slate-900 dark:text-white mb-4">Cấu hình thông báo</h3>
+
+            <div class="space-y-4">
+                <div class="flex items-center justify-between py-4 border-b border-gray-100 dark:border-slate-800">
+                    <div>
+                        <h4 class="font-medium text-slate-900 dark:text-white">Email thông báo ứng viên mới
+                        </h4>
+                        <p class="text-sm text-gray-500">Nhận email khi có ứng viên nộp đơn vào vị trí tuyển
+                            dụng.</p>
+                    </div>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" [(ngModel)]="notificationUi.emailNewApplicant" class="sr-only peer">
+                        <div
+                            class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-primary">
+                        </div>
+                    </label>
+                </div>
+
+                <div class="flex items-center justify-between py-4 border-b border-gray-100 dark:border-slate-800">
+                    <div>
+                        <h4 class="font-medium text-slate-900 dark:text-white">Email nhắc lịch phỏng vấn
+                        </h4>
+                        <p class="text-sm text-gray-500">Nhận email nhắc nhở trước khi buổi phỏng vấn diễn
+                            ra.</p>
+                    </div>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" [(ngModel)]="notificationUi.emailInterviewReminder" class="sr-only peer">
+                        <div
+                            class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-primary">
+                        </div>
+                    </label>
+                </div>
+
+                <div class="flex items-center justify-between py-4 border-b border-gray-100 dark:border-slate-800">
+                    <div>
+                        <h4 class="font-medium text-slate-900 dark:text-white">Thông báo hệ thống</h4>
+                        <p class="text-sm text-gray-500">Hiển thị thông báo (chuông) trên thanh header.</p>
+                    </div>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" [(ngModel)]="notificationUi.systemAlerts" class="sr-only peer">
+                        <div
+                            class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-primary">
+                        </div>
+                    </label>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>

@@ -11,6 +11,7 @@ public class ApplicationDto
     public string CvUrl { get; set; }
     public string Status { get; set; }
     public string? JobTitle { get; set; }  // Thêm để hiển thị trong email
+    public Guid JobId { get; set; } // Thêm để xác định job khi view all
 
     // Thông tin AI Scoring
     public int? MatchScore { get; set; }

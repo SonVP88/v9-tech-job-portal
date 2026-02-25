@@ -50,5 +50,32 @@ namespace UTC_DATN.Controllers
 
             return Ok(new { Token = result });
         }
+
+        [HttpPost("change-password")]
+        [Microsoft.AspNetCore.Authorization.Authorize] // Require login
+        public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordDto request)
+        {
+            // Get UserId from Claims
+            var userIdClaim = User.FindFirst(System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Sub);
+            
+            // Falback: Try ClaimTypes.NameIdentifier if 'sub' is mapped
+            if (userIdClaim == null)
+            {
+                userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier);
+            }
+
+            if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out Guid userId))
+            {
+                return Unauthorized("Không xác thực được người dùng.");
+            }
+
+            var result = await _authService.ChangePasswordAsync(userId, request);
+            if (!result)
+            {
+                return BadRequest("Mật khẩu hiện tại không chính xác hoặc có lỗi xảy ra.");
+            }
+
+            return Ok(new { message = "Đổi mật khẩu thành công!" });
+        }
     }
 }

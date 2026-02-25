@@ -1,0 +1,168 @@
+<!-- Company Page Content - Always visible, no loading screen -->
+<div class="bg-gray-50">
+
+    <!-- Hero Section -->
+    <section
+        class="relative bg-gradient-to-br from-blue-600 via-blue-700 to-purple-800 text-white py-24 overflow-hidden">
+        <!-- Decorative Background -->
+        <div class="absolute inset-0 opacity-10">
+            <div
+                class="absolute top-0 left-0 w-96 h-96 bg-white rounded-full mix-blend-multiply filter blur-3xl animate-pulse">
+            </div>
+            <div
+                class="absolute bottom-0 right-0 w-96 h-96 bg-purple-300 rounded-full mix-blend-multiply filter blur-3xl animate-pulse delay-300">
+            </div>
+        </div>
+
+        <div class="relative max-w-7xl mx-auto px-6 text-center">
+            <!-- Company Logo -->
+            <div class="mb-8 flex justify-center">
+                <div class="w-32 h-32 bg-white rounded-2xl shadow-2xl flex items-center justify-center p-4">
+                    <img *ngIf="companyInfo.logoUrl" [src]="companyInfo.logoUrl" [alt]="companyInfo.name"
+                        class="max-w-full max-h-full">
+                    <span *ngIf="!companyInfo.logoUrl"
+                        class="material-symbols-outlined text-6xl text-primary">business</span>
+                </div>
+            </div>
+
+            <h1 class="text-5xl md:text-6xl font-bold mb-6 tracking-tight">
+                Về {{ companyInfo.name }}
+            </h1>
+            <p class="text-xl md:text-2xl text-blue-100 max-w-3xl mx-auto font-light">
+                {{ companyInfo.description || 'Nền tảng tuyển dụng hàng đầu, kết nối ứng viên tài năng với cơ hội phát
+                triển sự nghiệp.' }}
+            </p>
+        </div>
+    </section>
+
+    <!-- About Section -->
+    <section class="py-20 bg-white">
+        <div class="max-w-7xl mx-auto px-6">
+            <div class="grid md:grid-cols-2 gap-12 items-center">
+                <!-- Left: Description -->
+                <div>
+                    <h2 class="text-4xl font-bold text-gray-900 mb-6">Giới Thiệu Về Chúng Tôi</h2>
+                    <div class="prose prose-lg text-gray-600 leading-relaxed">
+                        <p>{{ companyInfo.description }}</p>
+                        <p class="mt-4">Chúng tôi cam kết tạo ra môi trường làm việc chuyên nghiệp, sáng tạo và hỗ trợ
+                            sự phát triển toàn diện cho mọi thành viên.</p>
+                    </div>
+                </div>
+
+                <!-- Right: Info Cards -->
+                <div class="space-y-4">
+                    <!-- Website Card -->
+                    <div
+                        class="bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl p-6 border border-blue-100 hover:shadow-lg transition-shadow">
+                        <div class="flex items-start gap-4">
+                            <div class="w-12 h-12 bg-primary rounded-lg flex items-center justify-center shrink-0">
+                                <span class="material-symbols-outlined text-white text-[24px]">language</span>
+                            </div>
+                            <div>
+                                <h3 class="font-semibold text-gray-900 mb-1">Website</h3>
+                                <a [href]="companyInfo.website" target="_blank"
+                                    class="text-primary hover:underline break-all">
+                                    {{ companyInfo.website || 'N/A' }}
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Industry Card -->
+                    <div
+                        class="bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl p-6 border border-blue-100 hover:shadow-lg transition-shadow">
+                        <div class="flex items-start gap-4">
+                            <div class="w-12 h-12 bg-purple-600 rounded-lg flex items-center justify-center shrink-0">
+                                <span class="material-symbols-outlined text-white text-[24px]">category</span>
+                            </div>
+                            <div>
+                                <h3 class="font-semibold text-gray-900 mb-1">Ngành Nghề</h3>
+                                <p class="text-gray-600">{{ companyInfo.industry || 'N/A' }}</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Address Card -->
+                    <div
+                        class="bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl p-6 border border-blue-100 hover:shadow-lg transition-shadow">
+                        <div class="flex items-start gap-4">
+                            <div class="w-12 h-12 bg-pink-600 rounded-lg flex items-center justify-center shrink-0">
+                                <span class="material-symbols-outlined text-white text-[24px]">location_on</span>
+                            </div>
+                            <div>
+                                <h3 class="font-semibold text-gray-900 mb-1">Địa Chỉ</h3>
+                                <p class="text-gray-600">{{ companyInfo.address || 'N/A' }}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Values Section -->
+    <section class="py-20 bg-gray-50">
+        <div class="max-w-7xl mx-auto px-6">
+            <div class="text-center mb-16">
+                <h2 class="text-4xl font-bold text-gray-900 mb-4">Giá Trị Cốt Lõi</h2>
+                <p class="text-xl text-gray-600 max-w-2xl mx-auto">
+                    Những nguyên tắc định hướng mọi hành động và quyết định của chúng tôi
+                </p>
+            </div>
+
+            <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
+                <div *ngFor="let value of values"
+                    class="bg-white rounded-2xl p-8 shadow-sm hover:shadow-xl hover:-translate-y-2 transition-all duration-300 border border-gray-100 group">
+                    <div
+                        class="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                        <span class="material-symbols-outlined text-white text-[32px]">{{ value.icon }}</span>
+                    </div>
+                    <h3 class="text-xl font-bold text-gray-900 mb-3">{{ value.title }}</h3>
+                    <p class="text-gray-600 leading-relaxed">{{ value.description }}</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Benefits Section -->
+    <section class="py-20 bg-white">
+        <div class="max-w-7xl mx-auto px-6">
+            <div class="text-center mb-16">
+                <h2 class="text-4xl font-bold text-gray-900 mb-4">Phúc Lợi & Quyền Lợi</h2>
+                <p class="text-xl text-gray-600 max-w-2xl mx-auto">
+                    Chúng tôi quan tâm đến sự phát triển và hạnh phúc của nhân viên
+                </p>
+            </div>
+
+            <div class="grid md:grid-cols-2 gap-8">
+                <div *ngFor="let benefit of benefits"
+                    class="flex gap-6 bg-gradient-to-br from-gray-50 to-blue-50 rounded-xl p-8 border border-gray-100 hover:border-primary transition-colors">
+                    <div class="w-14 h-14 bg-primary rounded-lg flex items-center justify-center shrink-0">
+                        <span class="material-symbols-outlined text-white text-[28px]">{{ benefit.icon }}</span>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-bold text-gray-900 mb-2">{{ benefit.title }}</h3>
+                        <p class="text-gray-600 leading-relaxed">{{ benefit.description }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="py-20 bg-gradient-to-br from-primary via-blue-700 to-purple-800 text-white">
+        <div class="max-w-4xl mx-auto px-6 text-center">
+            <h2 class="text-4xl md:text-5xl font-bold mb-6">Sẵn Sàng Gia Nhập Đội Ngũ?</h2>
+            <p class="text-xl text-blue-100 mb-10 max-w-2xl mx-auto">
+                Khám phá các cơ hội việc làm đang tuyển dụng và bắt đầu hành trình sự nghiệp cùng chúng tôi ngay hôm
+                nay!
+            </p>
+            <button (click)="navigateToJobs()"
+                class="inline-flex items-center gap-3 px-8 py-4 bg-white text-primary hover:bg-gray-100 rounded-xl font-bold text-lg shadow-2xl hover:shadow-3xl hover:scale-105 transition-all">
+                <span>Xem Việc Làm Đang Tuyển</span>
+                <span class="material-symbols-outlined text-[24px]">arrow_forward</span>
+            </button>
+        </div>
+    </section>
+
+</div>

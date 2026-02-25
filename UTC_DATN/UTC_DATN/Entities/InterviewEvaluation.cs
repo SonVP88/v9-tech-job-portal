@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace UTC_DATN.Entities;
 
@@ -10,6 +11,8 @@ public partial class InterviewEvaluation
     public Guid InterviewId { get; set; }
 
     public Guid InterviewerId { get; set; }
+    
+    public Guid? SubmittedById { get; set; }
 
     public int Score { get; set; }
 
@@ -19,14 +22,15 @@ public partial class InterviewEvaluation
 
     /// <summary>
     /// Chi tiết từng câu hỏi dạng JSON
-    /// Cấu trúc: [{ "question": "...", "answerNote": "...", "score": 8, "aiAssessment": "..." }]
     /// </summary>
     public string? Details { get; set; }
 
     public DateTime CreatedAt { get; set; }
 
-    // Navigation properties
     public virtual Interview Interview { get; set; } = null!;
 
     public virtual User Interviewer { get; set; } = null!;
+
+    [ForeignKey("SubmittedById")]
+    public virtual User? SubmittedByNavigation { get; set; }
 }

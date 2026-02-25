@@ -1,8 +1,13 @@
 <div class="container mx-auto px-4 py-6">
     <!-- Header -->
     <div class="mb-6">
-        <h1 class="text-3xl font-bold text-gray-900 mb-2">Quản lý hồ sơ ứng tuyển</h1>
-        <p class="text-gray-600">Xem và quản lý các hồ sơ ứng viên cho vị trí tuyển dụng</p>
+        <h1 class="text-3xl font-bold text-gray-900 mb-2">
+            {{ jobId ? 'Quản lý hồ sơ ứng tuyển' : 'Tất cả hồ sơ ứng tuyển' }}
+        </h1>
+        <p class="text-gray-600">
+            {{ jobId ? 'Xem và quản lý các hồ sơ ứng viên cho vị trí tuyển dụng này' : 'Xem toàn bộ hồ sơ ứng viên từ
+            tất cả các vị trí tuyển dụng' }}
+        </p>
     </div>
 
     <!-- Search/Filter/Export Toolbar -->
@@ -141,6 +146,10 @@
                         </th>
                         <th scope="col"
                             class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Vị trí
+                        </th>
+                        <th scope="col"
+                            class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                             AI Match
                         </th>
                         <th scope="col"
@@ -179,6 +188,11 @@
                         <!-- Applied Date -->
                         <td class="px-6 py-4 whitespace-nowrap">
                             <div class="text-sm text-gray-900">{{ formatDate(app.appliedAt) }}</div>
+                        </td>
+
+                        <!-- Job Title -->
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="text-sm font-medium text-blue-600">{{ app.jobTitle }}</div>
                         </td>
 
                         <!-- AI Match Score -->
@@ -235,12 +249,18 @@
                                     </span>
                                 </ng-container>
 
-                                <!-- Trường hợp 3: PENDING_OFFER (PV Pass - Chờ gửi offer) -->
-                                <ng-container *ngIf="app.status === 'Pending_Offer'">
+                                <!-- Trường hợp 3: PENDING_OFFER (PV Pass - Chờ gửi offer) HOẶC Waitlist -->
+                                <ng-container *ngIf="app.status === 'Pending_Offer' || app.status === 'Waitlist'">
                                     <button (click)="openOfferModal(app); $event.stopPropagation()"
                                         class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-xs font-semibold flex items-center gap-2 shadow-sm">
                                         <span class="material-symbols-outlined" style="font-size: 16px;">mail</span>
                                         📧 Gửi Offer
+                                    </button>
+                                    <button
+                                        (click)="updateStatus(app.applicationId, 'REJECTED'); $event.stopPropagation()"
+                                        class="ml-2 px-3 py-1.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-xs font-semibold flex items-center gap-1">
+                                        <span class="material-symbols-outlined" style="font-size: 14px;">close</span>
+                                        Loại
                                     </button>
                                 </ng-container>
 

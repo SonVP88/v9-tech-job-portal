@@ -19,11 +19,21 @@ public partial class User
 
     public string Phone { get; set; }
 
+    public string AvatarUrl { get; set; }
+
     public bool IsActive { get; set; }
 
     public DateTime CreatedAt { get; set; }
 
     public DateTime? UpdatedAt { get; set; }
+
+    // Company Information
+    public string CompanyName { get; set; }
+    public string CompanyWebsite { get; set; }
+    public string CompanyIndustry { get; set; }
+    public string CompanyAddress { get; set; }
+    public string CompanyDescription { get; set; }
+    public string CompanyLogoUrl { get; set; }
 
     public virtual ICollection<ApplicationNote> ApplicationNotes { get; set; } = new List<ApplicationNote>();
 

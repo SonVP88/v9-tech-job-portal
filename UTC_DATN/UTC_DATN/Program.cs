@@ -5,6 +5,7 @@ using System.Text;
 using UTC_DATN.Data;
 using UTC_DATN.Services.Implements;
 using UTC_DATN.Services.Interfaces;
+using UTC_DATN.Services.Background;
 var builder = WebApplication.CreateBuilder(args);
 
 var connectionString = builder.Configuration.GetConnectionString("UTC_DATNContext");
@@ -16,9 +17,19 @@ builder.Services.AddScoped<IAiMatchingService, AiMatchingService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<IInterviewService, InterviewService>();
 builder.Services.AddScoped<IEmployeeService, EmployeeService>();
+builder.Services.AddScoped<ICandidateProfileService, CandidateProfileService>();
+builder.Services.AddScoped<INotificationSettingsService, NotificationSettingsService>();
+builder.Services.AddScoped<INotificationService, NotificationService>();
 
-// Đăng ký HttpClient cho AiMatchingService
+// Background Services
+builder.Services.AddHostedService<JobExpirationService>();
+
+// Đăng ký HttpClientFactory cho các service cần gọi external API
 builder.Services.AddHttpClient<IAiMatchingService, AiMatchingService>();
+builder.Services.AddHttpClient(); // Cho MasterDataService
+
+// Đăng ký Memory Cache cho caching
+builder.Services.AddMemoryCache();
 
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
 var key = Encoding.UTF8.GetBytes(jwtSettings["Key"]!);
@@ -53,7 +64,7 @@ builder.Services.AddCors(options =>
             policy.WithOrigins("http://localhost:4200", "https://localhost:4200") 
                   .AllowAnyHeader()
                   .AllowAnyMethod()
-                  .AllowCredentials(); // Cho phép gửi credentials (cookies, authorization headers)
+                  .AllowCredentials(); 
         });
 });
 
@@ -69,7 +80,6 @@ builder.Services.Configure<Microsoft.AspNetCore.Http.Features.FormOptions>(optio
     options.MultipartBodyLengthLimit = 10485760; // 10MB
 });
 
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
 
 var app = builder.Build();

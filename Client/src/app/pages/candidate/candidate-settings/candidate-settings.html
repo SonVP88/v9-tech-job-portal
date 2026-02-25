@@ -1,0 +1,266 @@
+<app-candidate-header></app-candidate-header>
+
+<div class="min-h-screen bg-gray-50 dark:bg-[#0d1117] py-8 px-4 md:px-10 lg:px-40">
+    <!-- Header -->
+    <div class="mb-8">
+        <h1 class="text-3xl font-bold text-slate-900 dark:text-white">Cài đặt tài khoản</h1>
+        <p class="text-slate-500 dark:text-slate-400 mt-1">Quản lý bảo mật và tùy chọn thông báo</p>
+    </div>
+
+    <div class="flex flex-col lg:flex-row gap-6">
+        <!-- Sidebar tabs -->
+        <aside class="lg:w-56 shrink-0">
+            <nav
+                class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+                <button (click)="setTab('security')" [class.bg-primary]="activeTab === 'security'"
+                    [class.text-white]="activeTab === 'security'" [class.text-slate-600]="activeTab !== 'security'"
+                    class="w-full px-4 py-3 flex items-center gap-3 text-sm font-medium transition-colors hover:bg-primary hover:text-white dark:text-slate-300">
+                    <span class="material-symbols-outlined text-[20px]">lock</span>
+                    Bảo mật
+                </button>
+                <button (click)="setTab('notifications')" [class.bg-primary]="activeTab === 'notifications'"
+                    [class.text-white]="activeTab === 'notifications'"
+                    [class.text-slate-600]="activeTab !== 'notifications'"
+                    class="w-full px-4 py-3 flex items-center gap-3 text-sm font-medium transition-colors hover:bg-primary hover:text-white dark:text-slate-300">
+                    <span class="material-symbols-outlined text-[20px]">notifications</span>
+                    Thông báo
+                </button>
+            </nav>
+        </aside>
+
+        <!-- Content -->
+        <main class="flex-1">
+
+            <!-- ── Tab: Bảo mật ─────────────────────────────────────────────── -->
+            <div *ngIf="activeTab === 'security'"
+                class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-8">
+                <h2 class="text-xl font-bold text-slate-900 dark:text-white mb-1">Đổi mật khẩu</h2>
+                <p class="text-sm text-slate-500 dark:text-slate-400 mb-6">
+                    Đảm bảo tài khoản của bạn sử dụng mật khẩu đủ mạnh và bảo mật.
+                </p>
+
+                <!-- Alert message (async) -->
+                <div *ngIf="pwdMsg$ | async as msg" [class.bg-green-50]="msg.ok" [class.border-green-200]="msg.ok"
+                    [class.text-green-700]="msg.ok" [class.bg-red-50]="!msg.ok" [class.border-red-200]="!msg.ok"
+                    [class.text-red-700]="!msg.ok"
+                    class="mb-6 flex items-center gap-2 px-4 py-3 rounded-xl border text-sm font-medium">
+                    <span class="material-symbols-outlined text-[18px]">{{ msg.ok ? 'check_circle' : 'error' }}</span>
+                    {{ msg.text }}
+                </div>
+
+                <div class="space-y-5 max-w-md">
+                    <!-- Mật khẩu hiện tại -->
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                            Mật khẩu hiện tại
+                        </label>
+                        <div class="relative">
+                            <input [(ngModel)]="currentPassword" [type]="showCurrent ? 'text' : 'password'"
+                                placeholder="Nhập mật khẩu hiện tại"
+                                class="w-full px-4 py-2.5 pr-10 border border-slate-200 dark:border-slate-700 rounded-xl text-sm bg-white dark:bg-slate-800 text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition" />
+                            <button type="button" (click)="showCurrent = !showCurrent"
+                                class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                                <span class="material-symbols-outlined text-[20px]">{{ showCurrent ? 'visibility_off' :
+                                    'visibility' }}</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Mật khẩu mới -->
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                            Mật khẩu mới
+                        </label>
+                        <div class="relative">
+                            <input [(ngModel)]="newPassword" [type]="showNew ? 'text' : 'password'"
+                                placeholder="Ít nhất 6 ký tự"
+                                class="w-full px-4 py-2.5 pr-10 border border-slate-200 dark:border-slate-700 rounded-xl text-sm bg-white dark:bg-slate-800 text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition" />
+                            <button type="button" (click)="showNew = !showNew"
+                                class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                                <span class="material-symbols-outlined text-[20px]">{{ showNew ? 'visibility_off' :
+                                    'visibility' }}</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Xác nhận mật khẩu -->
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                            Xác nhận mật khẩu mới
+                        </label>
+                        <div class="relative">
+                            <input [(ngModel)]="confirmPassword" [type]="showConfirm ? 'text' : 'password'"
+                                placeholder="Nhập lại mật khẩu mới"
+                                class="w-full px-4 py-2.5 pr-10 border border-slate-200 dark:border-slate-700 rounded-xl text-sm bg-white dark:bg-slate-800 text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition" />
+                            <button type="button" (click)="showConfirm = !showConfirm"
+                                class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                                <span class="material-symbols-outlined text-[20px]">{{ showConfirm ? 'visibility_off' :
+                                    'visibility' }}</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <button (click)="changePassword()" [disabled]="pwdLoading"
+                        class="px-6 py-2.5 bg-primary text-white text-sm font-semibold rounded-xl hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed transition-colors flex items-center gap-2">
+                        <span *ngIf="pwdLoading"
+                            class="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></span>
+                        {{ pwdLoading ? 'Đang xử lý...' : 'Đổi mật khẩu' }}
+                    </button>
+                </div>
+            </div>
+
+            <!-- ── Tab: Thông báo ──────────────────────────────────────────────── -->
+            <div *ngIf="activeTab === 'notifications'"
+                class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-8">
+                <h2 class="text-xl font-bold text-slate-900 dark:text-white mb-1">Cài đặt thông báo</h2>
+                <p class="text-sm text-slate-500 dark:text-slate-400 mb-6">
+                    Chọn loại thông báo bạn muốn nhận.
+                </p>
+
+                <!-- Alert message -->
+                <div *ngIf="notifMsg$ | async as msg" [class.bg-green-50]="msg.ok" [class.border-green-200]="msg.ok"
+                    [class.text-green-700]="msg.ok" [class.bg-red-50]="!msg.ok" [class.border-red-200]="!msg.ok"
+                    [class.text-red-700]="!msg.ok"
+                    class="mb-6 flex items-center gap-2 px-4 py-3 rounded-xl border text-sm font-medium">
+                    <span class="material-symbols-outlined text-[18px]">{{ msg.ok ? 'check_circle' : 'error' }}</span>
+                    {{ msg.text }}
+                </div>
+
+                <!-- Loading state -->
+                <div *ngIf="(notif$ | async) === null" class="flex items-center gap-3 text-slate-400 py-8">
+                    <div class="animate-spin h-5 w-5 border-2 border-primary border-t-transparent rounded-full"></div>
+                    Đang tải...
+                </div>
+
+                <!-- Settings form -->
+                <ng-container *ngIf="notif$ | async as notif">
+                    <!-- Loại thông báo -->
+                    <div class="mb-8">
+                        <h3 class="text-sm font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-4">
+                            Loại thông báo</h3>
+                        <div class="space-y-4">
+                            <label class="flex items-center justify-between cursor-pointer group">
+                                <div>
+                                    <p class="text-sm font-medium text-slate-800 dark:text-white">Cơ hội việc làm</p>
+                                    <p class="text-xs text-slate-500">Việc làm phù hợp với hồ sơ của bạn</p>
+                                </div>
+                                <div class="relative">
+                                    <input type="checkbox" [checked]="notif.notifyJobOpportunities"
+                                        (change)="toggle('notifyJobOpportunities')" class="sr-only peer" />
+                                    <div
+                                        class="w-11 h-6 bg-slate-200 peer-checked:bg-primary rounded-full transition-colors">
+                                    </div>
+                                    <div
+                                        class="absolute left-0.5 top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform peer-checked:translate-x-5">
+                                    </div>
+                                </div>
+                            </label>
+
+                            <label class="flex items-center justify-between cursor-pointer group">
+                                <div>
+                                    <p class="text-sm font-medium text-slate-800 dark:text-white">Cập nhật đơn ứng tuyển
+                                    </p>
+                                    <p class="text-xs text-slate-500">Khi trạng thái đơn ứng tuyển thay đổi</p>
+                                </div>
+                                <div class="relative">
+                                    <input type="checkbox" [checked]="notif.notifyApplicationUpdates"
+                                        (change)="toggle('notifyApplicationUpdates')" class="sr-only peer" />
+                                    <div
+                                        class="w-11 h-6 bg-slate-200 peer-checked:bg-primary rounded-full transition-colors">
+                                    </div>
+                                    <div
+                                        class="absolute left-0.5 top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform peer-checked:translate-x-5">
+                                    </div>
+                                </div>
+                            </label>
+
+                            <label class="flex items-center justify-between cursor-pointer group">
+                                <div>
+                                    <p class="text-sm font-medium text-slate-800 dark:text-white">Cảnh báo bảo mật</p>
+                                    <p class="text-xs text-slate-500">Đăng nhập mới, thay đổi mật khẩu</p>
+                                </div>
+                                <div class="relative">
+                                    <input type="checkbox" [checked]="notif.notifySecurityAlerts"
+                                        (change)="toggle('notifySecurityAlerts')" class="sr-only peer" />
+                                    <div
+                                        class="w-11 h-6 bg-slate-200 peer-checked:bg-primary rounded-full transition-colors">
+                                    </div>
+                                    <div
+                                        class="absolute left-0.5 top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform peer-checked:translate-x-5">
+                                    </div>
+                                </div>
+                            </label>
+
+                            <label class="flex items-center justify-between cursor-pointer group">
+                                <div>
+                                    <p class="text-sm font-medium text-slate-800 dark:text-white">Marketing & Tin tức
+                                    </p>
+                                    <p class="text-xs text-slate-500">Ưu đãi, hội thảo, bài viết nổi bật</p>
+                                </div>
+                                <div class="relative">
+                                    <input type="checkbox" [checked]="notif.notifyMarketing"
+                                        (change)="toggle('notifyMarketing')" class="sr-only peer" />
+                                    <div
+                                        class="w-11 h-6 bg-slate-200 peer-checked:bg-primary rounded-full transition-colors">
+                                    </div>
+                                    <div
+                                        class="absolute left-0.5 top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform peer-checked:translate-x-5">
+                                    </div>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Kênh thông báo -->
+                    <div class="mb-8">
+                        <h3 class="text-sm font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-4">
+                            Kênh thông báo</h3>
+                        <div class="space-y-4">
+                            <label class="flex items-center justify-between cursor-pointer">
+                                <div>
+                                    <p class="text-sm font-medium text-slate-800 dark:text-white">Email</p>
+                                    <p class="text-xs text-slate-500">Nhận thông báo qua email</p>
+                                </div>
+                                <div class="relative">
+                                    <input type="checkbox" [checked]="notif.channelEmail"
+                                        (change)="toggle('channelEmail')" class="sr-only peer" />
+                                    <div
+                                        class="w-11 h-6 bg-slate-200 peer-checked:bg-primary rounded-full transition-colors">
+                                    </div>
+                                    <div
+                                        class="absolute left-0.5 top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform peer-checked:translate-x-5">
+                                    </div>
+                                </div>
+                            </label>
+
+                            <label class="flex items-center justify-between cursor-pointer">
+                                <div>
+                                    <p class="text-sm font-medium text-slate-800 dark:text-white">Push Notification</p>
+                                    <p class="text-xs text-slate-500">Thông báo trên trình duyệt</p>
+                                </div>
+                                <div class="relative">
+                                    <input type="checkbox" [checked]="notif.channelPush"
+                                        (change)="toggle('channelPush')" class="sr-only peer" />
+                                    <div
+                                        class="w-11 h-6 bg-slate-200 peer-checked:bg-primary rounded-full transition-colors">
+                                    </div>
+                                    <div
+                                        class="absolute left-0.5 top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform peer-checked:translate-x-5">
+                                    </div>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+
+                    <button (click)="saveNotifications()" [disabled]="notifLoading"
+                        class="px-6 py-2.5 bg-primary text-white text-sm font-semibold rounded-xl hover:bg-blue-700 disabled:opacity-60 transition-colors flex items-center gap-2">
+                        <span *ngIf="notifLoading"
+                            class="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></span>
+                        {{ notifLoading ? 'Đang lưu...' : 'Lưu cài đặt' }}
+                    </button>
+                </ng-container>
+            </div>
+
+        </main>
+    </div>
+</div>

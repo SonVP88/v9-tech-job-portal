@@ -8,6 +8,7 @@ namespace UTC_DATN.DTOs.Interview;
 public class MyInterviewDto
 {
     public Guid InterviewId { get; set; }
+    public Guid InterviewerId { get; set; }
     
     public string CandidateName { get; set; } = string.Empty;
     
@@ -32,4 +33,7 @@ public class MyInterviewDto
     public string? CandidateEmail { get; set; }
     
     public string? CandidatePhone { get; set; }
+    public string InterviewerName { get; set; } = string.Empty;
+    
+    public string? InterviewerEmail { get; set; }
 }
