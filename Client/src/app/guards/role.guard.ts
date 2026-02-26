@@ -14,7 +14,7 @@ export const roleGuard: CanActivateFn = (route: ActivatedRouteSnapshot) => {
     const requiredRoles = route.data['roles'] as string[];
 
     if (!requiredRoles || requiredRoles.length === 0) {
-        console.log('  ✅ No role restriction');
+        console.log('   No role restriction');
         return true; // No role restriction
     }
 
@@ -35,7 +35,7 @@ export const roleGuard: CanActivateFn = (route: ActivatedRouteSnapshot) => {
     console.log('  isAuthenticated?', isAuth);
 
     if (!isAuth) {
-        console.warn('  ❌ Not authenticated, redirecting to /login');
+        console.warn('   Not authenticated, redirecting to /login');
         router.navigate(['/login']);
         return false;
     }
@@ -45,7 +45,7 @@ export const roleGuard: CanActivateFn = (route: ActivatedRouteSnapshot) => {
     console.log('  Current user:', currentUser ? `${currentUser.name} (${currentUser.role})` : 'null');
 
     if (!currentUser || !currentUser.role) {
-        console.warn('  ❌ No user/role, redirecting to /login');
+        console.warn('   No user/role, redirecting to /login');
         router.navigate(['/login']);
         return false;
     }
@@ -55,11 +55,11 @@ export const roleGuard: CanActivateFn = (route: ActivatedRouteSnapshot) => {
     console.log('  Has required role?', hasRequiredRole);
 
     if (!hasRequiredRole) {
-        console.warn(`  ❌ Access denied. Required: ${requiredRoles.join(', ')}, Got: ${currentUser.role}`);
+        console.warn(`   Access denied. Required: ${requiredRoles.join(', ')}, Got: ${currentUser.role}`);
         router.navigate(['/403']);
         return false;
     }
 
-    console.log('  ✅ Access granted');
+    console.log('   Access granted');
     return true;
 };

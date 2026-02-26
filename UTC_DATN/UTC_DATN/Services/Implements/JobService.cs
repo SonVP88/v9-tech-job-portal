@@ -82,7 +82,6 @@ public class JobService : IJobService
     /// </summary>
     public async Task<bool> UpdateJobAsync(Guid id, UpdateJobRequest request)
     {
-        // Start transaction manually since we are modifying multiple tables (Jobs, JobSkillMaps)
         using var transaction = await _context.Database.BeginTransactionAsync();
         try
         {
@@ -95,7 +94,7 @@ public class JobService : IJobService
                 return false;
             }
 
-            // Update basic info
+            // Update 
             job.Title = request.Title;
             job.Description = request.Description;
             job.Requirements = request.Requirements;
@@ -125,9 +124,8 @@ public class JobService : IJobService
                     job.Status = "CLOSED";
                 }
             }
-            // If no deadline provided, keep current status unchanged
 
-            // Update Skills if provided (replace old with new)
+            // Update Skills if provided 
             if (request.SkillIds != null)
             {
                 // Remove existing skills
@@ -157,7 +155,7 @@ public class JobService : IJobService
     }
 
     /// <summary>
-    /// Xóa tin tuyển dụng (Soft delete)
+    /// Xóa tin tuyển dụng 
     /// </summary>
     public async Task<bool> DeleteJobAsync(Guid id)
     {

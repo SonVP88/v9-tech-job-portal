@@ -1,6 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit, ChangeDetectorRef, NgZone } from '@angular/core';
-import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
+import { FormBuilder, FormGroup, Validators, ReactiveFormsModule, ValidatorFn, AbstractControl, ValidationErrors } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 
 import { BehaviorSubject, of, forkJoin } from 'rxjs';
@@ -8,6 +8,7 @@ import { tap, catchError, finalize } from 'rxjs/operators';
 
 import { MasterDataService, JobType, Skill, Province, Ward } from '../../../services/master-data.service';
 import { JobService, CreateJobRequest } from '../../../services/job.service';
+import { ToastService } from '../../../services/toast.service';
 
 @Component({
   selector: 'app-post-job',
@@ -28,6 +29,7 @@ export class PostJob implements OnInit {
   selectedSkillIds: string[] = [];
   selectedProvinceCode: number = 0;
   isSubmitting = false;
+  skillsError = false;
 
   isEditMode = false;
   jobId: string | null = null;
@@ -39,7 +41,8 @@ export class PostJob implements OnInit {
     private cdr: ChangeDetectorRef,
     private route: ActivatedRoute,
     private router: Router,
-    private ngZone: NgZone
+    private ngZone: NgZone,
+    private toast: ToastService
   ) { }
 
   ngOnInit(): void {
@@ -68,19 +71,52 @@ export class PostJob implements OnInit {
    */
   private initForm(): void {
     this.jobForm = this.fb.group({
-      title: ['', [Validators.required, Validators.minLength(3)]],
+      title: ['', [Validators.required, Validators.minLength(10), Validators.maxLength(200)]],
       employmentType: ['', Validators.required],
       province: [null, [Validators.required, Validators.min(1)]],
       ward: [null],
-      salaryMin: [null],
-      salaryMax: [null],
-      deadline: [null],
-      description: ['', [Validators.required, Validators.minLength(10)]],
-      requirements: [''],
-      benefits: [''],
+      salaryMin: [null, [Validators.min(0)]],
+      salaryMax: [null, [Validators.min(0)]],
+      deadline: [null, [Validators.required, this.futureDateValidator]],
+      description: ['', [Validators.required, Validators.minLength(50), Validators.maxLength(4000)]],
+      requirements: ['', [Validators.maxLength(4000)]],
+      benefits: ['', [Validators.maxLength(4000)]],
       numberOfPositions: [null, [Validators.min(1)]]
-    });
+    }, { validators: this.salaryRangeValidator });
   }
+
+  // Custom Validator cho Ngày hết hạn
+  private futureDateValidator: ValidatorFn = (control: AbstractControl): ValidationErrors | null => {
+    const dateStr = control.value;
+    if (!dateStr) return null;
+    const selectedDate = new Date(dateStr);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Reset time to midnight
+    if (selectedDate <= today) {
+      return { futureDate: true };
+    }
+    return null;
+  };
+
+  // Custom Validator cho Khoảng lương
+  private salaryRangeValidator: ValidatorFn = (control: AbstractControl): ValidationErrors | null => {
+    const min = control.get('salaryMin')?.value;
+    const max = control.get('salaryMax')?.value;
+
+    if (min != null && max != null && max < min) {
+      if (control.get('salaryMax')) {
+        control.get('salaryMax')?.setErrors({ ...control.get('salaryMax')?.errors, salaryRange: true });
+      }
+      return { salaryRange: true };
+    } else {
+      if (control.get('salaryMax')?.hasError('salaryRange')) {
+        const errors = { ...control.get('salaryMax')?.errors };
+        delete (errors as any).salaryRange;
+        control.get('salaryMax')?.setErrors(Object.keys(errors).length > 0 ? errors : null);
+      }
+    }
+    return null;
+  };
 
   /**
    * Load dữ liệu job để edit
@@ -140,7 +176,7 @@ export class PostJob implements OnInit {
       },
       error: (err) => {
         console.error('Error loading job:', err);
-        alert('Không thể tải thông tin công việc.');
+        this.toast.error('Lỗi tải dữ liệu', 'Không thể tải thông tin công việc.');
         this.router.navigate(['/hr/jobs']);
       }
     });
@@ -194,6 +230,9 @@ export class PostJob implements OnInit {
       // Skill chưa được chọn -> Thêm vào mảng
       this.selectedSkillIds.push(skillId);
     }
+
+    // Validate lại errors
+    this.skillsError = this.selectedSkillIds.length === 0;
   }
 
   /**
@@ -207,23 +246,10 @@ export class PostJob implements OnInit {
    * Xử lý khi chọn tỉnh/thành phố - V2 API load wards trực tiếp
    */
   onProvinceChange(provinceCode: any): void {
-    // console.log('🔍 Province change:', provinceCode);
-
-    // Only reset wards if changed by user manually (interactive)
-    // But valueChanges fires on patchValue too.
-    // If we are in loadJobData, we might patch province then ward.
-    // We need to be careful not to clear ward immediately if it was just patched?
-    // Actually default behavior: clearing ward is fine, we just reload wards.
-
-    // But if we patch province, this triggers. Then we load wards.
-    // Then we patch ward.
-    // So distinct is important.
 
     if (this.selectedProvinceCode === provinceCode) return;
 
     this.wards$.next([]);
-    // this.jobForm.patchValue({ ward: null }); // Don't clear immediately if it might be patched next?
-    // Let's clear it, re-patching will handle it.
     this.jobForm.get('ward')?.setValue(null, { emitEvent: false }); // Avoid loop
 
     this.selectedProvinceCode = provinceCode ? Number(provinceCode) : 0;
@@ -255,14 +281,16 @@ export class PostJob implements OnInit {
   onSubmit(event: Event): void {
     event.preventDefault();
 
+    this.skillsError = this.selectedSkillIds.length === 0;
+
     // Validate form
-    if (this.jobForm.invalid) {
+    if (this.jobForm.invalid || this.skillsError) {
       // Đánh dấu tất cả các field là touched để hiển thị lỗi
       Object.keys(this.jobForm.controls).forEach(key => {
         this.jobForm.get(key)?.markAsTouched();
       });
 
-      alert('Vui lòng điền đầy đủ thông tin bắt buộc!');
+      this.toast.warning('Thiếu thông tin', 'Vui lòng điền đầy đủ thông tin bắt buộc hoặc kiểm tra lại các lỗi.');
       return;
     }
 
@@ -298,12 +326,12 @@ export class PostJob implements OnInit {
       // Update
       this.jobService.updateJob(this.jobId, jobData).subscribe({
         next: (response) => {
-          alert('Cập nhật tin thành công! 🎉');
+          this.toast.success('Thành công', 'Cập nhật tin tuyển dụng thành công!');
           this.router.navigate(['/hr/jobs']);
         },
         error: (error) => {
           console.error('Error updating job:', error);
-          alert('Có lỗi xảy ra khi cập nhật.');
+          this.toast.error('Thất bại', 'Có lỗi xảy ra khi cập nhật.');
           this.isSubmitting = false;
         },
         complete: () => {
@@ -314,7 +342,7 @@ export class PostJob implements OnInit {
       // Create
       this.jobService.createJob(jobData).subscribe({
         next: (response) => {
-          alert('Đăng tin thành công! 🎉');
+          this.toast.success('Thành công', 'Đăng tin tuyển dụng thành công!');
 
           // Reset form và selected skills
           this.resetForm();
@@ -322,7 +350,7 @@ export class PostJob implements OnInit {
         error: (error) => {
           console.error('Error creating job:', error);
           const errorMessage = error.error?.message || 'Đã xảy ra lỗi khi đăng tin tuyển dụng. Vui lòng thử lại!';
-          alert(`Lỗi: ${errorMessage}`);
+          this.toast.error('Thất bại', errorMessage);
           this.isSubmitting = false;
         },
         complete: () => {
@@ -338,7 +366,7 @@ export class PostJob implements OnInit {
   resetForm(): void {
     this.jobForm.reset();
     this.selectedSkillIds = [];
-    this.wards$.next([]); // Clear wards subject
+    this.wards$.next([]);
 
     // Reset về giá trị mặc định cho các select
     this.jobForm.patchValue({

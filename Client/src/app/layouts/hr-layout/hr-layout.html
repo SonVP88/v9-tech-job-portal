@@ -1,4 +1,4 @@
-bạn<aside
+<aside
     class="fixed top-0 left-0 z-40 w-72 h-screen bg-white dark:bg-slate-950 border-r border-gray-200 dark:border-slate-800 flex flex-col transition-colors duration-300">
     <div class="h-20 min-h-[5rem] flex items-center px-8 border-b border-gray-100 dark:border-slate-800/50">
         <div class="flex items-center gap-3">
@@ -6,7 +6,7 @@ bạn<aside
                 class="w-8 h-8 rounded bg-primary flex items-center justify-center text-white shrink-0 shadow-lg shadow-blue-500/30">
                 <span class="material-symbols-outlined text-[20px] font-bold">work</span>
             </div>
-            <h1 class="text-xl font-bold tracking-tight text-slate-900 dark:text-white">Quản Trị Hệ Thống</h1>
+            <h1 class="text-xl font-bold tracking-tight text-slate-900 dark:text-white">V9 Tech</h1>
         </div>
     </div>
     <nav class="flex-1 overflow-y-auto custom-scrollbar px-4 py-6">
@@ -75,13 +75,13 @@ bạn<aside
                     <span class="text-sm font-medium leading-normal">Báo Cáo</span>
                 </a>
             </li>
-            <li class="pt-4 mt-4 border-t border-gray-100 dark:border-slate-800">
+            <!-- <li class="pt-4 mt-4 border-t border-gray-100 dark:border-slate-800">
                 <a (click)="previewCandidateView()"
                     class="flex items-center gap-3 px-4 py-3 rounded-lg text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-all duration-200 cursor-pointer group">
                     <span class="material-symbols-outlined text-[22px]">visibility</span>
                     <span class="text-sm font-medium leading-normal">👁️ Preview Candidate View</span>
                 </a>
-            </li>
+            </li> -->
             <li>
                 <a class="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-500 hover:bg-gray-50 hover:text-gray-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white transition-all duration-200"
                     routerLink="/hr/settings"
@@ -100,8 +100,8 @@ bạn<aside
                 style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuAvZjk-CRj1rhjv2NJx7gn17kSPpCF1hFwODgAJtYIeh1YbWrpAzZbUYw14Qi-KqldWh620VoFKMhiQQgj32TIk6m-sy6lbSkcGF7e0hOMxqeUMYkLHXjqXty2Z0MCpR0g8onwem4gjKymtRQ-iW7r8zEJdpOZ8GjVlI78tSaV0rzYr7bt5VHrTnlrkuEQwVUtpd53Fm4Kd0bteE2Zbr5dSOzhddQHoixRC4eah-DWq38h6DmscQ0Pot1T-YpDXjgTDr09BqmVryqul");'>
             </div>
             <div class="flex flex-col overflow-hidden">
-                <span class="text-sm font-bold text-slate-900 dark:text-white truncate">Alexandra Ray</span>
-                <span class="text-xs text-gray-500 dark:text-slate-400 truncate">Quản Lý Nhân Sự</span>
+                <span class="text-sm font-bold text-slate-900 dark:text-white truncate">{{ userFullName }}</span>
+                <span class="text-xs text-gray-500 dark:text-slate-400 truncate">{{ userRole }}</span>
             </div>
         </div>
     </div>
@@ -164,21 +164,21 @@ bạn<aside
                         </div>
                     </div>
                     <div class="p-2 border-t border-gray-100 dark:border-slate-800 text-center">
-                        <span
+                        <span routerLink="/hr/activities"
                             class="text-xs font-medium text-gray-500 hover:text-blue-600 block py-1 cursor-pointer">Xem
                             tất cả</span>
                     </div>
                 </div>
             </div>
-            <button
+            <!-- <button
                 class="w-10 h-10 flex items-center justify-center rounded-xl text-gray-500 hover:text-slate-900 hover:bg-gray-100 dark:text-slate-400 dark:hover:text-white dark:hover:bg-slate-800 transition-all">
                 <span class="material-symbols-outlined">help</span>
             </button>
-            <div class="h-8 w-px bg-gray-200 dark:bg-slate-800 mx-2"></div>
+            <div class="h-8 w-px bg-gray-200 dark:bg-slate-800 mx-2"></div> -->
             <button
                 class="flex items-center gap-2 px-4 py-2 bg-primary hover:bg-blue-700 text-white text-sm font-bold rounded-xl transition-colors shadow-lg shadow-blue-500/30">
                 <span class="material-symbols-outlined text-[20px]">add</span>
-                <span>Đăng Tin Mới</span>
+                <span routerLink="/hr/post-job">Đăng Tin Mới</span>
             </button>
         </div>
     </header>
@@ -186,3 +186,6 @@ bạn<aside
         <router-outlet></router-outlet>
     </main>
 </div>
+
+<!-- Toast Notifications -->
+<app-toast></app-toast>

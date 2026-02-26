@@ -59,7 +59,7 @@ export class AuthService {
 
             const remainingToken = localStorage.getItem('authToken');
             if (remainingToken) {
-                console.error('❌ Cảnh báo: Token vẫn còn trong localStorage!');
+                console.error(' Cảnh báo: Token vẫn còn trong localStorage!');
             }
         }
 
@@ -69,17 +69,17 @@ export class AuthService {
     saveToken(token: string): boolean {
         // ⚡ SSR Fix: Only access localStorage in browser
         if (!isPlatformBrowser(this.platformId)) {
-            console.warn('⚠️ SSR: Cannot save token on server side');
+            console.warn(' SSR: Cannot save token on server side');
             return false;
         }
         if (typeof window === 'undefined') return false;
 
         try {
             localStorage.setItem('authToken', token);
-            console.log('✅ Token saved successfully');
+            console.log(' Token saved successfully');
             return true;
         } catch (error) {
-            console.error('❌ Error saving token:', error);
+            console.error(' Error saving token:', error);
             return false;
         }
     }

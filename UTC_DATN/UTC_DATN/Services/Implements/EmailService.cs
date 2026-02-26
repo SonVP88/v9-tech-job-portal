@@ -119,17 +119,17 @@ public class EmailService : IEmailService
 
             // Gửi email
             await smtpClient.SendMailAsync(mailMessage);
-            _logger.LogInformation("✅ Đã gửi email thành công đến: {ToEmail} (CC: {CcCount})", 
+            _logger.LogInformation(" Đã gửi email thành công đến: {ToEmail} (CC: {CcCount})", 
                 toEmail, mailMessage.CC.Count);
         }
         catch (SmtpException smtpEx)
         {
-            _logger.LogError(smtpEx, "❌ Lỗi SMTP khi gửi email đến: {ToEmail}. Error: {Message}", toEmail, smtpEx.Message);
+            _logger.LogError(smtpEx, " Lỗi SMTP khi gửi email đến: {ToEmail}. Error: {Message}", toEmail, smtpEx.Message);
             throw;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "❌ Lỗi khi gửi email đến: {ToEmail}", toEmail);
+            _logger.LogError(ex, "Lỗi khi gửi email đến: {ToEmail}", toEmail);
             throw;
         }
     }

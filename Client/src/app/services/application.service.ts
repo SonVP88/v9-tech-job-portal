@@ -69,4 +69,14 @@ export class ApplicationService {
     getMyApplications(): Observable<ApiResponse<MyApplicationDto[]>> {
         return this.http.get<ApiResponse<MyApplicationDto[]>>(`${this.apiUrl}/applications/my-applications`);
     }
+
+    /**
+     * Ứng viên phản hồi Offer: true = Đồng ý (HIRED), false = Từ chối (REJECTED)
+     */
+    respondToOffer(applicationId: string, accept: boolean): Observable<ApiResponse<any>> {
+        return this.http.put<ApiResponse<any>>(
+            `${this.apiUrl}/applications/${applicationId}/respond-offer?accept=${accept}`,
+            {}
+        );
+    }
 }

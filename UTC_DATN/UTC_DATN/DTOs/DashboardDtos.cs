@@ -83,6 +83,17 @@ namespace UTC_DATN.DTOs
     }
 
     /// <summary>
+    /// Paged result for activity log
+    /// </summary>
+    public class PagedActivityDto
+    {
+        public int TotalItems { get; set; }
+        public int TotalPages { get; set; }
+        public int CurrentPage { get; set; }
+        public List<DashboardActivityDto> Items { get; set; } = new();
+    }
+
+    /// <summary>
     /// Latest candidate data for table
     /// </summary>
     public class DashboardCandidateDto

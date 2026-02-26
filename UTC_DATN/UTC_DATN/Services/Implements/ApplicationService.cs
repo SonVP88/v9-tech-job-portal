@@ -129,7 +129,7 @@ public class ApplicationService : IApplicationService
                     
                     if (candidate != null)
                     {
-                        _logger.LogInformation("✅ Tìm thấy Candidate qua UserId: {CandidateId}", candidate.CandidateId);
+                        _logger.LogInformation(" Tìm thấy Candidate qua UserId: {CandidateId}", candidate.CandidateId);
                     }
                 }
 
@@ -141,7 +141,7 @@ public class ApplicationService : IApplicationService
                     
                     if (candidate != null)
                     {
-                        _logger.LogInformation("✅ Tìm thấy Candidate qua Email: {CandidateId}", candidate.CandidateId);
+                        _logger.LogInformation(" Tìm thấy Candidate qua Email: {CandidateId}", candidate.CandidateId);
                         
                         // Nếu tìm thấy qua Email NHƯNG chưa có UserId -> Link ngay!
                         if (userId.HasValue && candidate.UserId == null)
@@ -180,7 +180,7 @@ public class ApplicationService : IApplicationService
                     candidate.Phone = request.Phone;
                     candidate.Summary = request.Introduction;
                     candidate.UpdatedAt = DateTime.UtcNow;
-                    _logger.LogInformation("🔄 Cập nhật Candidate: {CandidateId}", candidate.CandidateId);
+                    _logger.LogInformation(" Cập nhật Candidate: {CandidateId}", candidate.CandidateId);
                 }
 
                 await _context.SaveChangesAsync();
@@ -263,37 +263,29 @@ public class ApplicationService : IApplicationService
                     }
                     else
                     {
-                        // 1. Extract text từ PDF
-                        var cvText = await _aiMatchingService.ExtractTextFromPdfAsync(savedFilePath);
+                        // 1. Lấy Job Description đầy đủ (gộp Title + Description + Requirements)
+                        var jobContext = new System.Text.StringBuilder();
+                        jobContext.AppendLine($"Job Title: {job.Title}");
+                        jobContext.AppendLine("Job Description:");
+                        jobContext.AppendLine(job.Description ?? "");
+                        jobContext.AppendLine("Job Requirements:");
+                        jobContext.AppendLine(job.Requirements ?? "");
+
+                        var fullJobDescription = jobContext.ToString();
                         
-                        if (string.IsNullOrWhiteSpace(cvText))
+                        if (string.IsNullOrWhiteSpace(fullJobDescription.Replace("Job Title: " + job.Title, "").Trim()))
                         {
-                            _logger.LogWarning("Không thể extract text từ CV, bỏ qua AI scoring");
+                            _logger.LogWarning("Job không có Description/Requirements, bỏ qua AI scoring");
                         }
                         else
                         {
-                            // 2. Lấy Job Description đầy đủ (gộp Title + Description + Requirements)
-                            var jobContext = new System.Text.StringBuilder();
-                            jobContext.AppendLine($"Job Title: {job.Title}");
-                            jobContext.AppendLine("Job Description:");
-                            jobContext.AppendLine(job.Description ?? "");
-                            jobContext.AppendLine("Job Requirements:");
-                            jobContext.AppendLine(job.Requirements ?? "");
-
-                            var fullJobDescription = jobContext.ToString();
+                            // 2. Gọi AI để chấm điểm (Sử dụng Document AI Native với File Path)
+                            _logger.LogInformation("Gửi trực tiếp tệp PDF cho AI: {FilePath}", savedFilePath);
+                            var aiScore = await _aiMatchingService.ScoreApplicationAsync(savedFilePath, fullJobDescription);
                             
-                            if (string.IsNullOrWhiteSpace(fullJobDescription.Replace("Job Title: " + job.Title, "").Trim()))
+                            // 3. Lưu kết quả vào database
+                            var applicationAiScore = new ApplicationAiScore
                             {
-                                _logger.LogWarning("Job không có Description/Requirements, bỏ qua AI scoring");
-                            }
-                            else
-                            {
-                                // 3. Gọi AI để chấm điểm
-                                var aiScore = await _aiMatchingService.ScoreApplicationAsync(cvText, fullJobDescription);
-                                
-                                // 4. Lưu kết quả vào database
-                                var applicationAiScore = new ApplicationAiScore
-                                {
                                     AiScoreId = Guid.NewGuid(),
                                     ApplicationId = application.ApplicationId,
                                     MatchingScore = aiScore.Score,
@@ -315,10 +307,8 @@ public class ApplicationService : IApplicationService
                             }
                         }
                     }
-                }
                 catch (Exception aiEx)
                 {
-                    // Không throw exception nếu AI scoring fail, chỉ log warning
                     _logger.LogWarning(aiEx, "Lỗi khi chấm điểm CV bằng AI, tiếp tục xử lý");
                 }
                 // ===== END AI SCORING =====
@@ -335,11 +325,11 @@ public class ApplicationService : IApplicationService
                             "APPLICATION_SUBMITTED",
                             application.ApplicationId.ToString()
                         );
-                        _logger.LogInformation("🔔 Đã tạo thông báo ứng tuyển thành công cho User {UserId}", userId);
+                        _logger.LogInformation(" Đã tạo thông báo ứng tuyển thành công cho User {UserId}", userId);
                     }
                     catch (Exception notifEx)
                     {
-                        _logger.LogError(notifEx, "❌ Lỗi khi tạo thông báo cho User {UserId}", userId);
+                        _logger.LogError(notifEx, " Lỗi khi tạo thông báo cho User {UserId}", userId);
                     }
                 }
 
@@ -364,11 +354,11 @@ public class ApplicationService : IApplicationService
                             application.ApplicationId.ToString()
                         );
                     }
-                    _logger.LogInformation("🔔 Đã tạo thông báo cho {Count} Users (ADMIN/HR)", adminAndHrUsers.Count);
+                    _logger.LogInformation(" Đã tạo thông báo cho {Count} Users (ADMIN/HR)", adminAndHrUsers.Count);
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "❌ Lỗi khi tạo thông báo cho Admin/HR");
+                    _logger.LogError(ex, " Lỗi khi tạo thông báo cho Admin/HR");
                 }
 
                 // Commit transaction
@@ -486,7 +476,7 @@ public class ApplicationService : IApplicationService
         return result;
     }
 
-    public async Task<bool> UpdateStatusAsync(Guid applicationId, string newStatus)
+    public async Task<UpdateApplicationStatusResponse?> UpdateStatusAsync(Guid applicationId, string newStatus)
     {
         var application = await _context.Applications
             .Include(a => a.Candidate)
@@ -494,7 +484,7 @@ public class ApplicationService : IApplicationService
                 .ThenInclude(j => j.CreatedByNavigation)
             .FirstOrDefaultAsync(a => a.ApplicationId == applicationId);
             
-        if (application == null) return false;
+        if (application == null) return null;
 
         var oldStatus = application.Status;
         application.Status = newStatus;
@@ -520,7 +510,7 @@ public class ApplicationService : IApplicationService
 
                 if (string.IsNullOrEmpty(emailToSend))
                 {
-                    _logger.LogWarning("⚠️ Không tìm thấy email của ứng viên. Bỏ qua gửi email.");
+                    _logger.LogWarning(" Không tìm thấy email của ứng viên. Bỏ qua gửi email.");
                 }
                 else
                 {
@@ -538,20 +528,20 @@ public class ApplicationService : IApplicationService
 
                     // Bước 2: Tạo tiêu đề email
                     var emailSubject = newStatus == "HIRED"
-                        ? $"🎉 Chúc mừng! Bạn đã trúng tuyển vị trí {jobTitle}"
+                        ? $"Chúc mừng! Bạn đã trúng tuyển vị trí {jobTitle}"
                         : $"Thông báo kết quả ứng tuyển vị trí {jobTitle}";
 
                     // Bước 3: Gửi email
                     await _emailService.SendEmailAsync(emailToSend, emailSubject, emailBody);
                     
-                    _logger.LogInformation("✅ Đã gửi email thông báo thành công đến: {Email}", emailToSend);
+                    _logger.LogInformation(" Đã gửi email thông báo thành công đến: {Email}", emailToSend);
                 }
             }
             catch (Exception emailEx)
             {
                 // Không throw exception nếu gửi email thất bại, chỉ log warning
                 // Để không ảnh hưởng đến luồng chính (status đã được cập nhật thành công)
-                _logger.LogWarning(emailEx, "⚠️ Không thể gửi email thông báo, nhưng status đã được cập nhật thành công.");
+                _logger.LogWarning(emailEx, " Không thể gửi email thông báo, nhưng status đã được cập nhật thành công.");
             }
         }
 
@@ -567,7 +557,7 @@ public class ApplicationService : IApplicationService
                 switch (newStatus)
                 {
                     case "HIRED":
-                        notifTitle = "🎉 Chúc mừng! Bạn đã trúng tuyển";
+                        notifTitle = "Chúc mừng! Bạn đã trúng tuyển";
                         notifMessage = $"Chúc mừng bạn đã trúng tuyển vị trí {application.Job?.Title}. Vui lòng kiểm tra email để biết thêm chi tiết.";
                         notifType = "OFFER";
                         break;
@@ -613,16 +603,107 @@ public class ApplicationService : IApplicationService
             }
             catch (Exception notifEx)
             {
-                _logger.LogError(notifEx, "❌ Lỗi khi tạo thông báo cho User {UserId}", application.Candidate.UserId);
+                _logger.LogError(notifEx, " Lỗi khi tạo thông báo cho User {UserId}", application.Candidate.UserId);
             }
         }
 
-        return saveResult;
+        // 9. THÔNG BÁO NGƯỢC LẠI CHO HR khi ứng viên phản hồi Offer (hoặc HR tự update HIRED)
+        if (saveResult && (newStatus == "HIRED" || newStatus == "REJECTED"))
+        {
+            _logger.LogInformation("[DEBUG] Block 9 triggered. oldStatus={Old}, newStatus={New}", oldStatus, newStatus);
+            try
+            {
+                var hrUser = application.Job?.CreatedByNavigation;
+                _logger.LogInformation("[DEBUG] hrUser={HR}, hrUserId={Id}",
+                    hrUser?.FullName ?? "NULL",
+                    hrUser?.UserId.ToString() ?? "NULL");
+
+                if (hrUser != null)
+                {
+                    var candidateName = application.Candidate?.FullName ?? "Ứng viên";
+                    var jobTitle = application.Job?.Title ?? "vị trí ứng tuyển";
+                    string hrNotifTitle, hrNotifMessage;
+
+                    if (newStatus == "HIRED")
+                    {
+                        hrNotifTitle = $"{candidateName} đã đồng ý nhận việc";
+                        hrNotifMessage = $"{candidateName} đã CHẤP NHẬN offer cho vị trí \"{jobTitle}\". Vui lòng tiến hành các bước onboarding.";
+                    }
+                    else
+                    {
+                        hrNotifTitle = $"{candidateName} đã từ chối offer";
+                        hrNotifMessage = $"{candidateName} đã TỪ CHỐI offer cho vị trí \"{jobTitle}\". Bạn có thể xem xét ứng viên khác.";
+                    }
+
+                    await _notificationService.CreateNotificationAsync(
+                        hrUser.UserId,
+                        hrNotifTitle,
+                        hrNotifMessage,
+                        "OFFER",
+                        application.ApplicationId.ToString()
+                    );
+                    _logger.LogInformation("[SUCCESS] Đã gửi thông báo HR UserId: {UserId}", hrUser.UserId);
+                }
+                else
+                {
+                    _logger.LogWarning("[WARN] hrUser NULL - Job.CreatedByNavigation không được load hoặc Job null.");
+                }
+            }
+            catch (Exception hrNotifEx)
+            {
+                _logger.LogError(hrNotifEx, "[ERROR] Không thể gửi thông báo cho HR.");
+            }
+        }
+
+        // --- Thêm logic đếm số lượng Hired cho Job ---
+        int totalHired = 0;
+        if (application.Job != null)
+        {
+            totalHired = await _context.Applications
+                .CountAsync(a => a.JobId == application.JobId && a.Status == "HIRED");
+        }
+
+        // --- Thông báo cho HR khi đã tuyển đủ vị trí (để HR quyết định có đóng job không) ---
+        if (newStatus == "HIRED"
+            && application.Job != null
+            && application.Job.NumberOfPositions.HasValue
+            && totalHired >= application.Job.NumberOfPositions.Value
+            && (application.Job.Status == "OPEN" || application.Job.Status == "PUBLISHED"))
+        {
+            try
+            {
+                var hrUser = application.Job.CreatedByNavigation;
+                if (hrUser?.UserId != null)
+                {
+                    await _notificationService.CreateNotificationAsync(
+                        hrUser.UserId,
+                        $"Đã tuyển đủ vị trí cho \"{application.Job.Title}\"",
+                        $"Job \"{application.Job.Title}\" đã tuyển đủ {totalHired}/{application.Job.NumberOfPositions.Value} vị trí. Bạn có muốn đóng tin tuyển dụng này không?",
+                        "APPLICATION_UPDATE",
+                        application.JobId.ToString()
+                    );
+                    _logger.LogInformation("🔔 Đã thông báo cho HR về job đủ vị trí: {JobId}", application.JobId);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, " Không thể gửi thông báo đủ vị trí cho HR.");
+            }
+        }
+
+        return new UpdateApplicationStatusResponse
+        {
+            Success = true,
+            JobId = application.JobId,
+            TotalHired = totalHired,
+            NumberOfPositions = application.Job?.NumberOfPositions,
+            IsJobActive = application.Job?.Status == "PUBLISHED"
+        };
     }
 
     public async Task<List<MyApplicationDto>> GetMyApplicationsAsync(Guid userId)
     {
-        _logger.LogInformation("🔍 GetMyApplicationsAsync - UserId: {UserId}", userId);
+        _logger.LogInformation(" GetMyApplicationsAsync - UserId: {UserId}", userId);
         
         // TÌM CANDIDATE TRỰC TIẾP QUA UserId (KHÔNG QUA EMAIL NỮA!)
         var candidate = await _context.Candidates
@@ -630,16 +711,16 @@ public class ApplicationService : IApplicationService
         
         if (candidate == null)
         {
-            _logger.LogWarning("⚠️ Candidate NOT FOUND for UserId: {UserId}", userId);
-            _logger.LogInformation("💡 User chưa apply job nào hoặc Candidate chưa được link với tài khoản này");
+            _logger.LogWarning(" Candidate NOT FOUND for UserId: {UserId}", userId);
+            _logger.LogInformation(" User chưa apply job nào hoặc Candidate chưa được link với tài khoản này");
             return new List<MyApplicationDto>();
         }
         
-        _logger.LogInformation("✅ Found Candidate: CandidateId={CandidateId}, FullName={FullName}", 
+        _logger.LogInformation(" Found Candidate: CandidateId={CandidateId}, FullName={FullName}", 
             candidate.CandidateId, candidate.FullName);
 
         // Lấy danh sách Applications của Candidate
-        _logger.LogInformation("🔍 Looking for Applications for CandidateId: {CandidateId}", candidate.CandidateId);
+        _logger.LogInformation(" Looking for Applications for CandidateId: {CandidateId}", candidate.CandidateId);
         
         var applications = await _context.Applications
             .AsNoTracking()
@@ -664,7 +745,7 @@ public class ApplicationService : IApplicationService
             })
             .ToListAsync();
 
-        _logger.LogInformation("📊 Found {Count} applications for CandidateId: {CandidateId}", 
+        _logger.LogInformation(" Found {Count} applications for CandidateId: {CandidateId}", 
             applications.Count, candidate.CandidateId);
 
         return applications;
@@ -694,7 +775,7 @@ public class ApplicationService : IApplicationService
                     .Select(s => new { s.MatchingScore, s.MatchedSkillsJson })
                     .FirstOrDefault()
             })
-            .OrderByDescending(a => a.AppliedAt) // Default sort by date descending
+            .OrderByDescending(a => a.AppliedAt) 
             .ToListAsync();
 
         var result = applications.Select(a =>

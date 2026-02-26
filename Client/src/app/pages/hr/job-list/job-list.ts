@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { JobService, JobDto } from '../../../services/job.service';
+import { ToastService } from '../../../services/toast.service';
 
 @Component({
     selector: 'app-job-list',
@@ -13,6 +14,7 @@ import { JobService, JobDto } from '../../../services/job.service';
 export class JobListComponent implements OnInit {
     private jobService = inject(JobService);
     private cdr = inject(ChangeDetectorRef);
+    private toast = inject(ToastService);
 
     // Using signals like employee management
     jobs = signal<JobDto[]>([]);
@@ -30,7 +32,7 @@ export class JobListComponent implements OnInit {
     // Expose Math for template
     Math = Math;
 
-    // Computed properties for pagination
+    // properties for pagination
     totalPages = (): number => Math.ceil(this.filteredJobs().length / this.itemsPerPage);
 
     paginatedJobs = (): JobDto[] => {
@@ -44,18 +46,18 @@ export class JobListComponent implements OnInit {
 
     loadJobs(): void {
         this.isLoading.set(true);
-        console.log('🔍 Loading jobs...');
+        console.log(' Loading jobs...');
 
         this.jobService.fetchJobs().subscribe({
             next: (data: JobDto[]) => {
-                console.log('✅ Jobs loaded:', data);
+                console.log(' Jobs loaded:', data);
                 this.jobs.set(data);
                 this.filterJobs();
                 this.isLoading.set(false);
                 this.cdr.detectChanges();
             },
             error: (err: any) => {
-                console.error('❌ Error loading jobs:', err);
+                console.error(' Error loading jobs:', err);
                 this.isLoading.set(false);
                 this.cdr.detectChanges();
             }
@@ -104,46 +106,34 @@ export class JobListComponent implements OnInit {
         if (confirm('Bạn có chắc chắn muốn xóa tin tuyển dụng này không? Hành động này không thể hoàn tác.')) {
             this.jobService.deleteJob(id).subscribe({
                 next: () => {
-                    console.log('✅ Job deleted');
-                    alert('Xóa tin công việc thành công.');
+                    this.toast.success('Xóa thành công', 'Tin tuyển dụng đã được xóa.');
                     this.loadJobs();
                 },
-                error: (err) => {
-                    console.error('❌ Error deleting job:', err);
-                    alert('Đã xảy ra lỗi khi xóa tin công việc.');
-                }
+                error: () => this.toast.error('Xóa thất bại', 'Đã xảy ra lỗi khi xóa tin công việc.')
             });
         }
     }
 
     onClose(id: string): void {
-        if (confirm('Bạn có chắc chắn muốn ngừng đăng tin này? Tin sẽ bị ẩn khỏi trang tìm kiếm nhưng vẫn hiển thị trong danh sách của bạn.')) {
+        if (confirm('Bạn có chắc chắn muốn ngừng đăng tin này?')) {
             this.jobService.closeJob(id).subscribe({
                 next: () => {
-                    console.log('✅ Job closed');
-                    alert('Đã ngừng đăng tin thành công.');
+                    this.toast.success('Đã ngừng đăng tin', 'Tin tuyển dụng sẽ bị ẩn khỏi trang tìm kiếm.');
                     this.loadJobs();
                 },
-                error: (err) => {
-                    console.error('❌ Error closing job:', err);
-                    alert('Đã xảy ra lỗi khi ngừng đăng tin.');
-                }
+                error: () => this.toast.error('Thất bại', 'Đã xảy ra lỗi khi ngừng đăng tin.')
             });
         }
     }
 
     onOpen(id: string): void {
-        if (confirm('Bạn có muốn mở lại tin tuyển dụng này? Tin sẽ xuất hiện lại trên trang tìm kiếm.')) {
+        if (confirm('Bạn có muốn mở lại tin tuyển dụng này?')) {
             this.jobService.openJob(id).subscribe({
                 next: () => {
-                    console.log('✅ Job opened');
-                    alert('Đã mở lại tin tuyển dụng thành công.');
+                    this.toast.success('Đã mở lại tin', 'Tin tuyển dụng đã xuất hiện lại trên trang tìm kiếm.');
                     this.loadJobs();
                 },
-                error: (err) => {
-                    console.error('❌ Error opening job:', err);
-                    alert('Đã xảy ra lỗi khi mở lại tin.');
-                }
+                error: () => this.toast.error('Thất bại', 'Đã xảy ra lỗi khi mở lại tin.')
             });
         }
     }

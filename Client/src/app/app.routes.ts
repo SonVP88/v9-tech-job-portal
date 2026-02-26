@@ -59,6 +59,12 @@ export const routes: Routes = [
       // Link: /hr/dashboard
       { path: 'dashboard', component: Dashboard },
 
+      // Hoạt động gần đây (Audit Log)
+      {
+        path: 'activities',
+        loadComponent: () => import('./pages/hr/recent-activities/recent-activities').then(m => m.RecentActivitiesComponent)
+      },
+
       // Quản lý việc làm - Job List (New)
       {
         path: 'jobs',

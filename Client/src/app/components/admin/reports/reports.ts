@@ -256,7 +256,7 @@ export class Reports implements OnInit {
         setTimeout(() => this.cdr.detectChanges(), 0);
       },
       error: (err) => {
-        console.error('❌ Error loading summary:', err);
+        console.error(' Error loading summary:', err);
         this.isLoading = false;
         setTimeout(() => this.cdr.detectChanges(), 0);
       }
@@ -271,7 +271,7 @@ export class Reports implements OnInit {
         setTimeout(() => this.cdr.detectChanges(), 0);
       },
       error: (err) => {
-        console.error('❌ Error loading charts:', err);
+        console.error(' Error loading charts:', err);
         this.isLoading = false;
         setTimeout(() => this.cdr.detectChanges(), 0);
       }
@@ -282,37 +282,37 @@ export class Reports implements OnInit {
    * Update chart data from API response
    */
   private updateCharts(data: ReportChartsDto): void {
-    console.log('🔍 updateCharts called with:', data);
+    console.log(' updateCharts called with:', data);
 
     try {
       // Update Funnel Chart
       if (data?.funnelData?.labels && data?.funnelData?.data) {
         this.funnelChartData.labels = data.funnelData.labels;
         this.funnelChartData.datasets[0].data = data.funnelData.data;
-        console.log('✅ Funnel chart updated');
+        console.log(' Funnel chart updated');
       } else {
-        console.warn('⚠️ Funnel data is incomplete:', data?.funnelData);
+        console.warn(' Funnel data is incomplete:', data?.funnelData);
       }
 
       // Update Source Chart
       if (data?.sourceData?.labels && data?.sourceData?.data) {
         this.sourceChartData.labels = data.sourceData.labels;
         this.sourceChartData.datasets[0].data = data.sourceData.data;
-        console.log('✅ Source chart updated');
+        console.log(' Source chart updated');
       } else {
-        console.warn('⚠️ Source data is incomplete:', data?.sourceData);
+        console.warn(' Source data is incomplete:', data?.sourceData);
       }
 
       // Update Trend Chart
       if (data?.trendData?.labels && data?.trendData?.data) {
         this.trendChartData.labels = data.trendData.labels;
         this.trendChartData.datasets[0].data = data.trendData.data;
-        console.log('✅ Trend chart updated');
+        console.log(' Trend chart updated');
       } else {
-        console.warn('⚠️ Trend data is incomplete:', data?.trendData);
+        console.warn(' Trend data is incomplete:', data?.trendData);
       }
     } catch (error) {
-      console.error('❌ Error updating charts:', error);
+      console.error(' Error updating charts:', error);
     }
   }
 }

@@ -4,6 +4,7 @@ import { Component } from '@angular/core';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { jwtDecode } from 'jwt-decode';
+import { ToastService } from '../../services/toast.service';
 
 @Component({
   selector: 'app-login',
@@ -19,7 +20,8 @@ export class Login {
   constructor(
     private fb: FormBuilder,
     private http: HttpClient,
-    private router: Router
+    private router: Router,
+    private toast: ToastService
   ) {
     this.loginForm = this.fb.group({
       email: ['', [Validators.required, Validators.email]],
@@ -42,21 +44,21 @@ export class Login {
             const token = res.token;
 
             if (!token) {
-              console.error('❌ Backend không trả về token!');
-              alert('Đăng nhập thất bại! Server không trả về token.');
+              console.error(' Backend không trả về token!');
+              this.toast.error('Đăng nhập thất bại', 'Server không trả về token.');
               return;
             }
 
             // 1. Lưu Token vào localStorage
             localStorage.setItem('authToken', token);
-            console.log('✅ Token đã được lưu vào localStorage');
+            console.log(' Token đã được lưu vào localStorage');
 
             // 2. Verify token đã lưu thành công
             const savedToken = localStorage.getItem('authToken');
             if (savedToken === token) {
-              console.log('✅ Xác nhận: Token đã lưu thành công trong localStorage');
+              console.log(' Xác nhận: Token đã lưu thành công trong localStorage');
             } else {
-              console.error('❌ Cảnh báo: Token không được lưu đúng!');
+              console.error(' Cảnh báo: Token không được lưu đúng!');
             }
 
             // 3. Giải mã Token để lấy thông tin user
@@ -84,14 +86,14 @@ export class Login {
               }
 
             } catch (error) {
-              console.error('❌ Lỗi giải mã token:', error);
-              alert('Đăng nhập thành công nhưng không thể đọc thông tin user. Vui lòng thử lại.');
+              console.error(' Lỗi giải mã token:', error);
+              this.toast.warning('Đăng nhập thành công', 'Nhưng không thể đọc thông tin user. Vui lòng thử lại.');
               this.router.navigate(['/']);
             }
           },
           error: (err) => {
             console.error(err);
-            alert('Đăng nhập thất bại! Kiểm tra lại email hoặc mật khẩu.');
+            this.toast.error('Đăng nhập thất bại', 'Kiểm tra lại email hoặc mật khẩu.');
           }
         });
     } else {

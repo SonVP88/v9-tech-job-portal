@@ -5,6 +5,7 @@ import { RouterModule } from '@angular/router';
 import { BehaviorSubject } from 'rxjs';
 import { CandidateHeaderComponent } from '../../../components/shared/candidate-header/candidate-header';
 import { CandidateSettingsService, NotificationSettings } from '../../../services/candidate-settings.service';
+import { ToastService } from '../../../services/toast.service';
 
 type Tab = 'security' | 'notifications';
 
@@ -38,7 +39,10 @@ export class CandidateSettingsComponent implements OnInit {
     notifMsg$ = this.notifMsgSubject.asObservable();
     notifLoading = false;
 
-    constructor(private settingsService: CandidateSettingsService) { }
+    constructor(
+        private settingsService: CandidateSettingsService,
+        private toast: ToastService
+    ) { }
 
     ngOnInit(): void {
         this.loadNotificationSettings();
@@ -69,6 +73,7 @@ export class CandidateSettingsComponent implements OnInit {
                 next: (res) => {
                     this.pwdLoading = false;
                     this.pwdMsgSubject.next({ text: res.message, ok: true });
+                    this.toast.success('Thành công', res.message);
                     this.currentPassword = '';
                     this.newPassword = '';
                     this.confirmPassword = '';
@@ -77,6 +82,7 @@ export class CandidateSettingsComponent implements OnInit {
                     this.pwdLoading = false;
                     const msg = err.error?.message || 'Đổi mật khẩu thất bại';
                     this.pwdMsgSubject.next({ text: msg, ok: false });
+                    this.toast.error('Lỗi', msg);
                 }
             });
     }
@@ -105,10 +111,12 @@ export class CandidateSettingsComponent implements OnInit {
             next: (res) => {
                 this.notifLoading = false;
                 this.notifMsgSubject.next({ text: res.message, ok: true });
+                this.toast.success('Thành công', res.message);
             },
             error: () => {
                 this.notifLoading = false;
                 this.notifMsgSubject.next({ text: 'Cập nhật thất bại', ok: false });
+                this.toast.error('Lỗi', 'Cập nhật cài đặt thất bại');
             }
         });
     }

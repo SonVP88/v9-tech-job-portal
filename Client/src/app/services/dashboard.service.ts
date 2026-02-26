@@ -56,12 +56,21 @@ export class DashboardService {
         return this.http.get<DashboardSummaryDto>(`${this.apiUrl}/summary`);
     }
 
-    /**
-     * Lấy recent activity log
-     */
     getRecentActivity(count: number = 10): Observable<DashboardActivityDto[]> {
         return this.http.get<DashboardActivityDto[]>(`${this.apiUrl}/activity`, {
             params: { count: count.toString() }
+        });
+    }
+
+    /**
+     * Lấy recent activity log phân trang
+     */
+    getPagedActivities(page: number = 1, pageSize: number = 15): Observable<{ totalItems: number, totalPages: number, currentPage: number, items: DashboardActivityDto[] }> {
+        return this.http.get<{ totalItems: number, totalPages: number, currentPage: number, items: DashboardActivityDto[] }>(`${this.apiUrl}/activities`, {
+            params: {
+                page: page.toString(),
+                pageSize: pageSize.toString()
+            }
         });
     }
 

@@ -5,6 +5,7 @@ import { Title } from '@angular/platform-browser';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { AccountService, UserProfileDto, CompanyInfoDto, NotificationSettingDto } from '../../../services/account.service';
 import { AuthService } from '../../../services/auth.service';
+import { ToastService } from '../../../services/toast.service';
 
 @Component({
     selector: 'app-settings',
@@ -50,7 +51,8 @@ export class SettingsComponent implements OnInit {
         private http: HttpClient,
         private ngZone: NgZone,
         private fb: FormBuilder,
-        private cdr: ChangeDetectorRef
+        private cdr: ChangeDetectorRef,
+        private toast: ToastService
     ) { }
 
     ngOnInit(): void {
@@ -81,7 +83,6 @@ export class SettingsComponent implements OnInit {
     }
 
     loadData(): void {
-        // 1. Load Profile
         this.accountService.getProfile().subscribe({
             next: (data) => this.ngZone.run(() => {
                 this.accountForm.patchValue({
@@ -152,13 +153,13 @@ export class SettingsComponent implements OnInit {
         // Validate file type
         const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
         if (!validTypes.includes(file.type)) {
-            alert('Chỉ chấp nhận file ảnh (jpg, png, gif, webp)!');
+            this.toast.warning('Sai định dạng', 'Chỉ chấp nhận file ảnh (jpg, png, gif, webp)!');
             return;
         }
 
         // Validate size (5MB)
         if (file.size > 5 * 1024 * 1024) {
-            alert('File không được vượt quá 5MB!');
+            this.toast.warning('Kích thước quá lớn', 'File không được vượt quá 5MB!');
             return;
         }
 
@@ -190,7 +191,7 @@ export class SettingsComponent implements OnInit {
             }),
             error: (err) => this.ngZone.run(() => {
                 console.error('Avatar upload failed', err);
-                alert('Upload ảnh thất bại: ' + (err.error?.message || 'Lỗi không xác định'));
+                this.toast.error('Tải lên thất bại', err.error?.message || 'Lỗi không xác định');
                 this.isUploadingAvatar = false;
                 // Revert avatarPreview if upload fails, assuming userProfile.avatarUrl holds the last valid one
                 this.accountService.getProfile().subscribe(data => {
@@ -214,12 +215,12 @@ export class SettingsComponent implements OnInit {
 
         const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
         if (!validTypes.includes(file.type)) {
-            alert('Chỉ chấp nhận file ảnh (jpg, png, gif, webp)!');
+            this.toast.warning('Sai định dạng', 'Chỉ chấp nhận file ảnh (jpg, png, gif, webp)!');
             return;
         }
 
         if (file.size > 5 * 1024 * 1024) {
-            alert('File không được vượt quá 5MB!');
+            this.toast.warning('Kích thước quá lớn', 'File không được vượt quá 5MB!');
             return;
         }
 
@@ -245,7 +246,7 @@ export class SettingsComponent implements OnInit {
             }),
             error: (err) => this.ngZone.run(() => {
                 console.error('Logo upload failed', err);
-                alert('Upload ảnh thất bại: ' + (err.error?.message || 'Lỗi không xác định'));
+                this.toast.error('Tải lên thất bại', err.error?.message || 'Lỗi không xác định');
                 this.isUploadingLogo = false;
                 this.accountService.getCompanyInfo().subscribe(data => {
                     this.logoPreview = data.logoUrl || null;
@@ -281,11 +282,11 @@ export class SettingsComponent implements OnInit {
 
         this.accountService.updateProfile(updateData).subscribe({
             next: () => {
-                alert('Cập nhật thông tin thành công!');
+                this.toast.success('Thành công', 'Cập nhật thông tin thành công!');
                 this.isLoading = false;
             },
             error: (err: any) => {
-                alert('Cập nhật thất bại: ' + (err.error?.message || 'Lỗi không xác định'));
+                this.toast.error('Cập nhật thất bại', err.error?.message || 'Lỗi không xác định');
                 this.isLoading = false;
             }
         });
@@ -295,7 +296,7 @@ export class SettingsComponent implements OnInit {
         if (this.passwordFormGroup.value.oldPassword || this.passwordFormGroup.value.newPassword) {
             // Validate
             if (this.passwordFormGroup.value.newPassword !== this.passwordFormGroup.value.confirmPassword) {
-                alert('Mật khẩu xác nhận không khớp!');
+                this.toast.warning('Lỗi nhập liệu', 'Mật khẩu xác nhận không khớp!');
                 return;
             }
 
@@ -307,7 +308,7 @@ export class SettingsComponent implements OnInit {
             }).subscribe({
                 next: () => {
                     this.passwordFormGroup.reset();
-                    alert('Đổi mật khẩu thành công!');
+                    this.toast.success('Thành công', 'Đổi mật khẩu thành công!');
                     // Tiếp tục cập nhật profile
                     this.updateProfile();
                 },
@@ -321,7 +322,7 @@ export class SettingsComponent implements OnInit {
                         // ASP.NET Core validation errors
                         errorMsg = Object.values(err.error.errors).flat().join('\n');
                     }
-                    alert('Đổi mật khẩu thất bại:\n' + errorMsg);
+                    this.toast.error('Đổi mật khẩu thất bại', errorMsg);
                     this.isLoading = false;
                 }
             });
@@ -332,7 +333,7 @@ export class SettingsComponent implements OnInit {
 
     saveCompanyInfo(): void {
         if (this.companyForm.invalid) {
-            alert('Vui lòng nhập Tên Công Ty (bắt buộc)!');
+            this.toast.warning('Thiếu thông tin', 'Vui lòng nhập Tên Công Ty (bắt buộc)!');
             return;
         }
         this.isLoading = true;
@@ -344,7 +345,7 @@ export class SettingsComponent implements OnInit {
 
         this.accountService.updateCompanyInfo(submitData).subscribe({
             next: () => {
-                alert('Cập nhật thông tin công ty thành công!');
+                this.toast.success('Thành công', 'Cập nhật thông tin công ty thành công!');
                 this.isLoading = false;
             },
             error: (err: any) => {
@@ -356,7 +357,7 @@ export class SettingsComponent implements OnInit {
                 } else if (err.error?.errors) {
                     errorMsg = Object.values(err.error.errors).flat().join('\n');
                 }
-                alert('Cập nhật thất bại:\n' + errorMsg);
+                this.toast.error('Cập nhật thất bại', errorMsg);
                 this.isLoading = false;
             }
         });
@@ -370,11 +371,11 @@ export class SettingsComponent implements OnInit {
 
         this.accountService.updateNotificationSettings(this.notificationDto).subscribe({
             next: () => {
-                alert('Cấu hình thông báo đã được lưu!');
+                this.toast.success('Đã lưu', 'Cấu hình thông báo đã được lưu!');
                 this.isLoading = false;
             },
             error: (err: any) => {
-                alert('Lưu cấu hình thất bại');
+                this.toast.error('Lỗi', 'Lưu cấu hình thất bại');
                 this.isLoading = false;
             }
         });

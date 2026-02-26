@@ -65,13 +65,19 @@ public class AiMatchingService : IAiMatchingService
     }
 
     /// <summary>
-    /// Chấm điểm CV bằng Google Gemini AI
+    /// Chấm điểm CV bằng Google Gemini AI (Dùng kỹ thuật Document AI Native / Base64)
     /// </summary>
-    public async Task<AiScoreResult> ScoreApplicationAsync(string cvText, string jobDescription)
+    public async Task<AiScoreResult> ScoreApplicationAsync(string cvFilePath, string jobDescription)
     {
         try
         {
-            _logger.LogInformation("Scoring application with AI");
+            _logger.LogInformation("Scoring application with AI Native PDF for file: {FilePath}", cvFilePath);
+
+            // Kiểm tra file
+            if (!System.IO.File.Exists(cvFilePath))
+            {
+                throw new FileNotFoundException($"PDF file not found: {cvFilePath}");
+            }
 
             // Lấy API key từ configuration
             var apiKey = _configuration["GeminiAI:ApiKey"];
@@ -80,19 +86,29 @@ public class AiMatchingService : IAiMatchingService
                 throw new InvalidOperationException("Gemini API key not configured");
             }
 
-            // Tạo prompt cho AI
-            var prompt = CreateScoringPrompt(cvText, jobDescription);
+            // Đọc file PDF sang chuỗi Base64
+            byte[] fileBytes = await System.IO.File.ReadAllBytesAsync(cvFilePath);
+            string base64File = Convert.ToBase64String(fileBytes);
 
-            // Tạo request body cho Gemini API
+            // Tạo prompt cho AI (Không nhét text CV vào nữa)
+            var prompt = CreateScoringPrompt(jobDescription);
+
+            // Tạo request body cho Gemini API (Sử dụng inlineData cho file PDF)
             var requestBody = new
             {
                 contents = new[]
                 {
                     new
                     {
-                        parts = new[]
+                        parts = new object[] // Phải dùng object[] vì có 2 kiểu data khác nhau trong part
                         {
-                            new { text = prompt }
+                            new { text = prompt },
+                            new { 
+                                inlineData = new {
+                                    mimeType = "application/pdf",
+                                    data = base64File
+                                }
+                            }
                         }
                     }
                 }
@@ -101,7 +117,7 @@ public class AiMatchingService : IAiMatchingService
             var jsonContent = JsonSerializer.Serialize(requestBody);
             var content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
 
-            // Gọi Gemini API - Sử dụng Gemini 2.5 Flash (theo danh sách model supports)
+            // Gọi Gemini API - Sử dụng Gemini 2.5 Flash
             var apiUrl = $"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={apiKey}";
             var response = await _httpClient.PostAsync(apiUrl, content);
 
@@ -123,7 +139,7 @@ public class AiMatchingService : IAiMatchingService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error scoring application with AI");
+            _logger.LogError(ex, "Error scoring application with AI Document Native");
             throw;
         }
     }
@@ -131,17 +147,14 @@ public class AiMatchingService : IAiMatchingService
     /// <summary>
     /// Tạo prompt cho AI
     /// </summary>
-    private string CreateScoringPrompt(string cvText, string jobDescription)
+    private string CreateScoringPrompt(string jobDescription)
     {
-        return $@"Bạn là một chuyên gia tuyển dụng chuyên nghiệp. Nhiệm vụ của bạn là đánh giá mức độ phù hợp giữa CV của ứng viên và mô tả công việc.
+        return $@"Bạn là một chuyên gia tuyển dụng chuyên nghiệp. Nhiệm vụ của bạn là đọc file CV (PDF) được đính kèm và đánh giá mức độ phù hợp của nó với mô tả công việc dưới đây.
 
 **MÔ TẢ CÔNG VIỆC:**
 {jobDescription}
 
-**NỘI DUNG CV CỦA ỨNG VIÊN:**
-{cvText}
-
-Hãy phân tích và đánh giá CV theo các tiêu chí sau:
+Hãy đọc kỹ file PDF CV đính kèm. Phân tích và đánh giá CV theo các tiêu chí sau:
 1. Kỹ năng kỹ thuật phù hợp
 2. Kinh nghiệm làm việc liên quan
 3. Trình độ học vấn
@@ -150,7 +163,7 @@ Hãy phân tích và đánh giá CV theo các tiêu chí sau:
 Trả về kết quả dưới dạng JSON với cấu trúc sau (KHÔNG thêm markdown, chỉ trả về JSON thuần):
 {{
   ""score"": <số từ 0-100>,
-  ""explanation"": ""<giải thích ngắn gọn về điểm số, tối đa 200 từ>"",
+  ""explanation"": ""<giải thích ngắn gọn về điểm số, không quá 3-4 câu>"",
   ""matchedSkills"": [""<kỹ năng 1>"", ""<kỹ năng 2>"", ...],
   ""missingSkills"": [""<kỹ năng thiếu 1>"", ""<kỹ năng thiếu 2>"", ...]
 }}
@@ -159,7 +172,8 @@ Lưu ý:
 - Score phải là số nguyên từ 0-100
 - Explanation phải ngắn gọn, súc tích
 - MatchedSkills: Các kỹ năng mà ứng viên có và job yêu cầu
-- MissingSkills: Các kỹ năng quan trọng mà job yêu cầu nhưng ứng viên chưa có";
+- MissingSkills: Các kỹ năng quan trọng mà job yêu cầu nhưng ứng viên chưa có
+- CHỈ TRẢ VỀ CHUỖI JSON, KHÔNG THÊM BẤT KỲ VĂN BẢN NÀO KHÁC BÊN NGOÀI.";
     }
 
     /// <summary>
@@ -581,7 +595,7 @@ KHÔNG thêm markdown code blocks.
     {
         try
         {
-            _logger.LogInformation("🤖 Đánh giá câu trả lời bằng AI cho câu hỏi: {Question}", question);
+            _logger.LogInformation(" Đánh giá câu trả lời bằng AI cho câu hỏi: {Question}", question);
 
             var apiKey = _configuration["GeminiAI:ApiKey"];
             if (string.IsNullOrEmpty(apiKey))

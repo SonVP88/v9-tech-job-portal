@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { environment } from '../../../../environments/environment';
+import { ToastService } from '../../../services/toast.service';
 
 interface Skill {
     skillId: string;
@@ -44,7 +45,8 @@ export class SkillManagementComponent implements OnInit {
     constructor(
         private http: HttpClient,
         private cdr: ChangeDetectorRef,
-        private ngZone: NgZone
+        private ngZone: NgZone,
+        private toast: ToastService
     ) { }
 
     ngOnInit(): void {
@@ -114,7 +116,7 @@ export class SkillManagementComponent implements OnInit {
 
     saveSkill(): void {
         if (!this.skillName.trim()) {
-            alert('Vui lòng nhập tên kỹ năng!');
+            this.toast.warning('Thiếu thông tin', 'Vui lòng nhập tên kỹ năng!');
             return;
         }
         if (this.isSaving) return;
@@ -136,13 +138,15 @@ export class SkillManagementComponent implements OnInit {
                     this.ngZone.run(() => {
                         this.closeModal();
                         this.loadSkills();
+                        const msg = this.modalMode === 'create' ? 'Thêm kỹ năng thành công!' : 'Cập nhật kỹ năng thành công!';
+                        this.toast.success('Thành công', msg);
                     });
                 },
                 error: (err) => {
                     this.ngZone.run(() => {
                         this.isSaving = false;
                         const msg = err.error?.message || (this.modalMode === 'create' ? 'Có lỗi khi thêm!' : 'Có lỗi khi cập nhật!');
-                        alert(msg);
+                        this.toast.error('Thất bại', msg);
                     });
                 }
             });
@@ -158,11 +162,12 @@ export class SkillManagementComponent implements OnInit {
                 next: () => {
                     this.ngZone.run(() => {
                         this.loadSkills();
+                        this.toast.success('Thành công', 'Xóa kỹ năng thành công!');
                     });
                 },
                 error: (err) => {
                     this.ngZone.run(() => {
-                        alert(err.error?.message || 'Có lỗi khi xóa!');
+                        this.toast.error('Lỗi khi xóa', err.error?.message || 'Có lỗi khi xóa!');
                     });
                 }
             });

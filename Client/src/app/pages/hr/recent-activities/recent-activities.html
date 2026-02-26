@@ -1,0 +1,76 @@
+<div class="animate-fade-in-up">
+    <!-- Header -->
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+        <div>
+            <h1 class="text-2xl font-black text-slate-900 dark:text-white tracking-tight">Tất Cả Hoạt Động</h1>
+            <p class="text-slate-500 dark:text-slate-400 mt-1">Lịch sử hoạt động của hệ thống tuyển dụng</p>
+        </div>
+        <button routerLink="/hr/dashboard"
+            class="flex items-center gap-2 px-5 py-2.5 bg-white border border-gray-200 hover:bg-gray-50 text-slate-700 font-bold rounded-xl transition-all shadow-sm">
+            <span class="material-symbols-outlined">arrow_back</span>
+            <span>Trở về Dashboard</span>
+        </button>
+    </div>
+
+    <!-- Feed Content -->
+    <div
+        class="bg-white dark:bg-slate-950 rounded-xl border border-gray-200 dark:border-slate-800 shadow-sm p-6 max-w-4xl mx-auto">
+        <!-- Loading State -->
+        <div *ngIf="isLoading()" class="flex justify-center items-center py-12">
+            <div class="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+        </div>
+
+        <div *ngIf="!isLoading()"
+            class="space-y-8 relative before:absolute before:inset-0 before:ml-5 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-slate-200 before:to-transparent">
+
+            <div *ngFor="let activity of activities()"
+                class="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group is-active">
+                <!-- Icon -->
+                <div class="flex items-center justify-center w-10 h-10 rounded-full border-4 border-white bg-slate-100 dark:bg-slate-800 text-slate-500 shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2 shadow-sm z-10"
+                    [ngClass]="{
+                        'text-blue-500 bg-blue-50 border-blue-100': activity.iconColor === 'blue',
+                        'text-green-500 bg-green-50 border-green-100': activity.iconColor === 'green',
+                        'text-orange-500 bg-orange-50 border-orange-100': activity.iconColor === 'orange',
+                        'text-purple-500 bg-purple-50 border-purple-100': activity.iconColor === 'purple'
+                    }">
+                    <span class="material-symbols-outlined text-[18px]">{{ activity.icon }}</span>
+                </div>
+
+                <!-- Card -->
+                <div
+                    class="w-[calc(100%-4rem)] md:w-[calc(50%-2.5rem)] p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-sm transition-all hover:shadow-md">
+                    <div class="flex items-center justify-between space-x-2 mb-1">
+                        <div class="font-bold text-slate-900 dark:text-white">{{ activity.title }}</div>
+                        <time class="text-xs text-slate-500 font-medium whitespace-nowrap">{{
+                            getRelativeTime(activity.timestamp) }}</time>
+                    </div>
+                    <div class="text-slate-600 dark:text-slate-400 text-sm">{{ activity.description }}</div>
+                </div>
+            </div>
+
+            <!-- Empty State -->
+            <div *ngIf="activities().length === 0" class="text-center text-gray-500 py-8 z-10 relative bg-white">
+                <p>Chưa có hoạt động nào được ghi nhận</p>
+            </div>
+        </div>
+
+        <!-- Pagination -->
+        <div *ngIf="totalPages() > 1"
+            class="flex items-center justify-between mt-10 pt-6 border-t border-slate-100 dark:border-slate-800">
+            <span class="text-sm text-slate-500">
+                Trang <span class="font-bold text-slate-900">{{ currentPage() }}</span> / {{ totalPages() }} (Tổng số {{
+                totalItems() }})
+            </span>
+            <div class="flex gap-2">
+                <button [disabled]="currentPage() === 1" (click)="loadActivities(currentPage() - 1)"
+                    class="px-4 py-2 border border-slate-200 rounded-lg text-sm font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed">
+                    Trước
+                </button>
+                <button [disabled]="currentPage() === totalPages()" (click)="loadActivities(currentPage() + 1)"
+                    class="px-4 py-2 border border-slate-200 rounded-lg text-sm font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed">
+                    Sau
+                </button>
+            </div>
+        </div>
+    </div>
+</div>

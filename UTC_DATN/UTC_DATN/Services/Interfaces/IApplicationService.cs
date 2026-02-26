@@ -20,7 +20,7 @@ public interface IApplicationService
     /// <summary>
     /// Cập nhật trạng thái hồ sơ ứng tuyển (Dành cho HR/Admin)
     /// </summary>
-    Task<bool> UpdateStatusAsync(Guid applicationId, string newStatus);
+    Task<UpdateApplicationStatusResponse?> UpdateStatusAsync(Guid applicationId, string newStatus);
 
     /// <summary>
     /// Lấy danh sách hồ sơ ứng tuyển của ứng viên đã đăng nhập

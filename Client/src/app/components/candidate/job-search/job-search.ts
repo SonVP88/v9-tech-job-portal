@@ -8,6 +8,7 @@ import { AuthService } from '../../../services/auth.service';
 import { Router } from '@angular/router';
 import { CandidateHeaderComponent } from '../../shared/candidate-header/candidate-header';
 import { SavedJobService } from '../../../services/saved-job.service';
+import { ToastService } from '../../../services/toast.service';
 import { BehaviorSubject } from 'rxjs';
 
 @Component({
@@ -22,20 +23,19 @@ export class JobSearchComponent implements OnInit {
   loading = false;
   provinces: Province[] = [];
 
-  // Pagination
+  // Phân trang
   currentPage = 1;
   pageSize = 9;
 
-  // Auth state
+  // Trạng thái đăng nhập
   isLoggedIn = false;
   userFullName = '';
   userRole = '';
 
-  // Saved Jobs - dùng BehaviorSubject để async pipe tự handle change detection
   private savedJobIdsSubject = new BehaviorSubject<Set<string>>(new Set<string>());
   savedJobIds$ = this.savedJobIdsSubject.asObservable();
 
-  // Filter state
+  // Trạng thái bộ lọc
   filter: JobSearchFilter = {
     keyword: '',
     location: '',
@@ -50,7 +50,8 @@ export class JobSearchComponent implements OnInit {
     private router: Router,
     private route: ActivatedRoute,
     private cdr: ChangeDetectorRef,
-    private savedJobService: SavedJobService
+    private savedJobService: SavedJobService,
+    private toast: ToastService
   ) { }
 
   ngOnInit(): void {
@@ -60,19 +61,19 @@ export class JobSearchComponent implements OnInit {
       this.loadSavedIds();
     }
 
-    // Consume data from Resolver
+    // Lấy dữ liệu từ Resolver
     this.route.data.subscribe(data => {
       console.log('📦 Resolver data received:', data);
       const jobs = data['jobs'];
       if (jobs) {
         this.jobs = jobs;
         this.loading = false;
-        // Reset pagination if needed
+        // Đặt lại phân trang nếu cần
         if (this.currentPage > this.totalPages) {
           this.currentPage = 1;
         }
       } else {
-        // Fallback if resolver fails
+        // Tải lại qua API nếu resolver không trả về dữ liệu
         this.loadJobs();
       }
     });
@@ -106,15 +107,27 @@ export class JobSearchComponent implements OnInit {
 
   toggleSaveJob(jobId: string, event: Event): void {
     event.stopPropagation();
-    if (!this.authService.isAuthenticated()) return;
+    if (!this.authService.isAuthenticated()) {
+      this.toast.warning('Yêu cầu đăng nhập', 'Bạn cần đăng nhập để lưu công việc này!');
+      // Chuyển hướng sang trang đăng nhập nếu cần
+      return;
+    }
     this.savedJobService.toggleSave(jobId).subscribe({
       next: (res) => {
         const current = this.savedJobIdsSubject.getValue();
-        if (res.saved) current.add(jobId);
-        else current.delete(jobId);
-        this.savedJobIdsSubject.next(new Set(current)); // emit new Set để async pipe detect
+        if (res.saved) {
+          current.add(jobId);
+          this.toast.success('Đã lưu công việc', 'Công việc đã được lưu vào danh sách.');
+        } else {
+          current.delete(jobId);
+          this.toast.success('Bỏ lưu thành công', 'Đã bỏ lưu công việc này.');
+        }
+        this.savedJobIdsSubject.next(new Set(current)); // emit giá trị mới để async pipe tự nhận biết
       },
-      error: (err) => console.error('Toggle save error:', err)
+      error: (err) => {
+        console.error('Toggle save error:', err);
+        this.toast.error('Lỗi', 'Không thể thực hiện hành động này lúc này.');
+      }
     });
   }
 
@@ -132,7 +145,7 @@ export class JobSearchComponent implements OnInit {
     this.loading = true;
     this.cdr.detectChanges();
 
-    // Clean filter object
+    // Chuẩn hóa bộ lọc tìm kiếm
     const searchFilter: JobSearchFilter = {
       keyword: this.filter.keyword || '',
       location: this.filter.location || '',
@@ -140,23 +153,23 @@ export class JobSearchComponent implements OnInit {
       minSalary: this.filter.minSalary
     };
 
-    console.log('🔍 Searching jobs with filter:', searchFilter);
+    console.log(' Searching jobs with filter:', searchFilter);
 
     this.publicJobService.searchJobs(searchFilter).subscribe({
       next: (data) => {
         this.jobs = data || [];
         this.loading = false;
 
-        // Reset to first page of results
+        // Trở về trang 1 nếu vị trí hiện tại vượt quá tổng số trang
         if (this.currentPage > this.totalPages) {
           this.currentPage = 1;
         }
 
-        console.log(`✅ Loaded ${this.jobs.length} jobs`);
+        console.log(` Loaded ${this.jobs.length} jobs`);
         this.cdr.detectChanges();
       },
       error: (err) => {
-        console.error('❌ Failed to load jobs:', err);
+        console.error(' Failed to load jobs:', err);
         this.jobs = [];
         this.loading = false;
         this.cdr.detectChanges();
@@ -213,7 +226,7 @@ export class JobSearchComponent implements OnInit {
         this.filter.jobType = '';
       }
     }
-    this.onSearch(); // Search immediately on filter change
+    this.onSearch(); // Tự động tìm kiếm ngay khi bộ lọc thay đổi
   }
 
   isJobTypeSelected(type: string): boolean {

@@ -78,7 +78,7 @@ namespace UTC_DATN.Services.Implements
                 PasswordHash = passwordHash,
                 FullName = request.FullName,
                 Phone = request.PhoneNumber,
-                IsActive = true, // Không cần confirm email
+                IsActive = true,
                 CreatedAt = DateTime.UtcNow
             };
 
@@ -115,10 +115,8 @@ namespace UTC_DATN.Services.Implements
             var user = await _context.Users.FindAsync(userId);
             if (user == null)
             {
-                return false; // User không tồn tại
+                return false; 
             }
-
-            // Soft delete: Set IsActive = false
             user.IsActive = false;
             await _context.SaveChangesAsync();
 
@@ -130,10 +128,9 @@ namespace UTC_DATN.Services.Implements
             var user = await _context.Users.FindAsync(userId);
             if (user == null)
             {
-                return false; // User không tồn tại
+                return false; 
             }
 
-            // Reactivate: Set IsActive = true
             user.IsActive = true;
             await _context.SaveChangesAsync();
 
@@ -145,14 +142,14 @@ namespace UTC_DATN.Services.Implements
             var user = await _context.Users.FindAsync(userId);
             if (user == null)
             {
-                return null; // User không tồn tại
+                return null; 
             }
 
             // Check email trùng (ngoại trừ user hiện tại)
             var emailExists = await _context.Users.AnyAsync(u => u.Email == request.Email && u.UserId != userId);
             if (emailExists)
             {
-                return null; // Email đã tồn tại
+                return null; 
             }
 
             // Validate role
@@ -174,7 +171,6 @@ namespace UTC_DATN.Services.Implements
 
             if (currentUserRole != null && currentUserRole.Role.Code != request.Role)
             {
-                // Xóa role cũ
                 _context.UserRoles.Remove(currentUserRole);
 
                 // Thêm role mới

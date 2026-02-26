@@ -139,7 +139,7 @@ export class Home implements OnInit {
       if (user) {
         this.userFullName = user.name || 'User';
         this.userRole = user.role || '';
-        console.log('✅ User đã đăng nhập:', {
+        console.log(' User đã đăng nhập:', {
           name: this.userFullName,
           email: user.email,
           role: this.userRole
@@ -234,11 +234,11 @@ export class Home implements OnInit {
     const keywordParam = trimmedKeyword && trimmedKeyword.length > 0 ? trimmedKeyword : undefined;
     const locationParam = trimmedLocation && trimmedLocation.length > 0 ? trimmedLocation : undefined;
 
-    console.log('🔍 Search triggered - Raw values:', {
+    console.log(' Search triggered - Raw values:', {
       searchKeyword: this.searchKeyword,
       selectedLocation: this.selectedLocation
     });
-    console.log('🔍 Search params (after trim):', {
+    console.log(' Search params (after trim):', {
       keyword: keywordParam,
       location: locationParam
     });
@@ -255,17 +255,17 @@ export class Home implements OnInit {
             if (locationParam) searchInfo.push(`địa điểm "${locationParam}"`);
 
             this.error = `Không tìm thấy việc làm phù hợp với ${searchInfo.join(' và ')}.`;
-            console.log('⚠️ No results found');
+            console.log(' No results found');
           } else {
             this.error = null;
-            console.log(`✅ Found ${jobs.length} jobs`);
+            console.log(` Found ${jobs.length} jobs`);
           }
 
           this.cdr.detectChanges();
-          console.log(`✅ Search completed:`, jobs);
+          console.log(` Search completed:`, jobs);
         },
         error: (err) => {
-          console.error('❌ Search API error:', err);
+          console.error(' Search API error:', err);
           this.error = 'Lỗi khi tìm kiếm. Vui lòng thử lại.';
           this.featuredJobs = []; // Clear danh sách khi có lỗi API
           this.loading = false;
@@ -282,7 +282,7 @@ export class Home implements OnInit {
     this.selectedLocation = '';
     this.error = null;
     this.loadLatestJobs();
-    console.log('🔄 Search filters cleared, loading all jobs...');
+    console.log(' Search filters cleared, loading all jobs...');
   }
 
   /**

@@ -23,6 +23,11 @@ namespace UTC_DATN.Controllers
         [HttpPost("register")]
         public async Task<IActionResult> Register([FromBody] RegisterRequest request)
         {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
             var result = await _authService.RegisterAsync(request);
 
             if (result)
@@ -30,7 +35,7 @@ namespace UTC_DATN.Controllers
                 return Ok("User registered successfully");
             }
 
-            return BadRequest("Registration failed");
+            return BadRequest(new { message = "Email này đã được đăng ký trong hệ thống." });
         }
 
         /// <summary>
@@ -55,10 +60,8 @@ namespace UTC_DATN.Controllers
         [Microsoft.AspNetCore.Authorization.Authorize] // Require login
         public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordDto request)
         {
-            // Get UserId from Claims
             var userIdClaim = User.FindFirst(System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Sub);
             
-            // Falback: Try ClaimTypes.NameIdentifier if 'sub' is mapped
             if (userIdClaim == null)
             {
                 userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier);

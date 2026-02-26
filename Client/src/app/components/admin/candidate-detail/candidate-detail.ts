@@ -67,7 +67,7 @@ export class CandidateDetail {
   }
 
   onOfferSent(payload: any): void {
-    console.log('✅ Offer sent successfully:', payload);
+    console.log(' Offer sent successfully:', payload);
     this.onOfferClosed();
   }
 

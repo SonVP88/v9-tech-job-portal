@@ -59,7 +59,7 @@ public class ApplicationController : ControllerBase
             if (!string.IsNullOrEmpty(userIdClaim) && Guid.TryParse(userIdClaim, out var parsedUserId))
             {
                 userId = parsedUserId;
-                _logger.LogInformation("✅ User đã đăng nhập - UserId: {UserId}", userId);
+                _logger.LogInformation(" User đã đăng nhập - UserId: {UserId}", userId);
             }
             else
             {
@@ -166,9 +166,13 @@ public class ApplicationController : ControllerBase
 
             var result = await _applicationService.UpdateStatusAsync(id, status);
 
-            if (result)
+            if (result != null && result.Success)
             {
-                return Ok(new { success = true, message = "Cập nhật trạng thái thành công" });
+                return Ok(new { 
+                    success = true, 
+                    message = "Cập nhật trạng thái thành công",
+                    data = result 
+                });
             }
             else
             {
@@ -183,8 +187,41 @@ public class ApplicationController : ControllerBase
     }
 
     /// <summary>
-    /// API lấy danh sách hồ sơ ứng tuyển của ứng viên đã đăng nhập
+    /// API cho ứng viên phản hồi Offer (Đồng ý / Từ chối)
+    /// Chỉ CANDIDATE mới được gọi. Chỉ cho phép đổi Offer_Sent → HIRED hoặc REJECTED.
     /// </summary>
+    [HttpPut("{id}/respond-offer")]
+    [Authorize]
+    public async Task<IActionResult> RespondToOffer(Guid id, [FromQuery] string accept)
+    {
+        try
+        {
+            // Chỉ nhận "true" (đồng ý) hoặc "false" (từ chối)
+            if (!bool.TryParse(accept, out var isAccepted))
+                return BadRequest(new { success = false, message = "Tham số 'accept' phải là true hoặc false." });
+
+            var newStatus = isAccepted ? "HIRED" : "REJECTED";
+            var result = await _applicationService.UpdateStatusAsync(id, newStatus);
+
+            if (result != null && result.Success)
+            {
+                return Ok(new
+                {
+                    success = true,
+                    message = isAccepted ? "Bạn đã chấp nhận Offer. Chúc mừng!" : "Bạn đã từ chối Offer.",
+                    data = result
+                });
+            }
+            return NotFound(new { success = false, message = "Không tìm thấy hồ sơ hoặc cập nhật thất bại." });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Lỗi khi ứng viên phản hồi Offer ID: {Id}", id);
+            return StatusCode(500, new { success = false, message = "Có lỗi xảy ra." });
+        }
+    }
+
+
     [HttpGet("my-applications")]
     [Authorize]
     public async Task<IActionResult> GetMyApplications()
@@ -202,15 +239,15 @@ public class ApplicationController : ControllerBase
             
             if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
             {
-                _logger.LogWarning("⚠️ UserId claim is missing or invalid!");
+                _logger.LogWarning(" UserId claim is missing or invalid!");
                 return Unauthorized(new { success = false, message = "Vui lòng đăng nhập để xem hồ sơ." });
             }
 
-            _logger.LogInformation("✅ Valid UserId: {UserId}", userId);
+            _logger.LogInformation(" Valid UserId: {UserId}", userId);
             
             var applications = await _applicationService.GetMyApplicationsAsync(userId);
             
-            _logger.LogInformation("📊 Service returned {Count} applications", applications.Count);
+            _logger.LogInformation("Service returned {Count} applications", applications.Count);
             
             return Ok(new
             {
@@ -220,7 +257,7 @@ public class ApplicationController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "❌ Exception in GetMyApplications");
+            _logger.LogError(ex, " Exception in GetMyApplications");
             return StatusCode(500, new
             {
                 success = false,
@@ -295,7 +332,7 @@ public class ApplicationController : ControllerBase
             // Gọi service
             var interviewId = await _interviewService.ScheduleInterviewAsync(dto, createdBy);
 
-            _logger.LogInformation("✅ Interview scheduled successfully with ID: {InterviewId} for ApplicationId: {ApplicationId}", 
+            _logger.LogInformation("Interview scheduled successfully with ID: {InterviewId} for ApplicationId: {ApplicationId}", 
                 interviewId, applicationId);
 
             return Ok(new

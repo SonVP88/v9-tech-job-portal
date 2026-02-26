@@ -1,10 +1,12 @@
-import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectorRef, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { ApplicationService, ApplicationDto } from '../../../services/application.service';
+import { JobService } from '../../../services/job.service';
 import { OfferModalComponent } from '../../../components/admin/offer-modal/offer-modal';
+import { ToastService } from '../../../services/toast.service';
 
 interface InterviewForm {
   date: string;
@@ -34,6 +36,8 @@ export class ManageApplications implements OnInit, OnDestroy {
   isEmpty = false;
   hasError = false;
   errorMessage = '';
+
+  private toast = inject(ToastService);
 
   // Modal state
   showInterviewModal = false;
@@ -105,6 +109,7 @@ export class ManageApplications implements OnInit, OnDestroy {
 
   constructor(
     private applicationService: ApplicationService,
+    private jobService: JobService,
     private route: ActivatedRoute,
     private router: Router,
     private cdr: ChangeDetectorRef,
@@ -112,13 +117,10 @@ export class ManageApplications implements OnInit, OnDestroy {
   ) { }
 
   ngOnInit(): void {
-    console.log('� REFRESHED LOGIC LOADED: ManageApplications initialized');
     // Lấy jobId từ URL params
     this.route.params.subscribe(params => {
       this.jobId = params['jobId'];
-      console.log('📋 JobId from route:', this.jobId || 'NONE (Loading all)');
 
-      // Luôn load, loadApplications sẽ tự quyết định lấy theo JobId hay Tất cả
       this.loadApplications();
       this.startAutoRefresh();
     });
@@ -149,12 +151,9 @@ export class ManageApplications implements OnInit, OnDestroy {
 
     // Set new interval
     this.refreshInterval = setInterval(() => {
-      console.log(`🔄 Auto-refreshing applications... (${this.DEMO_MODE ? 'DEMO' : 'PROD'} mode)`);
       this.loadApplications();
     }, interval);
 
-    console.log(`✅ Auto-refresh started (every ${seconds}s - ${this.DEMO_MODE ? 'DEMO' : 'PRODUCTION'} mode)`);
-    console.log(`💡 Tip: Set DEMO_MODE = ${!this.DEMO_MODE} in manage-applications.ts to switch to ${this.DEMO_MODE ? 'production' : 'demo'} mode`);
   }
 
   /**
@@ -164,7 +163,6 @@ export class ManageApplications implements OnInit, OnDestroy {
     if (this.refreshInterval) {
       clearInterval(this.refreshInterval);
       this.refreshInterval = null;
-      console.log('⏹️ Auto-refresh stopped');
     }
   }
 
@@ -172,7 +170,6 @@ export class ManageApplications implements OnInit, OnDestroy {
    * Manual refresh button
    */
   refreshApplications(): void {
-    console.log('🔄 Manual refresh triggered');
     this.loadApplications();
   }
 
@@ -180,7 +177,7 @@ export class ManageApplications implements OnInit, OnDestroy {
    * Gọi API để lấy danh sách hồ sơ (Theo JobId hoặc Tất cả)
    */
   loadApplications(): void {
-    console.log('🚀 Calling loadApplications. JobId:', this.jobId || 'ALL');
+
     this.isLoading = true;
 
     // Determine which service method to call
@@ -190,20 +187,18 @@ export class ManageApplications implements OnInit, OnDestroy {
 
     request.subscribe({
       next: (response) => {
-        console.log('✅ loadApplications Success. Response:', response);
         if (response.success) {
           this.applications = response.data;
           this.isEmpty = this.applications.length === 0;
-          this.lastRefreshTime = new Date(); // Update last refresh time
-          console.log('📊 Applications loaded:', this.applications.length);
+          this.lastRefreshTime = new Date();
+
         } else {
-          console.warn('⚠️ Response success is false:', response);
         }
         this.isLoading = false;
-        this.cdr.detectChanges(); // Manually trigger change detection
+        this.cdr.detectChanges();
       },
       error: (error) => {
-        console.error('❌ Lỗi khi tải danh sách hồ sơ:', error);
+        console.error('Lỗi khi tải danh sách hồ sơ:', error);
         this.isLoading = false;
         this.isEmpty = true;
         this.cdr.detectChanges();
@@ -309,7 +304,7 @@ export class ManageApplications implements OnInit, OnDestroy {
             let successMessage = '';
             switch (newStatus) {
               case 'HIRED':
-                successMessage = '🎉 Chúc mừng! Đã tuyển ứng viên thành công!';
+                successMessage = 'Chúc mừng! Đã tuyển ứng viên thành công!';
                 break;
               case 'REJECTED':
                 successMessage = 'Đã từ chối ứng viên.';
@@ -317,13 +312,35 @@ export class ManageApplications implements OnInit, OnDestroy {
               default:
                 successMessage = 'Cập nhật trạng thái thành công!';
             }
-            alert(successMessage);
+
+            // Xử lý Suggest Close Job
+            if (newStatus === 'HIRED' && response.data) {
+              const data = response.data;
+              if (data.isJobActive && data.numberOfPositions != null && data.totalHired >= data.numberOfPositions) {
+                // Tạm thời tắt alert default nếu show confirm
+                setTimeout(() => {
+                  if (confirm(`Bạn đã tuyển đủ ${data.totalHired}/${data.numberOfPositions} vị trí cho Job này. Bạn có muốn ĐÓNG tin tuyển dụng ngay để ngừng nhận thêm CV không?`)) {
+                    this.jobService.closeJob(data.jobId).subscribe({
+                      next: () => {
+                        this.toast.success('Đã đóng Job', 'Tin tuyển dụng sẽ không còn hiển thị với ứng viên.');
+                      },
+                      error: (err) => {
+                        console.error('Lỗi khi đóng job:', err);
+                        this.toast.error('Lỗi đóng Job', 'Có lỗi xảy ra khi đóng Job!');
+                      }
+                    });
+                  }
+                }, 100);
+              }
+            }
+
+            this.toast.success('Cập nhật thành công', successMessage);
             this.cdr.detectChanges();
           }
         },
         error: (error) => {
           console.error('Lỗi khi cập nhật trạng thái:', error);
-          alert('Có lỗi xảy ra khi cập nhật trạng thái!');
+          this.toast.error('Cập nhật thất bại', 'Có lỗi xảy ra khi cập nhật trạng thái!');
         }
       });
     }
@@ -405,7 +422,6 @@ export class ManageApplications implements OnInit, OnDestroy {
    * Xử lý khi offer đã được gửi thành công
    */
   handleOfferSent(payload: any): void {
-    console.log('✅ Offer sent successfully:', payload);
 
     // Close modal
     this.isOfferModalOpen = false;
@@ -419,7 +435,6 @@ export class ManageApplications implements OnInit, OnDestroy {
    * Navigate to Candidate Detail page
    */
   viewCandidateDetail(app: ApplicationDto): void {
-    console.log('📄 Navigating to candidate detail:', app);
     this.router.navigate(['/hr/candidate-detail'], {
       state: { candidate: app }
     });
@@ -469,19 +484,16 @@ Phòng Nhân sự`;
       jobId: this.selectedApplication.jobId
     };
 
-    console.log('🤖 Calling AI generate-opening API...', body);
-
     this.http.post<{ opening: string }>(`${this.apiUrl}/interviews/generate-opening`, body, { headers })
       .subscribe({
         next: (response) => {
-          console.log('✅ AI Opening generated:', response);
           this.aiOpeningText = response.opening;
           this.updateEmailPreview();
           this.isGeneratingAI = false;
           this.cdr.detectChanges();
         },
         error: (error) => {
-          console.error('❌ Error generating AI opening:', error);
+          console.error(' Error generating AI opening:', error);
           alert('Có lỗi khi tạo nội dung AI. Vui lòng thử lại!');
           this.isGeneratingAI = false;
           this.cdr.detectChanges();
@@ -499,20 +511,16 @@ Phòng Nhân sự`;
       'Authorization': `Bearer ${token}`
     });
 
-    console.log('📋 Loading interviewers...');
 
     this.http.get<Array<{ id: string, fullName: string, email: string, roleName: string }>>(`${this.apiUrl}/employees/interviewers`, { headers })
       .subscribe({
         next: (response) => {
-          console.log('✅ Interviewers loaded:', response);
-          console.log('🔍 First interviewer:', response[0]);
-          console.log('🔍 Keys of first item:', response[0] ? Object.keys(response[0]) : 'empty');
           this.interviewers = response;
           this.isLoadingInterviewers = false;
           this.cdr.detectChanges();
         },
         error: (error) => {
-          console.error('❌ Error loading interviewers:', error);
+          console.error(' Error loading interviewers:', error);
           alert('Có lỗi khi tải danh sách người phỏng vấn!');
           this.isLoadingInterviewers = false;
           this.cdr.detectChanges();
@@ -713,7 +721,6 @@ Phòng Nhân sự`;
       location: this.interviewForm.type === 'OFFLINE' ? this.interviewForm.location : null
     };
 
-    console.log('📅 Scheduling interview...', schedulePayload);
 
     // 1. Lên lịch phỏng vấn (POST /api/applications/{id}/schedule-interview)
     this.http.post(
@@ -722,8 +729,8 @@ Phòng Nhân sự`;
       { headers }
     ).subscribe({
       next: (response) => {
-        console.log('✅ Interview scheduled successfully:', response);
-        console.log('📧 Email with CC sent automatically by backend');
+        console.log('Interview scheduled successfully:', response);
+        console.log(' Email with CC sent automatically by backend');
 
         // Update trạng thái INTERVIEW trong UI
         const app = this.applications.find(a => a.applicationId === this.selectedApplication!.applicationId);
@@ -731,15 +738,15 @@ Phòng Nhân sự`;
           app.status = 'INTERVIEW';
         }
 
-        alert('🎉 Đã lên lịch phỏng vấn và gửi email thành công!');
+        this.toast.success('Lịch phỏng vấn đã gửi', 'Đã lên lịch phỏng vấn và gửi email thành công!');
         this.closeInterviewModal();
         this.isSendingEmail = false;
         this.cdr.detectChanges();
       },
       error: (error) => {
-        console.error('❌ Error scheduling interview:', error);
+        console.error(' Error scheduling interview:', error);
         const errorMsg = error.error?.message || 'Có lỗi khi lên lịch phỏng vấn. Vui lòng thử lại!';
-        alert(errorMsg);
+        this.toast.error('Không thể lên lịch', errorMsg);
         this.isSendingEmail = false;
         this.cdr.detectChanges();
       }
@@ -754,7 +761,7 @@ Phòng Nhân sự`;
 
     // Validate date
     if (isNaN(start.getTime())) {
-      console.error('❌ Invalid start time:', startTime);
+      console.error(' Invalid start time:', startTime);
       throw new Error('Invalid start time format');
     }
 
@@ -840,19 +847,18 @@ Phòng Nhân sự`;
       note: this.rejectNote
     };
 
-    console.log('🤖 Calling AI generate-rejection API...', body);
+
 
     this.http.post<{ body: string }>(`${this.apiUrl}/interviews/generate-rejection`, body, { headers })
       .subscribe({
         next: (response) => {
-          console.log('✅ AI Rejection email generated:', response);
           this.rejectEmailContent = response.body;
           this.rejectStep = 2; // Chuyển sang bước 2
           this.isGeneratingRejectEmail = false;
           this.cdr.detectChanges();
         },
         error: (error) => {
-          console.error('❌ Error generating rejection email:', error);
+          console.error(' Error generating rejection email:', error);
           alert('Có lỗi khi tạo email. Vui lòng thử lại!');
           this.isGeneratingRejectEmail = false;
           this.cdr.detectChanges();
@@ -887,7 +893,7 @@ Phòng Nhân sự`;
     this.http.post(`${this.apiUrl}/interviews/send-email-manual`, emailBody, { headers })
       .subscribe({
         next: (response) => {
-          console.log('✅ Rejection email sent successfully:', response);
+          console.log(' Rejection email sent successfully:', response);
 
           // 2. Cập nhật trạng thái REJECTED
           this.applicationService.updateApplicationStatus(
@@ -902,23 +908,23 @@ Phòng Nhân sự`;
                   app.status = 'REJECTED';
                 }
 
-                alert('📧 Đã gửi email từ chối và cập nhật trạng thái thành công!');
+                this.toast.success('Gửi email thành công', 'Đã gửi email từ chối và cập nhật trạng thái thành công!');
                 this.closeRejectModal();
                 this.isSendingRejectEmail = false;
                 this.cdr.detectChanges();
               }
             },
             error: (error) => {
-              console.error('❌ Error updating status:', error);
-              alert('Email đã gửi nhưng có lỗi khi cập nhật trạng thái!');
+              console.error(' Error updating status:', error);
+              this.toast.warning('Email đã gửi', 'Nhưng có lỗi khi cập nhật trạng thái!');
               this.isSendingRejectEmail = false;
               this.cdr.detectChanges();
             }
           });
         },
         error: (error) => {
-          console.error('❌ Error sending rejection email:', error);
-          alert('Có lỗi khi gửi email. Vui lòng thử lại!');
+          console.error(' Error sending rejection email:', error);
+          this.toast.error('Gửi email thất bại', 'Có lỗi khi gửi email. Vui lòng thử lại!');
           this.isSendingRejectEmail = false;
           this.cdr.detectChanges();
         }
@@ -1073,7 +1079,7 @@ Phòng Nhân sự`;
     link.click();
     document.body.removeChild(link);
 
-    console.log(`✅ Exported ${filtered.length} applications to CSV`);
+    console.log(` Exported ${filtered.length} applications to CSV`);
   }
 
   // ==================== PAGINATION METHODS ====================

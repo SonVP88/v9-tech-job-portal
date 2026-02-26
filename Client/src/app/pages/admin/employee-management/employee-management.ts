@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators, FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { EmployeeService, EmployeeDto, CreateEmployeeRequest } from '../../../services/employee';
+import { ToastService } from '../../../services/toast.service';
 
 @Component({
   selector: 'app-employee-management',
@@ -16,6 +17,7 @@ export class EmployeeManagement implements OnInit {
   private fb = inject(FormBuilder);
   private cdr = inject(ChangeDetectorRef);
   private router = inject(Router);
+  private toast = inject(ToastService);
 
   employees = signal<EmployeeDto[]>([]);
   isLoading = signal(false);
@@ -51,7 +53,7 @@ export class EmployeeManagement implements OnInit {
   filterStatus = '';
 
   ngOnInit(): void {
-    console.log('🔄 EmployeeManagement ngOnInit called');
+    console.log(' EmployeeManagement ngOnInit called');
     this.initForm();
     this.loadEmployees();
   }
@@ -75,17 +77,17 @@ export class EmployeeManagement implements OnInit {
     this.isLoading.set(true);
     this.errorMessage.set(null);
 
-    console.log('🔍 Calling API: GET /api/employees');
+    console.log(' Calling API: GET /api/employees');
 
     this.employeeService.getEmployees().subscribe({
       next: (data) => {
-        console.log('✅ Employees loaded:', data);
+        console.log(' Employees loaded:', data);
         this.employees.set(data);
         this.isLoading.set(false);
         this.cdr.detectChanges();
       },
       error: (error) => {
-        console.error('❌ Error loading employees:', error);
+        console.error(' Error loading employees:', error);
         this.errorMessage.set('Không thể tải danh sách nhân viên. Vui lòng thử lại.');
         this.isLoading.set(false);
         this.cdr.detectChanges();
@@ -129,13 +131,14 @@ export class EmployeeManagement implements OnInit {
 
     const request: CreateEmployeeRequest = this.employeeForm.value;
 
-    console.log('📤 Creating employee:', request);
+    console.log(' Creating employee:', request);
 
     this.employeeService.createEmployee(request).subscribe({
       next: (newEmployee) => {
-        console.log('✅ Employee created:', newEmployee);
+        console.log(' Employee created:', newEmployee);
         this.isLoading.set(false);
-        this.successMessage.set('✅ Tạo nhân viên thành công!');
+        this.successMessage.set(' Tạo nhân viên thành công!');
+        this.toast.success('Thành công', 'Tạo nhân viên thành công!');
 
         // Đóng modal và reload sau 1.5s
         setTimeout(() => {
@@ -146,18 +149,22 @@ export class EmployeeManagement implements OnInit {
         this.cdr.detectChanges();
       },
       error: (error) => {
-        console.error('❌ Error creating employee:', error);
+        console.error(' Error creating employee:', error);
         this.isLoading.set(false);
 
         // Xử lý error message
         if (error.error?.message) {
           this.errorMessage.set(error.error.message);
+          this.toast.error('Lỗi', error.error.message);
         } else if (error.status === 400) {
           this.errorMessage.set('Email đã tồn tại hoặc dữ liệu không hợp lệ');
+          this.toast.error('Lỗi', 'Email đã tồn tại hoặc dữ liệu không hợp lệ');
         } else if (error.status === 403) {
           this.errorMessage.set('Bạn không có quyền thực hiện thao tác này');
+          this.toast.warning('Cảnh báo', 'Bạn không có quyền thực hiện thao tác này');
         } else {
           this.errorMessage.set('Có lỗi xảy ra. Vui lòng thử lại.');
+          this.toast.error('Lỗi', 'Có lỗi xảy ra. Vui lòng thử lại.');
         }
 
         this.cdr.detectChanges();
@@ -277,8 +284,9 @@ export class EmployeeManagement implements OnInit {
 
     this.employeeService.updateEmployee(userId, request).subscribe({
       next: (updated) => {
-        console.log('✅ Employee updated:', updated);
-        this.successMessage.set('✅ Cập nhật nhân viên thành công!');
+        console.log(' Employee updated:', updated);
+        this.successMessage.set(' Cập nhật nhân viên thành công!');
+        this.toast.success('Thành công', 'Cập nhật nhân viên thành công!');
 
         setTimeout(() => {
           this.closeEditModal();
@@ -290,8 +298,9 @@ export class EmployeeManagement implements OnInit {
         this.cdr.detectChanges();
       },
       error: (error) => {
-        console.error('❌ Error updating employee:', error);
+        console.error(' Error updating employee:', error);
         this.errorMessage.set('Không thể cập nhật nhân viên. Email có thể đã tồn tại.');
+        this.toast.error('Cập nhật thất bại', 'Không thể cập nhật nhân viên. Email có thể đã tồn tại.');
         this.isLoading.set(false);
         this.cdr.detectChanges();
       }
@@ -310,8 +319,9 @@ export class EmployeeManagement implements OnInit {
 
     this.employeeService.reactivateEmployee(userId).subscribe({
       next: () => {
-        console.log('✅ Employee reactivated');
-        this.successMessage.set('✅ Kích hoạt nhân viên thành công!');
+        console.log(' Employee reactivated');
+        this.successMessage.set(' Kích hoạt nhân viên thành công!');
+        this.toast.success('Thành công', 'Kích hoạt nhân viên thành công!');
 
         setTimeout(() => {
           this.successMessage.set(null);
@@ -322,8 +332,9 @@ export class EmployeeManagement implements OnInit {
         this.cdr.detectChanges();
       },
       error: (error) => {
-        console.error('❌ Error reactivating employee:', error);
+        console.error(' Error reactivating employee:', error);
         this.errorMessage.set('Không thể kích hoạt nhân viên. Vui lòng thử lại.');
+        this.toast.error('Lỗi', 'Không thể kích hoạt nhân viên. Vui lòng thử lại.');
         this.isLoading.set(false);
         this.cdr.detectChanges();
       }
@@ -342,8 +353,9 @@ export class EmployeeManagement implements OnInit {
 
     this.employeeService.deactivateEmployee(userId).subscribe({
       next: () => {
-        console.log('✅ Employee deactivated');
-        this.successMessage.set('✅ Vô hiệu hóa nhân viên thành công!');
+        console.log(' Employee deactivated');
+        this.successMessage.set(' Vô hiệu hóa nhân viên thành công!');
+        this.toast.success('Thành công', 'Vô hiệu hóa nhân viên thành công!');
 
         setTimeout(() => {
           this.successMessage.set(null);
@@ -354,8 +366,9 @@ export class EmployeeManagement implements OnInit {
         this.cdr.detectChanges();
       },
       error: (error) => {
-        console.error('❌ Error deactivating employee:', error);
+        console.error(' Error deactivating employee:', error);
         this.errorMessage.set('Không thể vô hiệu hóa nhân viên. Vui lòng thử lại.');
+        this.toast.error('Lỗi', 'Không thể vô hiệu hóa nhân viên. Vui lòng thử lại.');
         this.isLoading.set(false);
         this.cdr.detectChanges();
       }
@@ -488,7 +501,7 @@ export class EmployeeManagement implements OnInit {
     const filtered = this.filteredEmployees();
 
     if (filtered.length === 0) {
-      alert('Không có dữ liệu để xuất!');
+      this.toast.warning('Không có dữ liệu', 'Không có dữ liệu để xuất!');
       return;
     }
 
@@ -525,6 +538,6 @@ export class EmployeeManagement implements OnInit {
     link.click();
     document.body.removeChild(link);
 
-    console.log(`✅ Exported ${filtered.length} employees to CSV`);
+    console.log(` Exported ${filtered.length} employees to CSV`);
   }
 }

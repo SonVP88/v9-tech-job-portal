@@ -4,6 +4,8 @@ import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { CandidateHeaderComponent } from '../../../components/shared/candidate-header/candidate-header';
+import { SavedJobService } from '../../../services/saved-job.service';
+import { ToastService } from '../../../services/toast.service';
 
 // Interface khớp với Backend JobDetailDto
 export interface JobDetailDto {
@@ -46,6 +48,9 @@ export class JobDetail implements OnInit {
   isDragging = false;
   isModalOpen = false;
 
+  isSaved = false;
+  isTogglingSave = false;
+
   private apiUrl = '/api';
 
   constructor(
@@ -53,11 +58,12 @@ export class JobDetail implements OnInit {
     private router: Router,
     private http: HttpClient,
     private cdr: ChangeDetectorRef,
-    private fb: FormBuilder
+    private fb: FormBuilder,
+    private savedJobService: SavedJobService,
+    private toast: ToastService
   ) { }
 
   ngOnInit(): void {
-    // Initialize apply form
     this.applyForm = this.fb.group({
       fullName: ['', [Validators.required, Validators.maxLength(200)]],
       email: ['', [Validators.required, Validators.email, Validators.maxLength(320)]],
@@ -89,6 +95,9 @@ export class JobDetail implements OnInit {
         next: (job) => {
           this.job = job;
           this.loading = false;
+
+          this.checkIfSaved(job.jobId);
+
           this.cdr.detectChanges();
           console.log('Loaded job detail:', job);
         },
@@ -146,6 +155,58 @@ export class JobDetail implements OnInit {
       const file = event.dataTransfer.files[0];
       this.validateAndSetFile(file);
     }
+  }
+
+  /**
+   * Check if job is saved
+   */
+  private checkIfSaved(jobId: string): void {
+    const token = localStorage.getItem('authToken');
+    if (!token) return; // User not logged in, skip fetching saved status
+
+    this.savedJobService.checkSaved(jobId).subscribe({
+      next: (response) => {
+        this.isSaved = response.saved;
+        this.cdr.detectChanges();
+      },
+      error: (err) => {
+        console.error('Error checking saved status:', err);
+      }
+    });
+  }
+
+  /**
+   * Toggle save job status
+   */
+  toggleSaveJob(): void {
+    const token = localStorage.getItem('authToken');
+    if (!token) {
+      // Redirect to login or show modal
+      this.toast.warning('Yêu cầu đăng nhập', 'Bạn cần đăng nhập để lưu công việc này!');
+      this.router.navigate(['/candidate/login']);
+      return;
+    }
+
+    if (!this.job || this.isTogglingSave) return;
+
+    this.isTogglingSave = true;
+    this.savedJobService.toggleSave(this.job.jobId).subscribe({
+      next: (response) => {
+        this.isSaved = response.saved;
+        this.isTogglingSave = false;
+        if (this.isSaved) {
+          this.toast.success('Đã lưu công việc', 'Sẽ dễ dàng tìm lại công việc này sau.');
+        } else {
+          this.toast.success('Bỏ lưu thành công', 'Đã bỏ lưu công việc.');
+        }
+        this.cdr.detectChanges();
+      },
+      error: (err) => {
+        console.error('Error toggling saved status:', err);
+        this.toast.error('Có lỗi xảy ra', 'Không thể thay đổi trạng thái lưu công việc. Vui lòng thử lại!');
+        this.isTogglingSave = false;
+      }
+    });
   }
 
   /**
@@ -232,6 +293,8 @@ export class JobDetail implements OnInit {
           this.submitSuccess = true;
           this.submitError = null;
 
+          this.toast.success('Ứng tuyển thành công', 'Hồ sơ đã được gửi đến nhà tuyển dụng!');
+
           // Reset form
           this.applyForm.reset();
           this.selectedFile = null;
@@ -249,6 +312,7 @@ export class JobDetail implements OnInit {
           } else {
             this.submitError = 'Có lỗi xảy ra. Vui lòng thử lại sau.';
           }
+          this.toast.error('Ứng tuyển thất bại', this.submitError || 'Có lỗi xảy ra. Vui lòng thử lại sau.');
         }
       });
   }

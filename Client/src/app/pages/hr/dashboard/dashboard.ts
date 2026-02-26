@@ -17,6 +17,7 @@ import { ChartConfiguration, ChartData, Chart, registerables } from 'chart.js';
 })
 export class Dashboard implements OnInit, OnDestroy {
   private routerSubscription?: Subscription;
+  private isDestroyed = false;
 
   // Dashboard Summary
   summary: DashboardSummaryDto = {
@@ -105,25 +106,23 @@ export class Dashboard implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
-    console.log('🔄 Dashboard ngOnInit called');
     this.loadAllDashboardData();
 
-    // Pre-load jobs for Job List page
     this.jobService.refreshJobs();
 
-    // Subscribe to router events để reload khi navigate back
     this.routerSubscription = this.router.events
       .pipe(filter(event => event instanceof NavigationEnd))
       .subscribe((event: any) => {
-        console.log('🔄 Navigation detected:', event.url);
+        console.log(' Navigation detected:', event.url);
         if (event.url === '/hr/dashboard' || event.url === '/hr') {
-          console.log('🔄 Reloading dashboard data...');
+          console.log(' Reloading dashboard data...');
           this.loadAllDashboardData();
         }
       });
   }
 
   ngOnDestroy(): void {
+    this.isDestroyed = true;
     this.routerSubscription?.unsubscribe();
   }
 
@@ -145,15 +144,19 @@ export class Dashboard implements OnInit, OnDestroy {
 
     this.dashboardService.getSummary().subscribe({
       next: (data) => {
-        console.log('✅ Summary loaded:', data);
+        console.log(' Summary loaded:', data);
         this.summary = data;
         this.isLoadingSummary = false;
-        this.cdr.detectChanges();
+        if (!this.isDestroyed) {
+          this.cdr.detectChanges();
+        }
       },
       error: (error) => {
-        console.error('❌ Error loading summary:', error);
+        console.error(' Error loading summary:', error);
         this.isLoadingSummary = false;
-        this.cdr.detectChanges();
+        if (!this.isDestroyed) {
+          this.cdr.detectChanges();
+        }
       }
     });
   }
@@ -166,15 +169,19 @@ export class Dashboard implements OnInit, OnDestroy {
 
     this.dashboardService.getRecentActivity(10).subscribe({
       next: (data) => {
-        console.log('✅ Activities loaded:', data);
+        console.log(' Activities loaded:', data);
         this.activities = data;
         this.isLoadingActivities = false;
-        this.cdr.detectChanges();
+        if (!this.isDestroyed) {
+          this.cdr.detectChanges();
+        }
       },
       error: (error) => {
-        console.error('❌ Error loading activities:', error);
+        console.error(' Error loading activities:', error);
         this.isLoadingActivities = false;
-        this.cdr.detectChanges();
+        if (!this.isDestroyed) {
+          this.cdr.detectChanges();
+        }
       }
     });
   }
@@ -187,15 +194,19 @@ export class Dashboard implements OnInit, OnDestroy {
 
     this.dashboardService.getLatestCandidates(2).subscribe({
       next: (data) => {
-        console.log('✅ Candidates loaded:', data);
+        console.log(' Candidates loaded:', data);
         this.candidates = data;
         this.isLoadingCandidates = false;
-        this.cdr.detectChanges();
+        if (!this.isDestroyed) {
+          this.cdr.detectChanges();
+        }
       },
       error: (error) => {
-        console.error('❌ Error loading candidates:', error);
+        console.error(' Error loading candidates:', error);
         this.isLoadingCandidates = false;
-        this.cdr.detectChanges();
+        if (!this.isDestroyed) {
+          this.cdr.detectChanges();
+        }
       }
     });
   }
@@ -208,15 +219,19 @@ export class Dashboard implements OnInit, OnDestroy {
 
     this.dashboardService.getWeeklyActivity(5).subscribe({
       next: (data) => {
-        console.log('✅ Weekly activity loaded:', data);
+        console.log(' Weekly activity loaded:', data);
         this.updateWeeklyChart(data);
         this.isLoadingChart = false;
-        this.cdr.detectChanges();
+        if (!this.isDestroyed) {
+          this.cdr.detectChanges();
+        }
       },
       error: (error) => {
-        console.error('❌ Error loading weekly activity:', error);
+        console.error(' Error loading weekly activity:', error);
         this.isLoadingChart = false;
-        this.cdr.detectChanges();
+        if (!this.isDestroyed) {
+          this.cdr.detectChanges();
+        }
       }
     });
   }
@@ -234,17 +249,15 @@ export class Dashboard implements OnInit, OnDestroy {
    * Get relative time string (e.g., "2 mins ago")
    */
   getRelativeTime(timestamp: string): string {
-    const now = new Date();
-    const past = new Date(timestamp);
-    const diffMs = now.getTime() - past.getTime();
-    const diffMins = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMins / 60);
-    const diffDays = Math.floor(diffHours / 24);
-
-    if (diffMins < 1) return 'just now';
-    if (diffMins < 60) return `${diffMins} mins ago`;
-    if (diffHours < 24) return `${diffHours} ${diffHours === 1 ? 'hour' : 'hours'} ago`;
-    return `${diffDays} ${diffDays === 1 ? 'day' : 'days'} ago`;
+    const utcStr = timestamp.endsWith('Z') ? timestamp : timestamp + 'Z';
+    const date = new Date(utcStr);
+    return date.toLocaleString('vi-VN', {
+      hour: '2-digit',
+      minute: '2-digit',
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    });
   }
 
   /**

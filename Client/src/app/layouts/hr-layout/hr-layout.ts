@@ -1,35 +1,62 @@
 import { CommonModule } from '@angular/common';
-import { Component } from '@angular/core';
+import { Component, Inject, PLATFORM_ID, OnInit, OnDestroy } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
 import { RouterOutlet, RouterLink, RouterLinkActive, Router } from '@angular/router';
 import { NotificationService, NotificationDto } from '../../services/notification.service';
+import { ToastComponent } from '../../components/toast/toast.component';
 
 @Component({
   selector: 'app-hr-layout',
   standalone: true,
-  imports: [CommonModule, RouterOutlet, RouterLink, RouterLinkActive],
+  imports: [CommonModule, RouterOutlet, RouterLink, RouterLinkActive, ToastComponent],
   templateUrl: './hr-layout.html',
   styleUrl: './hr-layout.scss',
 })
-export class HrLayout {
+export class HrLayout implements OnInit, OnDestroy {
   unreadCount = 0;
   notifications: NotificationDto[] = [];
   isNotificationDropdownOpen = false;
   private pollingInterval: any;
 
+  userFullName = 'Người dùng';
+  userRole = 'Nhân viên';
+
   constructor(
     private notificationService: NotificationService,
-    private router: Router
+    private router: Router,
+    @Inject(PLATFORM_ID) private platformId: Object
   ) { }
 
   ngOnInit(): void {
     this.loadNotifications();
+    this.loadUserFromToken();
 
-    // Poll every 15 seconds
-    if (typeof window !== 'undefined') {
+    if (isPlatformBrowser(this.platformId)) {
       this.pollingInterval = setInterval(() => {
         this.loadNotifications();
       }, 15000);
     }
+  }
+
+  loadUserFromToken(): void {
+    if (!isPlatformBrowser(this.platformId)) return;
+    try {
+      const token = localStorage.getItem('authToken');
+      if (!token) return;
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      this.userFullName = payload.name
+        || payload['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name']
+        || 'Người dùng';
+      const rawRole = payload.role
+        || payload['http://schemas.microsoft.com/ws/2008/06/identity/claims/role']
+        || '';
+      const roleMap: Record<string, string> = {
+        'HR': 'Nhân sự',
+        'ADMIN': 'Quản trị viên',
+        'CANDIDATE': 'Ứng viên',
+      };
+      this.userRole = roleMap[rawRole] || rawRole || 'Nhân viên';
+    } catch { }
   }
 
   ngOnDestroy(): void {
@@ -75,7 +102,9 @@ export class HrLayout {
   }
 
   formatDate(dateStr: string): string {
-    const date = new Date(dateStr);
+    // Thêm 'Z' để đảm bảo parse đúng UTC, tránh lệch 7 tiếng
+    const utcStr = dateStr.endsWith('Z') ? dateStr : dateStr + 'Z';
+    const date = new Date(utcStr);
     return date.toLocaleDateString('vi-VN', {
       hour: '2-digit',
       minute: '2-digit',

@@ -196,6 +196,104 @@ public class DashboardController : ControllerBase
     }
 
     /// <summary>
+    /// GET /api/dashboard/activities - Paged recent activity list
+    /// </summary>
+    [HttpGet("activities")]
+    [ResponseCache(Duration = 10, Location = ResponseCacheLocation.Any)] // Cache 10s
+    public async Task<ActionResult<PagedActivityDto>> GetPagedActivities([FromQuery] int page = 1, [FromQuery] int pageSize = 15)
+    {
+        try
+        {
+            if (page < 1) page = 1;
+            if (pageSize < 1 || pageSize > 100) pageSize = 15;
+
+            var maxFetch = 500; // Giới hạn lấy 500 records mỗi loại cho nhẹ
+            var activities = new List<DashboardActivityDto>();
+
+            var recentApplications = await _context.Applications
+                .AsNoTracking()
+                .Include(a => a.Candidate)
+                .Include(a => a.Job)
+                .OrderByDescending(a => a.AppliedAt)
+                .Take(maxFetch)
+                .Select(a => new DashboardActivityDto
+                {
+                    Type = "new_application",
+                    Title = $"Ứng tuyển mới: {a.Job!.Title}",
+                    Description = $"{a.Candidate!.FullName} đã nộp hồ sơ qua {a.Source ?? "Website"}.",
+                    Timestamp = a.AppliedAt,
+                    Icon = "person_add",
+                    IconColor = "blue"
+                })
+                .ToListAsync();
+
+            activities.AddRange(recentApplications);
+
+            var recentInterviews = await _context.Interviews
+                .AsNoTracking()
+                .Include(i => i.Application)
+                .ThenInclude(a => a.Candidate)
+                .Where(i => i.Status == "SCHEDULED")
+                .OrderByDescending(i => i.CreatedAt)
+                .Take(maxFetch)
+                .Select(i => new DashboardActivityDto
+                {
+                    Type = "interview_confirmed",
+                    Title = "Phỏng vấn đã xác nhận",
+                    Description = $"{i.Application.Candidate!.FullName} đã chấp nhận lời mời phỏng vấn.",
+                    Timestamp = i.CreatedAt,
+                    Icon = "check_circle",
+                    IconColor = "green"
+                })
+                .ToListAsync();
+
+            activities.AddRange(recentInterviews);
+
+            var recentOffers = await _context.Applications
+                .AsNoTracking()
+                .Include(a => a.Candidate)
+                .Include(a => a.Job)
+                .Where(a => a.Status == "Offer_Sent" || a.Status == "HIRED")
+                .OrderByDescending(a => a.LastStageChangedAt)
+                .Take(maxFetch)
+                .Select(a => new DashboardActivityDto
+                {
+                    Type = a.Status == "HIRED" ? "hired" : "offer_sent",
+                    Title = a.Status == "HIRED" ? "Đã tuyển dụng" : "Đã gửi thư Mời nhận việc",
+                    Description = a.Status == "HIRED" ? $"Chúc mừng! Đã tuyển {a.Candidate!.FullName} cho vị trí {a.Job!.Title}." : $"Đã gửi cho {a.Candidate!.FullName} cho vị trí {a.Job!.Title}.",
+                    Timestamp = a.LastStageChangedAt,
+                    Icon = a.Status == "HIRED" ? "workspace_premium" : "assignment",
+                    IconColor = a.Status == "HIRED" ? "purple" : "orange"
+                })
+                .ToListAsync();
+
+            activities.AddRange(recentOffers);
+
+            // In-memory sort and pagination
+            var sortedActivities = activities.OrderByDescending(x => x.Timestamp).ToList();
+            var totalItems = sortedActivities.Count;
+            var totalPages = (int)Math.Ceiling((double)totalItems / pageSize);
+            var pagedItems = sortedActivities.Skip((page - 1) * pageSize).Take(pageSize).ToList();
+
+            var result = new PagedActivityDto
+            {
+                TotalItems = totalItems,
+                TotalPages = totalPages,
+                CurrentPage = page,
+                Items = pagedItems
+            };
+
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Lỗi khi tải paged activity");
+            return StatusCode(500, new { message = "Lỗi server khi tải trang hoạt động" });
+        }
+    }
+
+
+    /// <summary>
     /// GET /api/dashboard/candidates - Latest candidates cho table
     /// </summary>
     [HttpGet("candidates")]

@@ -4,6 +4,7 @@ import { Router, RouterModule } from '@angular/router';
 import { BehaviorSubject } from 'rxjs';
 import { CandidateHeaderComponent } from '../../../components/shared/candidate-header/candidate-header';
 import { SavedJobService, SavedJobDto } from '../../../services/saved-job.service';
+import { ToastService } from '../../../services/toast.service';
 
 @Component({
     selector: 'app-saved-jobs',
@@ -21,7 +22,8 @@ export class SavedJobsComponent implements OnInit, OnDestroy {
 
     constructor(
         private savedJobService: SavedJobService,
-        private router: Router
+        private router: Router,
+        private toast: ToastService
     ) { }
 
     ngOnInit(): void {
@@ -55,8 +57,12 @@ export class SavedJobsComponent implements OnInit, OnDestroy {
             next: () => {
                 const current = this.savedJobsSubject.getValue() ?? [];
                 this.savedJobsSubject.next(current.filter(s => s.job.jobId !== jobId));
+                this.toast.success('Bỏ lưu thành công', 'Đã bỏ lưu công việc khỏi danh sách.');
             },
-            error: (err) => console.error('Error unsaving job:', err)
+            error: (err) => {
+                console.error('Error unsaving job:', err);
+                this.toast.error('Có lỗi xảy ra', 'Không thể bỏ lưu công việc lúc này.');
+            }
         });
     }
 

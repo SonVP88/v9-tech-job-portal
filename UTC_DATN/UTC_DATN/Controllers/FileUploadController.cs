@@ -17,15 +17,13 @@ public class FileUploadController : ControllerBase
 
     /// <summary>
     /// Upload avatar ảnh đại diện người dùng
-    /// Returns public URL of uploaded file
     /// </summary>
     [HttpPost("avatar")]
     public async Task<IActionResult> UploadAvatar(IFormFile file)
     {
         if (file == null || file.Length == 0)
             return BadRequest(new { message = "Vui lòng chọn file ảnh!" });
-
-        // Validate file type
+        
         var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".gif", ".webp" };
         var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
         if (!allowedExtensions.Contains(extension))

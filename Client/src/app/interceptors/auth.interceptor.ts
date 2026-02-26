@@ -17,7 +17,7 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
         });
         return next(clonedRequest);
     } else {
-        console.warn('⚠️ AuthInterceptor: No token found in localStorage');
+        console.warn(' AuthInterceptor: No token found in localStorage');
     }
 
     // Nếu không có token, gửi request bình thường

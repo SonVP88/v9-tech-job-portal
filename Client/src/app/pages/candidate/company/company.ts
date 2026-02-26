@@ -12,7 +12,7 @@ import { CompanyService, CompanyInfoDto } from '../../../services/company.servic
 })
 export class CompanyComponent implements OnInit {
     companyInfo: CompanyInfoDto = {
-        name: 'Job Portal',
+        name: 'V9 Tech',
         website: 'https://jobportal.com',
         industry: 'Công nghệ thông tin',
         address: 'Hà Nội, Việt Nam',

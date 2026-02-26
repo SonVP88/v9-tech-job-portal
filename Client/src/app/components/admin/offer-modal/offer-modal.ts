@@ -2,6 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, Input, Output, EventEmitter } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { OfferService } from '../../../services/offer.service';
+import { ToastService } from '../../../services/toast.service';
 
 @Component({
     selector: 'app-offer-modal',
@@ -28,7 +29,7 @@ export class OfferModalComponent {
     };
 
     // ==================== Constructor ====================
-    constructor(private offerService: OfferService) { }
+    constructor(private offerService: OfferService, private toast: ToastService) { }
 
     // ==================== Methods ====================
 
@@ -65,7 +66,7 @@ export class OfferModalComponent {
 
     sendOffer(): void {
         if (!this.isFormValid()) {
-            alert('⚠️ Vui lòng điền đầy đủ thông tin!');
+            this.toast.warning('Thiếu thông tin', 'Vui lòng điền đầy đủ thông tin bắt buộc!');
             return;
         }
 
@@ -83,17 +84,17 @@ export class OfferModalComponent {
             additionalCcEmails: this.offerData.additionalCcEmails
         };
 
-        console.log('📤 Sending Offer Letter via API...', payload);
+        console.log(' Sending Offer Letter via API...', payload);
 
         // Gọi API Backend để gửi email thật
         this.isSending = true;
         this.offerService.sendOfferLetter(payload).subscribe({
             next: (response) => {
                 this.isSending = false;
-                console.log('✅ Offer sent successfully:', response);
+                console.log(' Offer sent successfully:', response);
 
                 // Hiển thị thông báo thành công
-                alert(`✅ Đã gửi thành công email Offer tới ${payload.candidateName}!\n\nEmail: ${payload.candidateEmail}\nLương: ${payload.salary.toLocaleString()} VNĐ`);
+                this.toast.success('Gửi Offer thành công', `Đã gửi email tới ${payload.candidateName}`);
 
                 // Emit event để thông báo cho component cha
                 this.offerSent.emit(payload);
@@ -103,11 +104,11 @@ export class OfferModalComponent {
             },
             error: (error) => {
                 this.isSending = false;
-                console.error('❌ Error sending offer:', error);
+                console.error(' Error sending offer:', error);
 
                 // Hiển thị thông báo lỗi
                 const errorMsg = error.error?.message || 'Có lỗi xảy ra khi gửi email Offer';
-                alert(`❌ Lỗi: ${errorMsg}\n\nVui lòng thử lại hoặc liên hệ IT support.`);
+                this.toast.error('Gửi Offer thất bại', errorMsg);
             }
         });
     }

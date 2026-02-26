@@ -5,6 +5,7 @@ import { FormsModule } from '@angular/forms';
 import { InterviewService, MyInterviewDto } from '../../services/interview.service';
 import { EvaluationService, EvaluationSubmitDto, EvaluationDetail } from '../../services/evaluation.service';
 import { AuthService } from '../../services/auth.service';
+import { ToastService } from '../../services/toast.service';
 
 /**
  * Interface định nghĩa UI State cho từng interview
@@ -25,7 +26,7 @@ export interface InterviewState {
   imports: [CommonModule, RouterModule, FormsModule],
   templateUrl: './my-interviews.html',
   styleUrl: './my-interviews.scss',
-  // changeDetection: ChangeDetectionStrategy.OnPush // ⚠️ Tạm thời tắt OnPush để fix UI issues
+  // changeDetection: ChangeDetectionStrategy.OnPush //  Tạm thời tắt OnPush để fix UI issues
 })
 export class MyInterviews implements OnInit {
   interviews: MyInterviewDto[] = [];
@@ -35,6 +36,8 @@ export class MyInterviews implements OnInit {
   filterType: 'upcoming' | 'history' = 'upcoming';
   isLoading = true;
   errorMessage = '';
+
+  private toast = inject(ToastService);
 
   // 📄 Pagination Configuration
   currentPage = 1;
@@ -101,8 +104,8 @@ export class MyInterviews implements OnInit {
           this.allInterviews = response.data;
           this.isLoading = false; // ⚡ Set before applyFilter
 
-          // 🔍 DEBUG: Log status of loaded interviews
-          console.log('✅ Loaded interviews (Raw):', this.allInterviews.map(i => ({ id: i.interviewId, status: i.status })));
+          //  DEBUG: Log status of loaded interviews
+          console.log(' Loaded interviews (Raw):', this.allInterviews.map(i => ({ id: i.interviewId, status: i.status })));
 
           this.applyFilter();
         } else {
@@ -113,7 +116,7 @@ export class MyInterviews implements OnInit {
         this.cdr.detectChanges(); // ⚡ Force update
       },
       error: (error) => {
-        console.error('❌ Error loading interviews:', error);
+        console.error(' Error loading interviews:', error);
         this.errorMessage = 'Có lỗi xảy ra khi tải lịch phỏng vấn';
         this.isLoading = false;
         this.cdr.markForCheck();
@@ -244,14 +247,14 @@ export class MyInterviews implements OnInit {
       return compareDate > today;
     };
 
-    // Case 1: ✅ COMPLETED - Đã có feedback
+    // Case 1:  COMPLETED - Đã có feedback
     if (hasFeedback) {
       const state: InterviewState = {
         badgeClass: 'px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700 border border-green-200',
         badgeLabel: 'Hoàn thành',
         buttonText: 'Xem lại',
         buttonClass: 'px-4 py-2 bg-white text-gray-700 border border-gray-300 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors shadow-sm',
-        isButtonDisabled: false, // ✅ Enable button for viewing
+        isButtonDisabled: false, //  Enable button for viewing
         isOverdue: false,
         statusType: 'completed'
       };
@@ -259,7 +262,7 @@ export class MyInterviews implements OnInit {
       return state;
     }
 
-    // Case 2: ⚠️ OVERDUE - Quá hạn (Ngày phỏng vấn < Ngày hôm nay)
+    // Case 2:  OVERDUE - Quá hạn (Ngày phỏng vấn < Ngày hôm nay)
     // Lưu ý: Nếu cùng ngày hôm nay nhưng giờ đã qua → vẫn là "Hôm nay", CHƯA phải quá hạn
     if (isBeforeToday(scheduledTime)) {
       const state: InterviewState = {
@@ -473,7 +476,7 @@ export class MyInterviews implements OnInit {
   viewEvaluation(interview: MyInterviewDto): void {
     if (!interview.interviewId) return;
 
-    // ⚠️ Không set this.isLoading = true vì nó sẽ che toàn bộ trang
+    //  Không set this.isLoading = true vì nó sẽ che toàn bộ trang
     this.evaluationService.getEvaluation(interview.interviewId).subscribe({
       next: (response) => {
         if (response.success && response.data) {
@@ -490,11 +493,11 @@ export class MyInterviews implements OnInit {
           // Parse JSON details
           let details: any[] = [];
           try {
-            console.log('📥 Raw Details JSON:', data.details); // 🔍 DEBUG LOG
+            console.log('📥 Raw Details JSON:', data.details); //  DEBUG LOG
             details = data.details ? JSON.parse(data.details) : [];
-            console.log('✅ Parsed Details Array:', details); // 🔍 DEBUG LOG
+            console.log(' Parsed Details Array:', details); //  DEBUG LOG
           } catch (e) {
-            console.error('❌ Error parsing evaluation details:', e);
+            console.error(' Error parsing evaluation details:', e);
           }
 
           // Populate form (Handle both Title Case and Camel Case just in case)
@@ -519,17 +522,17 @@ export class MyInterviews implements OnInit {
             isBelated: data.isBelated || false
           };
 
-          console.log('📝 Populated Form:', this.evaluationForm); // 🔍 DEBUG LOG
+          console.log('📝 Populated Form:', this.evaluationForm); //  DEBUG LOG
 
           this.cdr.markForCheck();
         } else {
           // Show error if not found
-          alert('Không tìm thấy chi tiết đánh giá');
+          this.toast.error('Lỗi', 'Không tìm thấy chi tiết đánh giá');
         }
       },
       error: (err) => {
-        console.error('❌ Error fetching evaluation:', err);
-        alert('Có lỗi xảy ra khi tải chi tiết đánh giá');
+        console.error(' Error fetching evaluation:', err);
+        this.toast.error('Lỗi', 'Có lỗi xảy ra khi tải chi tiết đánh giá');
       }
     });
   }
@@ -617,9 +620,11 @@ export class MyInterviews implements OnInit {
       this.loadMyInterviews();
 
       // TODO: Show success notification
+      this.toast.success('Đã gửi đánh giá', 'Đánh giá phỏng vấn đã được lưu thành công!');
     } catch (error) {
-      console.error('❌ Error submitting evaluation:', error);
+      console.error(' Error submitting evaluation:', error);
       console.dir(error);
+      this.toast.error('Lỗi lưu đánh giá', 'Có lỗi xảy ra khi lưu đánh giá. Vui lòng thử lại!');
     } finally {
       this.isSubmitting = false;
       this.cdr.detectChanges();

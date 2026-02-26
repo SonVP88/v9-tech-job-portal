@@ -56,7 +56,15 @@
           <div class="relative">
             <input formControlName="fullName"
               class="form-input block w-full rounded-lg border-gray-300 dark:border-gray-600 bg-[#f8f9fc] dark:bg-[#252b3b] text-[#0d121b] dark:text-white placeholder-slate-400 focus:border-primary focus:ring-primary sm:text-sm h-11 px-4 transition-colors duration-200"
+              [class.border-red-500]="registerForm.get('fullName')?.invalid && registerForm.get('fullName')?.touched"
               id="fullName" placeholder="Nguyễn Văn A" type="text" />
+          </div>
+          <div *ngIf="registerForm.get('fullName')?.invalid && registerForm.get('fullName')?.touched"
+            class="text-sm text-red-500 mt-1">
+            <span *ngIf="registerForm.get('fullName')?.errors?.['required']">Họ và tên là bắt buộc</span>
+            <span *ngIf="registerForm.get('fullName')?.errors?.['minlength']">Họ và tên phải có ít nhất 2 ký tự</span>
+            <span *ngIf="registerForm.get('fullName')?.errors?.['maxlength']">Họ và tên không được vượt quá 100 ký
+              tự</span>
           </div>
         </div>
 
@@ -69,7 +77,14 @@
             </span>
             <input formControlName="email"
               class="form-input block w-full rounded-lg border-gray-300 dark:border-gray-600 bg-[#f8f9fc] dark:bg-[#252b3b] text-[#0d121b] dark:text-white placeholder-slate-400 focus:border-primary focus:ring-primary sm:text-sm h-11 pl-10 pr-4 transition-colors duration-200"
+              [class.border-red-500]="registerForm.get('email')?.invalid && registerForm.get('email')?.touched"
               id="email" placeholder="john@example.com" type="email" />
+          </div>
+          <div *ngIf="registerForm.get('email')?.invalid && registerForm.get('email')?.touched"
+            class="text-sm text-red-500 mt-1">
+            <span *ngIf="registerForm.get('email')?.errors?.['required']">Email là bắt buộc</span>
+            <span *ngIf="registerForm.get('email')?.errors?.['email']">Email không đúng định dạng</span>
+            <span *ngIf="registerForm.get('email')?.errors?.['maxlength']">Email không được vượt quá 200 ký tự</span>
           </div>
         </div>
 
@@ -82,7 +97,14 @@
             </span>
             <input formControlName="phone"
               class="form-input block w-full rounded-lg border-gray-300 dark:border-gray-600 bg-[#f8f9fc] dark:bg-[#252b3b] text-[#0d121b] dark:text-white placeholder-slate-400 focus:border-primary focus:ring-primary sm:text-sm h-11 pl-10 pr-4 transition-colors duration-200"
+              [class.border-red-500]="registerForm.get('phone')?.invalid && registerForm.get('phone')?.touched"
               id="phone" placeholder="0912345678" type="tel" />
+          </div>
+          <div *ngIf="registerForm.get('phone')?.invalid && registerForm.get('phone')?.touched"
+            class="text-sm text-red-500 mt-1">
+            <span *ngIf="registerForm.get('phone')?.errors?.['required']">Số điện thoại là bắt buộc</span>
+            <span *ngIf="registerForm.get('phone')?.errors?.['pattern']">Số điện thoại không hợp lệ (Ví dụ:
+              0912345678)</span>
           </div>
         </div>
 
@@ -96,7 +118,14 @@
               </span>
               <input formControlName="password"
                 class="form-input block w-full rounded-lg border-gray-300 dark:border-gray-600 bg-[#f8f9fc] dark:bg-[#252b3b] text-[#0d121b] dark:text-white placeholder-slate-400 focus:border-primary focus:ring-primary sm:text-sm h-11 pl-10 pr-4 transition-colors duration-200"
+                [class.border-red-500]="registerForm.get('password')?.invalid && registerForm.get('password')?.touched"
                 id="password" placeholder="••••••••" type="password" />
+            </div>
+            <div *ngIf="registerForm.get('password')?.invalid && registerForm.get('password')?.touched"
+              class="text-sm text-red-500 mt-1">
+              <span *ngIf="registerForm.get('password')?.errors?.['required']">Mật khẩu là bắt buộc</span>
+              <span *ngIf="registerForm.get('password')?.errors?.['pattern']">Mật khẩu từ 8-50 ký tự, có ít nhất 1 chữ
+                hoa, 1 chữ thường, 1 số và 1 ký tự đặc biệt</span>
             </div>
           </div>
           <div>
@@ -108,7 +137,13 @@
               </span>
               <input formControlName="confirmPassword"
                 class="form-input block w-full rounded-lg border-gray-300 dark:border-gray-600 bg-[#f8f9fc] dark:bg-[#252b3b] text-[#0d121b] dark:text-white placeholder-slate-400 focus:border-primary focus:ring-primary sm:text-sm h-11 pl-10 pr-4 transition-colors duration-200"
+                [class.border-red-500]="registerForm.get('confirmPassword')?.invalid && registerForm.get('confirmPassword')?.touched"
                 id="confirmPassword" placeholder="••••••••" type="password" />
+            </div>
+            <div *ngIf="registerForm.get('confirmPassword')?.invalid && registerForm.get('confirmPassword')?.touched"
+              class="text-sm text-red-500 mt-1">
+              <span *ngIf="registerForm.get('confirmPassword')?.errors?.['required']">Vui lòng xác nhận mật khẩu</span>
+              <span *ngIf="registerForm.get('confirmPassword')?.errors?.['passwordMismatch']">Mật khẩu không khớp</span>
             </div>
           </div>
         </div>
@@ -124,17 +159,25 @@
               Tôi đồng ý với <a class="font-medium text-primary hover:text-blue-700 hover:underline" href="#">Điều khoản
                 & Điều kiện</a>
             </label>
+            <div *ngIf="registerForm.get('terms')?.invalid && registerForm.get('terms')?.touched"
+              class="text-sm text-red-500 mt-1">
+              Vui lòng đồng ý với điều khoản
+            </div>
           </div>
         </div>
 
         <div class="pt-2">
-          <button [disabled]="registerForm.invalid"
+          <button [disabled]="registerForm.invalid || isSubmitting"
             class="group relative flex w-full justify-center rounded-lg bg-primary px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
             type="submit">
             <span class="absolute inset-y-0 left-0 flex items-center pl-3">
-              <span class="material-symbols-outlined text-[20px] group-hover:text-white/80">person_add</span>
+              <span class="material-symbols-outlined text-[20px] group-hover:text-white/80"
+                *ngIf="!isSubmitting">person_add</span>
+              <span class="material-symbols-outlined animate-spin text-[20px] group-hover:text-white/80"
+                *ngIf="isSubmitting">progress_activity</span>
             </span>
-            Đăng Ký
+            <span *ngIf="!isSubmitting">Đăng Ký</span>
+            <span *ngIf="isSubmitting">Đang xử lý...</span>
           </button>
         </div>
       </form>

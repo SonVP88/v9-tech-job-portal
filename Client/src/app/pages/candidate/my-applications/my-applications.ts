@@ -23,6 +23,7 @@ export class MyApplications implements OnInit {
   isLoading = false;
   isEmpty = false;
   currentTab = 'ALL';
+  respondingId: string | null = null; // track nút đang loading
 
   // Auth properties for navbar
   isLoggedIn = false;
@@ -52,13 +53,13 @@ export class MyApplications implements OnInit {
             this.userRole = payload.role || payload['http://schemas.microsoft.com/ws/2008/06/identity/claims/role'] || '';
             this.userFullName = payload.name || payload['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name'] || 'User';
           } catch (e) {
-            console.error('❌ Error parsing token:', e);
+            console.error(' Error parsing token:', e);
           }
 
           // Load data
           this.loadMyApplications();
         } else {
-          console.log('⚠️ No token found');
+          console.log(' No token found');
         }
 
         // Force update UI
@@ -71,7 +72,7 @@ export class MyApplications implements OnInit {
    * Gọi API để lấy danh sách hồ sơ đã nộp
    */
   loadMyApplications(): void {
-    console.log('🔄 loadMyApplications() called');
+    console.log(' loadMyApplications() called');
     this.isLoading = true;
 
     this.applicationService.getMyApplications().subscribe({
@@ -90,12 +91,12 @@ export class MyApplications implements OnInit {
         this.isEmpty = this.myApplications.length === 0;
         this.isLoading = false;
 
-        console.log('✅ Loaded', this.myApplications.length, 'applications');
+        console.log(' Loaded', this.myApplications.length, 'applications');
         this.filterApps(); // Filter data after loading
         this.cdr.detectChanges(); // <-- FORCE UPDATE UI
       },
       error: (error) => {
-        console.error('❌ Error:', error);
+        console.error(' Error:', error);
         this.isLoading = false;
         this.isEmpty = true;
         this.cdr.detectChanges(); // <-- FORCE UPDATE UI
@@ -111,10 +112,15 @@ export class MyApplications implements OnInit {
       case 'HIRED':
         return 'px-3 py-1.5 rounded-full bg-indigo-100 border border-indigo-300 text-indigo-700 text-xs font-bold uppercase tracking-wide flex items-center gap-1 shadow-sm';
       case 'INTERVIEW':
+      case 'Pending_Offer':
+      case 'Waitlist':
         return 'px-3 py-1 rounded-full bg-green-50 border border-green-200 text-green-700 text-xs font-bold uppercase tracking-wide flex items-center gap-1';
+      case 'Offer_Sent':
+        return 'px-3 py-1 rounded-full bg-orange-50 border border-orange-200 text-orange-700 text-xs font-bold uppercase tracking-wide flex items-center gap-1';
       case 'REJECTED':
         return 'px-3 py-1 rounded-full bg-gray-100 border border-gray-200 text-gray-500 text-xs font-medium uppercase tracking-wide flex items-center gap-1';
       case 'NEW_APPLIED':
+      case 'ACTIVE':
         return 'px-3 py-1 rounded-full bg-blue-50 border border-blue-200 text-blue-700 text-xs font-bold uppercase tracking-wide flex items-center gap-1';
       default:
         return 'px-3 py-1 rounded-full bg-gray-50 border border-gray-200 text-gray-700 text-xs font-bold uppercase tracking-wide flex items-center gap-1';
@@ -129,10 +135,15 @@ export class MyApplications implements OnInit {
       case 'HIRED':
         return 'Đã Trúng Tuyển';
       case 'INTERVIEW':
+      case 'Pending_Offer':
+      case 'Waitlist':
         return 'Được mời phỏng vấn';
+      case 'Offer_Sent':
+        return 'Nhận được Offer';
       case 'REJECTED':
         return 'Không phù hợp';
       case 'NEW_APPLIED':
+      case 'ACTIVE':
         return 'Đã nộp hồ sơ';
       default:
         return 'Chưa rõ';
@@ -180,10 +191,12 @@ export class MyApplications implements OnInit {
     if (this.currentTab === 'ALL') {
       this.filteredApplications = [...this.myApplications];
     } else if (this.currentTab === 'PENDING') {
-      this.filteredApplications = this.myApplications.filter(app => app.status === 'NEW_APPLIED');
+      this.filteredApplications = this.myApplications.filter(app => app.status === 'NEW_APPLIED' || app.status === 'ACTIVE');
+    } else if (this.currentTab === 'INTERVIEW') {
+      this.filteredApplications = this.myApplications.filter(app => app.status === 'INTERVIEW' || app.status === 'Pending_Offer' || app.status === 'Waitlist');
     } else if (this.currentTab === 'FINISHED') {
       this.filteredApplications = this.myApplications.filter(app =>
-        app.status === 'INTERVIEW' || app.status === 'REJECTED' || app.status === 'HIRED'
+        app.status === 'REJECTED' || app.status === 'HIRED' || app.status === 'Offer_Sent'
       );
     }
 
@@ -202,10 +215,15 @@ export class MyApplications implements OnInit {
       case 'HIRED':
         return ' Chúc mừng bạn đã trúng tuyển! Nhà tuyển dụng sẽ liên hệ sớm.';
       case 'INTERVIEW':
+      case 'Pending_Offer':
+      case 'Waitlist':
         return 'Chúc mừng bạn! Hồ sơ đã được duyệt phỏng vấn.';
+      case 'Offer_Sent':
+        return 'Nhà tuyển dụng đã gửi thư mời nhận việc (Offer) qua Email. Vui lòng kiểm tra Email để phản hồi!';
       case 'REJECTED':
         return 'Rất tiếc, hồ sơ chưa phù hợp lần này. Hãy thử cơ hội khác nhé!';
       case 'NEW_APPLIED':
+      case 'ACTIVE':
         return 'Hồ sơ đang chờ nhà tuyển dụng xem xét.';
       default:
         return '';
@@ -216,8 +234,34 @@ export class MyApplications implements OnInit {
    * Chuyển hướng đến chi tiết công việc
    */
   goToJobDetail(jobId: string): void {
-    // Sửa route từ ['/jobs', jobId] thành ['/candidate/job-detail', jobId] theo app.routes.ts
     this.router.navigate(['/candidate/job-detail', jobId]);
+  }
+
+  /**
+   * Ứng viên phản hồi Offer: Đồng ý (HIRED) hoặc Từ chối (REJECTED)
+   */
+  respondToOffer(app: MyApplicationDto, response: 'HIRED' | 'REJECTED'): void {
+    const confirmMsg = response === 'HIRED'
+      ? `Bạn chắc chắn muốn ĐỒNG Ý nhận việc tại "${app.jobTitle}"?`
+      : `Bạn chắc chắn muốn TỪ CHỐI Offer tại "${app.jobTitle}"?`;
+    if (!confirm(confirmMsg)) return;
+
+    this.respondingId = app.applicationId; // bắt đầu loading
+    const accept = response === 'HIRED';
+    this.applicationService.respondToOffer(app.applicationId, accept).subscribe({
+      next: (res: any) => {
+        this.respondingId = null; // kết thúc loading
+        if (res && res.success !== false) {
+          app.status = response;
+          this.filterApps();
+          this.cdr.detectChanges();
+        }
+      },
+      error: (err) => {
+        this.respondingId = null; // kết thúc loading dù lỗi
+        console.error(' respondToOffer error:', err);
+      }
+    });
   }
 
   /**

@@ -6,6 +6,7 @@ import { take } from 'rxjs';
 import { CandidateService, CandidateProfileDto, NotificationSettingDto } from '../../../services/candidate.service';
 import { CandidateHeaderComponent } from '../../shared/candidate-header/candidate-header';
 import { ActivatedRoute } from '@angular/router';
+import { ToastService } from '../../../services/toast.service';
 
 @Component({
   selector: 'app-candidate-profile',
@@ -66,7 +67,8 @@ export class CandidateProfile implements OnInit {
     private candidateService: CandidateService,
     private cdr: ChangeDetectorRef,
     private route: ActivatedRoute,
-    private ngZone: NgZone
+    private ngZone: NgZone,
+    private toast: ToastService
   ) {
     this.initForm();
   }
@@ -212,13 +214,13 @@ export class CandidateProfile implements OnInit {
         this.isProfileSaving = false;
         // Show success feedback
         console.log('Profile updated successfully');
-        alert('Cập nhật hồ sơ thành công!');
+        this.toast.success('Thành công', 'Cập nhật hồ sơ thành công!');
         this.cdr.detectChanges();
       },
       error: (err) => {
         this.isProfileSaving = false;
         console.error('Failed to update profile', err);
-        alert('Cập nhật thất bại. Vui lòng thử lại.');
+        this.toast.error('Thất bại', 'Cập nhật thất bại. Vui lòng thử lại.');
         this.cdr.detectChanges();
       }
     });
@@ -265,7 +267,7 @@ export class CandidateProfile implements OnInit {
         error: (err) => {
           console.error('Failed to delete CV', err);
           const errorMessage = err.error?.error || err.error?.message || err.statusText;
-          alert('Không thể xóa CV. Chi tiết lỗi: ' + errorMessage);
+          this.toast.error('Không thể xóa', 'Chi tiết lỗi: ' + errorMessage);
         }
       });
     }
@@ -313,7 +315,7 @@ export class CandidateProfile implements OnInit {
         });
       },
       error: (err) => {
-        console.error('❌ Failed to load notification settings', err);
+        console.error(' Failed to load notification settings', err);
         this.ngZone.run(() => {
           this.isSettingsLoading = false;
           this.settingsLoadError = 'Không thể tải cài đặt thông báo. Vui lòng thử lại.';
@@ -384,13 +386,13 @@ export class CandidateProfile implements OnInit {
     // Validate file type
     const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
     if (!allowedTypes.includes(file.type)) {
-      alert('Chỉ chấp nhận file ảnh (JPG, PNG, GIF, WEBP)');
+      this.toast.warning('Sai định dạng file', 'Chỉ chấp nhận file ảnh (JPG, PNG, GIF, WEBP)');
       return;
     }
 
     // Validate size (5MB)
     if (file.size > 5 * 1024 * 1024) {
-      alert('Kích thước ảnh không được quá 5MB');
+      this.toast.warning('File quá lớn', 'Kích thước ảnh không được quá 5MB');
       return;
     }
 
@@ -402,12 +404,12 @@ export class CandidateProfile implements OnInit {
           this.profile.avatar = res.url;
           console.log('Avatar updated:', res.url);
         }
-        alert('Cập nhật ảnh đại diện thành công!');
+        this.toast.success('Thành công', 'Cập nhật ảnh đại diện thành công!');
       },
       error: (err) => {
         console.error('Avatar upload failed', err);
         this.uploadingAvatar = false;
-        alert('Lỗi khi tải ảnh lên. Vui lòng thử lại.');
+        this.toast.error('Lỗi tải lên', 'Vui lòng thử lại.');
       }
     });
 
@@ -472,7 +474,7 @@ export class CandidateProfile implements OnInit {
         }
       });
     } else {
-      alert('Không tìm thấy đường dẫn tải xuống cho CV này.');
+      this.toast.error('Lỗi tải xuống', 'Không tìm thấy đường dẫn tải xuống cho CV này.');
     }
   }
 
@@ -534,7 +536,7 @@ export class CandidateProfile implements OnInit {
       .subscribe({
         next: (res) => {
           this.isPasswordChanging = false;
-          alert('Đổi mật khẩu thành công! Vui lòng đăng nhập lại.');
+          this.toast.success('Thành công', 'Đổi mật khẩu thành công! Vui lòng đăng nhập lại.');
           // Redirect to login or logout
           localStorage.removeItem('authToken');
           window.location.href = '/login';
@@ -543,7 +545,7 @@ export class CandidateProfile implements OnInit {
           this.isPasswordChanging = false;
           console.error(err);
           const errorMsg = typeof err.error === 'string' ? err.error : (err.error?.message || err.statusText);
-          alert('Đổi mật khẩu thất bại: ' + errorMsg);
+          this.toast.error('Đổi mật khẩu thất bại', errorMsg);
           this.cdr.detectChanges();
         }
       });
@@ -573,7 +575,7 @@ export class CandidateProfile implements OnInit {
     this.activeCvMenuId = null;
     this.loadProfile();
     // setTimeout to allow loadProfile to start
-    setTimeout(() => alert(message), 100);
+    setTimeout(() => this.toast.success('Tuyệt vời!', message), 100);
   }
 
   setPrimaryCV(cv: any): void {
@@ -593,9 +595,9 @@ export class CandidateProfile implements OnInit {
         error: (err) => {
           console.error('Rename failed', err);
           if (err.status === 404) {
-            alert('Lỗi: Backend chưa nhận diện được tính năng mới.\nVui lòng tắt và KHỞI ĐỘNG LẠI server .NET (Backend) để cập nhật code mới.');
+            this.toast.error('Lỗi tính năng', 'Backend chưa nhận diện được tính năng mới. Vui lòng khởi động lại server .NET.');
           } else {
-            alert('Đổi tên thất bại: ' + (err.error?.message || 'Lỗi không xác định'));
+            this.toast.error('Đổi tên thất bại', err.error?.message || 'Lỗi không xác định');
           }
         }
       });
