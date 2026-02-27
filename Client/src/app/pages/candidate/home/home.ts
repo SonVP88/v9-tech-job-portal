@@ -7,6 +7,7 @@ import { JobDto, JobService } from '../../../services/job.service';
 import { AuthService } from '../../../services/auth.service';
 import { MasterDataService, Province } from '../../../services/master-data.service';
 import { CandidateHeaderComponent } from '../../../components/shared/candidate-header/candidate-header';
+import { CandidateFooter } from '../../../components/shared/candidate-footer/candidate-footer';
 import { SavedJobService } from '../../../services/saved-job.service';
 import { NgZone } from '@angular/core';
 
@@ -16,7 +17,7 @@ export interface JobHomeDto extends JobDto { }
 @Component({
   selector: 'app-home',
   standalone: true,
-  imports: [CommonModule, RouterModule, FormsModule, CandidateHeaderComponent],
+  imports: [CommonModule, RouterModule, FormsModule, CandidateHeaderComponent, CandidateFooter],
   templateUrl: './home.html',
   styleUrl: './home.scss',
 })

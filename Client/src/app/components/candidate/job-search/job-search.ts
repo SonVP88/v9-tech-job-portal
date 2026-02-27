@@ -7,6 +7,7 @@ import { MasterDataService, Province } from '../../../services/master-data.servi
 import { AuthService } from '../../../services/auth.service';
 import { Router } from '@angular/router';
 import { CandidateHeaderComponent } from '../../shared/candidate-header/candidate-header';
+import { CandidateFooter } from '../../shared/candidate-footer/candidate-footer';
 import { SavedJobService } from '../../../services/saved-job.service';
 import { ToastService } from '../../../services/toast.service';
 import { BehaviorSubject } from 'rxjs';
@@ -14,7 +15,7 @@ import { BehaviorSubject } from 'rxjs';
 @Component({
   selector: 'app-job-search',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule, CandidateHeaderComponent],
+  imports: [CommonModule, FormsModule, RouterModule, CandidateHeaderComponent, CandidateFooter],
   templateUrl: './job-search.html',
   styleUrls: ['./job-search.scss']
 })
@@ -122,7 +123,7 @@ export class JobSearchComponent implements OnInit {
           current.delete(jobId);
           this.toast.success('Bỏ lưu thành công', 'Đã bỏ lưu công việc này.');
         }
-        this.savedJobIdsSubject.next(new Set(current)); 
+        this.savedJobIdsSubject.next(new Set(current));
       },
       error: (err) => {
         console.error('Toggle save error:', err);
@@ -226,7 +227,7 @@ export class JobSearchComponent implements OnInit {
         this.filter.jobType = '';
       }
     }
-    this.onSearch(); 
+    this.onSearch();
   }
 
   isJobTypeSelected(type: string): boolean {

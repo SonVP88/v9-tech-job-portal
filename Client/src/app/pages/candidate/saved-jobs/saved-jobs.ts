@@ -3,13 +3,14 @@ import { CommonModule } from '@angular/common';
 import { Router, RouterModule } from '@angular/router';
 import { BehaviorSubject } from 'rxjs';
 import { CandidateHeaderComponent } from '../../../components/shared/candidate-header/candidate-header';
+import { CandidateFooter } from '../../../components/shared/candidate-footer/candidate-footer';
 import { SavedJobService, SavedJobDto } from '../../../services/saved-job.service';
 import { ToastService } from '../../../services/toast.service';
 
 @Component({
     selector: 'app-saved-jobs',
     standalone: true,
-    imports: [CommonModule, RouterModule, CandidateHeaderComponent],
+    imports: [CommonModule, RouterModule, CandidateHeaderComponent, CandidateFooter],
     templateUrl: './saved-jobs.html',
     styleUrl: './saved-jobs.scss'
 })

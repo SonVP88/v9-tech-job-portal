@@ -5,12 +5,13 @@ import { FormsModule } from '@angular/forms';
 import { take } from 'rxjs';
 import { CandidateService, CandidateProfileDto, NotificationSettingDto } from '../../../services/candidate.service';
 import { CandidateHeaderComponent } from '../../shared/candidate-header/candidate-header';
+import { CandidateFooter } from '../../shared/candidate-footer/candidate-footer';
 import { ActivatedRoute } from '@angular/router';
 import { ToastService } from '../../../services/toast.service';
 
 @Component({
   selector: 'app-candidate-profile',
-  imports: [CommonModule, ReactiveFormsModule, FormsModule, CandidateHeaderComponent],
+  imports: [CommonModule, ReactiveFormsModule, FormsModule, CandidateHeaderComponent, CandidateFooter],
   templateUrl: './candidate-profile.html',
   styleUrl: './candidate-profile.scss',
 })
@@ -19,8 +20,8 @@ export class CandidateProfile implements OnInit {
   profile: CandidateProfileDto | null = null;
   cvList: Array<{
     id: string;
-    name: string; 
-    displayName?: string; 
+    name: string;
+    displayName?: string;
     updated: string;
     size: string;
     url: string;

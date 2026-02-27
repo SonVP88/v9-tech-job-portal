@@ -4,11 +4,12 @@ import { ChangeDetectorRef, Component, OnInit, PLATFORM_ID, inject } from '@angu
 import { ApplicationService, MyApplicationDto } from '../../../services/application.service';
 import { Router, RouterModule } from '@angular/router';
 import { CandidateHeaderComponent } from '../../../components/shared/candidate-header/candidate-header';
+import { CandidateFooter } from '../../../components/shared/candidate-footer/candidate-footer';
 
 @Component({
   selector: 'app-my-applications',
   standalone: true,
-  imports: [CommonModule, RouterModule, CandidateHeaderComponent],
+  imports: [CommonModule, RouterModule, CandidateHeaderComponent, CandidateFooter],
   templateUrl: './my-applications.html',
   styleUrl: './my-applications.scss',
 })

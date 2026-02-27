@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
 import { BehaviorSubject } from 'rxjs';
 import { CandidateHeaderComponent } from '../../../components/shared/candidate-header/candidate-header';
+import { CandidateFooter } from '../../../components/shared/candidate-footer/candidate-footer';
 import { CandidateSettingsService, NotificationSettings } from '../../../services/candidate-settings.service';
 import { ToastService } from '../../../services/toast.service';
 
@@ -12,7 +13,7 @@ type Tab = 'security' | 'notifications';
 @Component({
     selector: 'app-candidate-settings',
     standalone: true,
-    imports: [CommonModule, FormsModule, RouterModule, CandidateHeaderComponent],
+    imports: [CommonModule, FormsModule, RouterModule, CandidateHeaderComponent, CandidateFooter],
     templateUrl: './candidate-settings.html',
     styleUrl: './candidate-settings.scss'
 })
