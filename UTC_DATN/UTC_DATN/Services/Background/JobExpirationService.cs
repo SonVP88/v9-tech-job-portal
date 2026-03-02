@@ -67,7 +67,7 @@ namespace UTC_DATN.Services.Background
                 // Assuming Deadline is just date or datetime.
                 
                 var expiredJobs = await context.Jobs
-                    .Where(j => j.Status == "OPEN" && !j.IsDeleted && j.Deadline.HasValue && j.Deadline < now)
+                    .Where(j => j.Status == "OPEN" && !j.IsDeleted && j.Deadline.HasValue && j.Deadline <= now)
                     .ToListAsync(stoppingToken);
 
                 if (expiredJobs.Any())

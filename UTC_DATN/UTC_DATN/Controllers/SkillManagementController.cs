@@ -118,10 +118,10 @@ namespace UTC_DATN.Controllers
         }
 
         /// <summary>
-        /// Xóa Skill
+        /// Khóa / Mở khóa Skill
         /// </summary>
         [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteSkill(Guid id)
+        public async Task<IActionResult> ToggleDeleteSkill(Guid id)
         {
             var skill = await _context.Skills
                 .Include(s => s.JobSkillMaps)
@@ -133,16 +133,12 @@ namespace UTC_DATN.Controllers
                 return NotFound(new { message = "Không tìm thấy kỹ năng" });
             }
 
-            // Kiểm tra xem có Job hoặc Candidate nào đang sử dụng không
-            if (skill.JobSkillMaps.Any() || skill.CandidateSkills.Any())
-            {
-                return BadRequest(new { message = "Không thể xóa kỹ năng đang được sử dụng bởi Job hoặc Candidate" });
-            }
-
-            _context.Skills.Remove(skill);
+            // Chuyển đổi trạng thái Ẩn/Hiện bằng cột IsDeleted
+            skill.IsDeleted = !skill.IsDeleted;
             await _context.SaveChangesAsync();
 
-            return Ok(new { message = "Đã xóa kỹ năng thành công" });
+            var statusStr = skill.IsDeleted ? "Đã khóa" : "Đã mở khóa";
+            return Ok(new { message = $"{statusStr} kỹ năng thành công" });
         }
     }
 

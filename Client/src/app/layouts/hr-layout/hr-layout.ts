@@ -1,9 +1,10 @@
 import { CommonModule } from '@angular/common';
-import { Component, Inject, PLATFORM_ID, OnInit, OnDestroy } from '@angular/core';
+import { Component, Inject, PLATFORM_ID, OnInit, OnDestroy, inject } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { RouterOutlet, RouterLink, RouterLinkActive, Router } from '@angular/router';
 import { NotificationService, NotificationDto } from '../../services/notification.service';
 import { ToastComponent } from '../../components/toast/toast.component';
+import { AuthService } from '../../services/auth.service';
 
 @Component({
   selector: 'app-hr-layout',
@@ -13,6 +14,7 @@ import { ToastComponent } from '../../components/toast/toast.component';
   styleUrl: './hr-layout.scss',
 })
 export class HrLayout implements OnInit, OnDestroy {
+  private authService = inject(AuthService);
   unreadCount = 0;
   notifications: NotificationDto[] = [];
   isNotificationDropdownOpen = false;
@@ -121,7 +123,6 @@ export class HrLayout implements OnInit, OnDestroy {
   }
 
   logout(): void {
-    localStorage.removeItem('authToken');
-    this.router.navigate(['/login']);
+    this.authService.logout();
   }
 }

@@ -15,6 +15,8 @@ public partial class Skill
 
     public DateTime CreatedAt { get; set; }
 
+    public bool IsDeleted { get; set; }
+
     public virtual ICollection<CandidateSkill> CandidateSkills { get; set; } = new List<CandidateSkill>();
 
     public virtual ICollection<JobSkillMap> JobSkillMaps { get; set; } = new List<JobSkillMap>();

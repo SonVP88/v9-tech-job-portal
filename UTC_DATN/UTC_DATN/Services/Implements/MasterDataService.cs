@@ -39,6 +39,7 @@ namespace UTC_DATN.Services.Implements
         {
             return await _context.Skills
                 .AsNoTracking()
+                .Where(s => !s.IsDeleted)
                 .ToListAsync();
         }
 

@@ -1,0 +1,22 @@
+/* Ẩn scrollbar mặc định nhưng vẫn cho scroll */
+.overflow-y-auto {
+    scrollbar-width: thin;
+    scrollbar-color: #cbd5e1 transparent;
+}
+
+.overflow-y-auto::-webkit-scrollbar {
+    width: 4px;
+}
+
+.overflow-y-auto::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.overflow-y-auto::-webkit-scrollbar-thumb {
+    background-color: #cbd5e1;
+    border-radius: 10px;
+}
+
+/* Tailwind đã có animate-bounce, không cần keyframes tĩnh, 
+   thêm delay qua inline style (animation-delay) trong HTML 
+   hoặc có thể setup nếu cần */

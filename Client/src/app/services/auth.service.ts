@@ -5,12 +5,14 @@ import { Observable } from 'rxjs';
 import { jwtDecode } from 'jwt-decode';
 import { isPlatformBrowser } from '@angular/common';
 import { environment } from '../../environments/environment';
+import { ChatbotService } from './chatbot.service';
 
 @Injectable({
     providedIn: 'root'
 })
 export class AuthService {
     private platformId = inject(PLATFORM_ID);
+    private chatbotService = inject(ChatbotService);
 
     constructor(private router: Router, private http: HttpClient) { }
 
@@ -59,6 +61,9 @@ export class AuthService {
                 console.error(' Cảnh báo: Token vẫn còn trong localStorage!');
             }
         }
+
+        // Xóa hoàn toàn lịch sử trò chuyện Chatbot khỏi RAM
+        this.chatbotService.clearChat();
 
         this.router.navigate(['/login']);
     }

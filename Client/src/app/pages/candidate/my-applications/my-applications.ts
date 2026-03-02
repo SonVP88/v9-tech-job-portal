@@ -4,6 +4,7 @@ import { ChangeDetectorRef, Component, OnInit, PLATFORM_ID, inject } from '@angu
 import { ApplicationService, MyApplicationDto } from '../../../services/application.service';
 import { Router, RouterModule } from '@angular/router';
 import { CandidateHeaderComponent } from '../../../components/shared/candidate-header/candidate-header';
+import { AuthService } from '../../../services/auth.service';
 import { CandidateFooter } from '../../../components/shared/candidate-footer/candidate-footer';
 
 @Component({
@@ -15,6 +16,7 @@ import { CandidateFooter } from '../../../components/shared/candidate-footer/can
 })
 export class MyApplications implements OnInit {
   // Services
+  private authService = inject(AuthService);
   private cdr = inject(ChangeDetectorRef);
   private platformId = inject(PLATFORM_ID);
 
@@ -288,7 +290,6 @@ export class MyApplications implements OnInit {
    * Đăng xuất
    */
   logout(): void {
-    localStorage.removeItem('authToken');
-    this.router.navigate(['/login']);
+    this.authService.logout();
   }
 }

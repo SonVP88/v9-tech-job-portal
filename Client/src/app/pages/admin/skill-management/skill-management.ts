@@ -10,6 +10,7 @@ interface Skill {
     name: string;
     normalizedName: string;
     createdAt: Date;
+    isDeleted: boolean;
 }
 
 @Component({
@@ -70,7 +71,10 @@ export class SkillManagementComponent implements OnInit {
             this.http.get<any>(this.apiUrl, { headers, params }).subscribe({
                 next: (response) => {
                     this.ngZone.run(() => {
-                        this.skills = response.data ?? [];
+                        this.skills = (response.data ?? []).map((s: any) => ({
+                            ...s,
+                            createdAt: s.createdAt ? (s.createdAt.endsWith('Z') ? s.createdAt : s.createdAt + 'Z') : s.createdAt
+                        }));
                         this.totalCount = response.total ?? 0;
                         this.totalPages = response.totalPages ?? 1;
                         this.cdr.markForCheck();
@@ -153,21 +157,22 @@ export class SkillManagementComponent implements OnInit {
         });
     }
 
-    deleteSkill(skill: Skill): void {
-        if (!confirm(`Bạn có chắc muốn xóa "${skill.name}"?`)) return;
+    toggleSkillStatus(skill: Skill): void {
+        const actionStr = skill.isDeleted ? 'Mở khóa' : 'Khóa';
+        if (!confirm(`Bạn có chắc muốn ${actionStr} kỹ năng "${skill.name}"?`)) return;
 
         const headers = this.getAuthHeaders();
         this.ngZone.runOutsideAngular(() => {
-            this.http.delete(`${this.apiUrl}/${skill.skillId}`, { headers }).subscribe({
-                next: () => {
+            this.http.delete<any>(`${this.apiUrl}/${skill.skillId}`, { headers }).subscribe({
+                next: (res) => {
                     this.ngZone.run(() => {
                         this.loadSkills();
-                        this.toast.success('Thành công', 'Xóa kỹ năng thành công!');
+                        this.toast.success('Thành công', res.message || `${actionStr} kỹ năng thành công!`);
                     });
                 },
                 error: (err) => {
                     this.ngZone.run(() => {
-                        this.toast.error('Lỗi khi xóa', err.error?.message || 'Có lỗi khi xóa!');
+                        this.toast.error('Lỗi', err.error?.message || `Có lỗi khi ${actionStr.toLowerCase()}!`);
                     });
                 }
             });

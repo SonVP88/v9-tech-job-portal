@@ -1,4 +1,4 @@
-import { ChangeDetectorRef, Component, OnInit, NgZone, HostListener } from '@angular/core';
+import { ChangeDetectorRef, Component, OnInit, NgZone, HostListener, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { FormsModule } from '@angular/forms';
@@ -8,6 +8,7 @@ import { CandidateHeaderComponent } from '../../shared/candidate-header/candidat
 import { CandidateFooter } from '../../shared/candidate-footer/candidate-footer';
 import { ActivatedRoute } from '@angular/router';
 import { ToastService } from '../../../services/toast.service';
+import { AuthService } from '../../../services/auth.service';
 
 @Component({
   selector: 'app-candidate-profile',
@@ -16,6 +17,7 @@ import { ToastService } from '../../../services/toast.service';
   styleUrl: './candidate-profile.scss',
 })
 export class CandidateProfile implements OnInit {
+  private authService = inject(AuthService);
   profileForm!: FormGroup;
   profile: CandidateProfileDto | null = null;
   cvList: Array<{
@@ -538,9 +540,8 @@ export class CandidateProfile implements OnInit {
         next: (res) => {
           this.isPasswordChanging = false;
           this.toast.success('Thành công', 'Đổi mật khẩu thành công! Vui lòng đăng nhập lại.');
-          // Redirect to login or logout
-          localStorage.removeItem('authToken');
-          window.location.href = '/login';
+          // Sử dụng hàm Logout toàn cục
+          this.authService.logout();
         },
         error: (err) => {
           this.isPasswordChanging = false;

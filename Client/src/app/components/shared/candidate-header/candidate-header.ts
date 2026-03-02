@@ -82,8 +82,7 @@ export class CandidateHeaderComponent implements OnInit {
     }
 
     logout(): void {
-        localStorage.removeItem('authToken');
-        this.router.navigate(['/login']);
+        this.authService.logout();
     }
 
     loadNotifications(): void {
