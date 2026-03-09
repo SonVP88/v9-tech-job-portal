@@ -142,7 +142,10 @@ export class JobListComponent implements OnInit {
                     this.toast.success('Đã mở lại tin', 'Tin tuyển dụng đã xuất hiện lại trên trang tìm kiếm.');
                     this.loadJobs();
                 },
-                error: () => this.toast.error('Thất bại', 'Đã xảy ra lỗi khi mở lại tin.')
+                error: (err: any) => {
+                    const errorMsg = err.error?.message || 'Đã xảy ra lỗi khi mở lại tin.';
+                    this.toast.error('Thất bại', errorMsg);
+                }
             });
         }
     }

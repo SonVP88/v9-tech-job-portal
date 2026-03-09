@@ -331,7 +331,8 @@ export class PostJob implements OnInit {
         },
         error: (error) => {
           console.error('Error updating job:', error);
-          this.toast.error('Thất bại', 'Có lỗi xảy ra khi cập nhật.');
+          const errorMessage = error.error?.message || 'Có lỗi xảy ra khi cập nhật.';
+          this.toast.error('Thất bại', errorMessage);
           this.isSubmitting = false;
         },
         complete: () => {
