@@ -10,375 +10,491 @@
         </p>
     </div>
 
-    <!-- Search/Filter/Export Toolbar -->
-    <div class="mb-6 bg-white rounded-xl shadow-sm border border-gray-100 p-4">
-        <div class="flex flex-wrap items-center gap-4">
-            <!-- Search Box -->
-            <div class="flex-1 min-w-[300px]">
-                <div class="relative">
-                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                        </svg>
+    <!-- Tabs (Only for specific Job) -->
+    <div class="mb-6 border-b border-gray-200" *ngIf="jobId">
+        <nav class="-mb-px flex space-x-8">
+            <button (click)="switchTab('APPLICATIONS')" [class.border-blue-500]="activeTab === 'APPLICATIONS'"
+                [class.text-blue-600]="activeTab === 'APPLICATIONS'"
+                [class.border-transparent]="activeTab !== 'APPLICATIONS'"
+                [class.text-gray-500]="activeTab !== 'APPLICATIONS'"
+                class="whitespace-nowrap pb-4 px-1 border-b-2 font-medium text-sm hover:text-gray-700 hover:border-gray-300 transition-colors">
+                Ứng viên đã nộp ({{applications.length}})
+            </button>
+            <button (click)="switchTab('RECOMMENDATIONS')" [class.border-purple-500]="activeTab === 'RECOMMENDATIONS'"
+                [class.text-purple-600]="activeTab === 'RECOMMENDATIONS'"
+                [class.border-transparent]="activeTab !== 'RECOMMENDATIONS'"
+                [class.text-gray-500]="activeTab !== 'RECOMMENDATIONS'"
+                class="whitespace-nowrap pb-4 px-1 border-b-2 font-medium text-sm hover:text-gray-700 hover:border-gray-300 transition-colors flex items-center gap-2 relative">
+                <span class="material-symbols-outlined text-base">auto_awesome</span>
+                AI Gợi ý Ứng viên (Sourcing)
+            </button>
+        </nav>
+    </div>
+
+    <ng-container *ngIf="activeTab === 'APPLICATIONS'">
+        <!-- Search/Filter/Export Toolbar -->
+        <div class="mb-6 bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+            <div class="flex flex-wrap items-center gap-4">
+                <!-- Search Box -->
+                <div class="flex-1 min-w-[300px]">
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                            </svg>
+                        </div>
+                        <input type="text" [(ngModel)]="searchQuery" (input)="onSearchChange()"
+                            placeholder="Tìm kiếm theo tên hoặc email..."
+                            class="block w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm">
                     </div>
-                    <input type="text" [(ngModel)]="searchQuery" (input)="onSearchChange()"
-                        placeholder="Tìm kiếm theo tên hoặc email..."
-                        class="block w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm">
-                </div>
-            </div>
-
-            <!-- Filter Button -->
-            <button (click)="toggleFilterPanel()"
-                class="inline-flex items-center gap-2 px-4 py-2.5 border border-gray-300 rounded-lg bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors">
-                <svg class="h-5 w-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
-                </svg>
-                Bộ lọc
-                <span *ngIf="getActiveFiltersCount() > 0"
-                    class="ml-1 px-2 py-0.5 bg-blue-100 text-blue-700 text-xs font-semibold rounded-full">
-                    {{ getActiveFiltersCount() }}
-                </span>
-            </button>
-
-            <!-- Refresh Button -->
-            <button (click)="refreshApplications()"
-                class="inline-flex items-center gap-2 px-4 py-2.5 bg-gray-600 text-white rounded-lg text-sm font-medium hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 transition-colors">
-                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                </svg>
-                Làm mới
-            </button>
-
-            <!-- Export Button -->
-            <button (click)="exportToExcel()" [disabled]="filteredApplications().length === 0"
-                class="inline-flex items-center gap-2 px-4 py-2.5 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
-                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-                Xuất file
-            </button>
-        </div>
-
-        <!-- Filter Panel (Collapsible) -->
-        <div *ngIf="showFilterPanel" class="mt-4 pt-4 border-t border-gray-200">
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <!-- Status Filter -->
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Trạng thái</label>
-                    <select [(ngModel)]="filterStatus" (change)="applyFilters()"
-                        class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm">
-                        <option value="">Tất cả</option>
-                        <option value="NEW">Mới nộp</option>
-                        <option value="SCREENING">Sàng lọc</option>
-                        <option value="INTERVIEW">Phỏng vấn</option>
-                        <option value="OFFER">Đề nghị</option>
-                        <option value="HIRED">Đã tuyển</option>
-                        <option value="REJECTED">Từ chối</option>
-                    </select>
                 </div>
 
-                <!-- AI Score Filter -->
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">AI Match Score</label>
-                    <select [(ngModel)]="filterScoreRange" (change)="applyFilters()"
-                        class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm">
-                        <option value="">Tất cả</option>
-                        <option value="90-100">Xuất sắc (90-100%)</option>
-                        <option value="75-89">Tốt (75-89%)</option>
-                        <option value="50-74">Trung bình (50-74%)</option>
-                        <option value="0-49">Thấp (<50%)</option>
-                    </select>
-                </div>
+                <!-- Filter Button -->
+                <button (click)="toggleFilterPanel()"
+                    class="inline-flex items-center gap-2 px-4 py-2.5 border border-gray-300 rounded-lg bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors">
+                    <svg class="h-5 w-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                    </svg>
+                    Bộ lọc
+                    <span *ngIf="getActiveFiltersCount() > 0"
+                        class="ml-1 px-2 py-0.5 bg-blue-100 text-blue-700 text-xs font-semibold rounded-full">
+                        {{ getActiveFiltersCount() }}
+                    </span>
+                </button>
 
-                <!-- Date Range Filter -->
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Ngày nộp</label>
-                    <select [(ngModel)]="filterDateRange" (change)="applyFilters()"
-                        class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm">
-                        <option value="">Tất cả</option>
-                        <option value="today">Hôm nay</option>
-                        <option value="week">7 ngày qua</option>
-                        <option value="month">30 ngày qua</option>
-                        <option value="custom">Tùy chỉnh</option>
-                    </select>
-                </div>
-            </div>
+                <!-- Refresh Button -->
+                <button (click)="refreshApplications()"
+                    class="inline-flex items-center gap-2 px-4 py-2.5 bg-gray-600 text-white rounded-lg text-sm font-medium hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 transition-colors">
+                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                    Làm mới
+                </button>
 
-            <!-- Clear Filters Button -->
-            <div class="mt-4 flex justify-end">
-                <button (click)="clearFilters()" class="text-sm text-blue-600 hover:text-blue-700 font-medium">
-                    Xóa tất cả bộ lọc
+                <!-- Export Button -->
+                <button (click)="exportToExcel()" [disabled]="filteredApplications().length === 0"
+                    class="inline-flex items-center gap-2 px-4 py-2.5 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    Xuất file
                 </button>
             </div>
-        </div>
-    </div>
 
-    <!-- Loading State -->
-    <div *ngIf="isLoading" class="space-y-4">
-        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 animate-pulse">
-            <div class="flex items-center gap-4">
-                <div class="h-12 w-12 rounded-full bg-gray-200"></div>
-                <div class="flex-1 space-y-2">
-                    <div class="h-4 bg-gray-200 rounded w-1/4"></div>
-                    <div class="h-3 bg-gray-200 rounded w-1/3"></div>
+            <!-- Filter Panel (Collapsible) -->
+            <div *ngIf="showFilterPanel" class="mt-4 pt-4 border-t border-gray-200">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <!-- Status Filter -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Trạng thái</label>
+                        <select [(ngModel)]="filterStatus" (change)="applyFilters()"
+                            class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm">
+                            <option value="">Tất cả</option>
+                            <option value="NEW">Mới nộp</option>
+                            <option value="SCREENING">Sàng lọc</option>
+                            <option value="INTERVIEW">Phỏng vấn</option>
+                            <option value="OFFER">Đề nghị</option>
+                            <option value="HIRED">Đã tuyển</option>
+                            <option value="REJECTED">Từ chối</option>
+                        </select>
+                    </div>
+
+                    <!-- AI Score Filter -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">AI Match Score</label>
+                        <select [(ngModel)]="filterScoreRange" (change)="applyFilters()"
+                            class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm">
+                            <option value="">Tất cả</option>
+                            <option value="90-100">Xuất sắc (90-100%)</option>
+                            <option value="75-89">Tốt (75-89%)</option>
+                            <option value="50-74">Trung bình (50-74%)</option>
+                            <option value="0-49">Thấp (<50%)< /option>
+                        </select>
+                    </div>
+
+                    <!-- Date Range Filter -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Ngày nộp</label>
+                        <select [(ngModel)]="filterDateRange" (change)="applyFilters()"
+                            class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm">
+                            <option value="">Tất cả</option>
+                            <option value="today">Hôm nay</option>
+                            <option value="week">7 ngày qua</option>
+                            <option value="month">30 ngày qua</option>
+                            <option value="custom">Tùy chỉnh</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Clear Filters Button -->
+                <div class="mt-4 flex justify-end">
+                    <button (click)="clearFilters()" class="text-sm text-blue-600 hover:text-blue-700 font-medium">
+                        Xóa tất cả bộ lọc
+                    </button>
                 </div>
             </div>
         </div>
-    </div>
 
-    <!-- Applications Table -->
-    <div *ngIf="!isLoading && !isEmpty" class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-        <div class="overflow-x-auto">
-            <table class="min-w-full divide-y divide-gray-200">
-                <thead class="bg-gray-50">
-                    <tr>
-                        <th scope="col"
-                            class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Ứng viên
-                        </th>
-                        <th scope="col"
-                            class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Ngày nộp
-                        </th>
-                        <th scope="col"
-                            class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Vị trí
-                        </th>
-                        <th scope="col"
-                            class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            AI Match
-                        </th>
-                        <th scope="col"
-                            class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            CV
-                        </th>
-                        <th scope="col"
-                            class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Trạng thái
-                        </th>
-                        <th scope="col"
-                            class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Hành động
-                        </th>
-                    </tr>
-                </thead>
-                <tbody class="bg-white divide-y divide-gray-200">
-                    <tr *ngFor="let app of paginatedApplications()" class="hover:bg-gray-50 transition-colors">
-                        <!-- Candidate Info -->
-                        <td class="px-6 py-4 whitespace-nowrap cursor-pointer" (click)="viewCandidateDetail(app)">
-                            <div class="flex items-center">
-                                <div class="flex-shrink-0 h-10 w-10">
-                                    <div class="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
-                                        <span class="text-blue-700 font-semibold text-sm">{{
-                                            app.candidateName.charAt(0).toUpperCase() }}</span>
-                                    </div>
-                                </div>
-                                <div class="ml-4">
-                                    <div class="text-sm font-medium text-gray-900">{{ app.candidateName }}</div>
-                                    <div class="text-sm text-gray-500">{{ app.email }}</div>
-                                    <div class="text-xs text-gray-400" *ngIf="app.phone">{{ app.phone }}</div>
-                                </div>
-                            </div>
-                        </td>
+        <!-- Loading State -->
+        <div *ngIf="isLoading" class="space-y-4">
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 animate-pulse">
+                <div class="flex items-center gap-4">
+                    <div class="h-12 w-12 rounded-full bg-gray-200"></div>
+                    <div class="flex-1 space-y-2">
+                        <div class="h-4 bg-gray-200 rounded w-1/4"></div>
+                        <div class="h-3 bg-gray-200 rounded w-1/3"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
 
-                        <!-- Applied Date -->
-                        <td class="px-6 py-4 whitespace-nowrap">
-                            <div class="text-sm text-gray-900">{{ formatDate(app.appliedAt) }}</div>
-                        </td>
-
-                        <!-- Job Title -->
-                        <td class="px-6 py-4 whitespace-nowrap">
-                            <div class="text-sm font-medium text-blue-600">{{ app.jobTitle }}</div>
-                        </td>
-
-                        <!-- AI Match Score -->
-                        <td class="px-6 py-4 whitespace-nowrap">
-                            <div *ngIf="app.matchScore" [ngClass]="getScoreColor(app.matchScore)"
-                                class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border"
-                                [title]="app.aiExplanation || ''">
-                                {{ app.matchScore }}%
-                            </div>
-                            <span *ngIf="!app.matchScore" class="text-gray-400 text-sm">-</span>
-                        </td>
-
-                        <!-- CV -->
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            <button (click)="viewCv(app.cvUrl); $event.stopPropagation()"
-                                class="text-blue-600 hover:text-blue-800 transition-colors flex items-center gap-1">
-                                <span class="material-symbols-outlined" style="font-size: 18px;">description</span>
-                                Xem
-                            </button>
-                        </td>
-
-                        <!-- Status -->
-                        <td class="px-6 py-4 whitespace-nowrap">
-                            <span [ngClass]="getStatusClass(app.status)">
-                                {{ getStatusLabel(app.status) }}
-                            </span>
-                        </td>
-
-                        <!-- Actions -->
-                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                            <div class="flex items-center gap-2">
-                                <!-- Trường hợp 1: NEW_APPLIED hoặc ACTIVE -->
-                                <ng-container *ngIf="app.status === 'NEW_APPLIED' || app.status === 'ACTIVE'">
-                                    <button
-                                        (click)="updateStatus(app.applicationId, 'INTERVIEW'); $event.stopPropagation()"
-                                        class="px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-xs font-semibold flex items-center gap-1">
-                                        <span class="material-symbols-outlined" style="font-size: 14px;">event</span>
-                                        📅 Mời Phỏng vấn
-                                    </button>
-                                    <button
-                                        (click)="updateStatus(app.applicationId, 'REJECTED'); $event.stopPropagation()"
-                                        class="px-3 py-1.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-xs font-semibold flex items-center gap-1">
-                                        <span class="material-symbols-outlined" style="font-size: 14px;">close</span>
-                                        Loại hồ sơ
-                                    </button>
-                                </ng-container>
-
-                                <!-- Trường hợp 2: INTERVIEW (Đã mời PV - Chờ Interviewer đánh giá) -->
-                                <ng-container *ngIf="app.status === 'INTERVIEW'">
-                                    <span
-                                        class="px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg text-xs font-medium flex items-center gap-1 border border-blue-200">
-                                        <span class="material-symbols-outlined" style="font-size: 14px;">schedule</span>
-                                        Đã mời PV - Chờ đánh giá
-                                    </span>
-                                </ng-container>
-
-                                <!-- Trường hợp 3: PENDING_OFFER (PV Pass - Chờ gửi offer) HOẶC Waitlist -->
-                                <ng-container *ngIf="app.status === 'Pending_Offer' || app.status === 'Waitlist'">
-                                    <button (click)="openOfferModal(app); $event.stopPropagation()"
-                                        class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-xs font-semibold flex items-center gap-2 shadow-sm">
-                                        <span class="material-symbols-outlined" style="font-size: 16px;">mail</span>
-                                        📧 Gửi Offer
-                                    </button>
-                                    <button
-                                        (click)="updateStatus(app.applicationId, 'REJECTED'); $event.stopPropagation()"
-                                        class="ml-2 px-3 py-1.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-xs font-semibold flex items-center gap-1">
-                                        <span class="material-symbols-outlined" style="font-size: 14px;">close</span>
-                                        Loại
-                                    </button>
-                                </ng-container>
-
-                                <!-- Trường hợp 4: OFFER_SENT (Đã gửi offer - Chờ phản hồi) -->
-                                <ng-container *ngIf="app.status === 'Offer_Sent'">
-                                    <div class="flex flex-col gap-2">
-                                        <span
-                                            class="px-3 py-1.5 bg-orange-50 text-orange-700 rounded-lg text-xs font-medium flex items-center justify-center gap-1 border border-orange-200">
-                                            <span class="material-symbols-outlined"
-                                                style="font-size: 14px;">mail_outline</span>
-                                            Đã gửi Offer
-                                        </span>
-                                        <div class="flex flex-col sm:flex-row gap-1">
-                                            <button
-                                                (click)="updateStatus(app.applicationId, 'HIRED'); $event.stopPropagation()"
-                                                title="Ứng viên đồng ý"
-                                                class="flex-1 px-2 py-1.5 bg-green-50 text-green-700 border border-green-200 rounded-md hover:bg-green-100 hover:text-green-800 transition-colors text-[11px] font-semibold flex items-center justify-center gap-1">
-                                                <span class="material-symbols-outlined"
-                                                    style="font-size: 14px;">check_circle</span>
-                                                Đồng ý
-                                            </button>
-                                            <button
-                                                (click)="updateStatus(app.applicationId, 'REJECTED'); $event.stopPropagation()"
-                                                title="Ứng viên từ chối"
-                                                class="flex-1 px-2 py-1.5 bg-gray-50 text-gray-700 border border-gray-200 rounded-md hover:bg-gray-100 hover:text-gray-900 transition-colors text-[11px] font-semibold flex items-center justify-center gap-1">
-                                                <span class="material-symbols-outlined"
-                                                    style="font-size: 14px;">cancel</span>
-                                                Từ chối
-                                            </button>
+        <!-- Applications Table -->
+        <div *ngIf="!isLoading && !isEmpty"
+            class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th scope="col"
+                                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Ứng viên
+                            </th>
+                            <th scope="col"
+                                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Ngày nộp
+                            </th>
+                            <th scope="col"
+                                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Vị trí
+                            </th>
+                            <th scope="col"
+                                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                AI Match
+                            </th>
+                            <th scope="col"
+                                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                CV
+                            </th>
+                            <th scope="col"
+                                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Trạng thái
+                            </th>
+                            <th scope="col"
+                                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Hành động
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        <tr *ngFor="let app of paginatedApplications()" class="hover:bg-gray-50 transition-colors">
+                            <!-- Candidate Info -->
+                            <td class="px-6 py-4 whitespace-nowrap cursor-pointer" (click)="viewCandidateDetail(app)">
+                                <div class="flex items-center">
+                                    <div class="flex-shrink-0 h-10 w-10">
+                                        <div
+                                            class="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
+                                            <span class="text-blue-700 font-semibold text-sm">{{
+                                                app.candidateName.charAt(0).toUpperCase() }}</span>
                                         </div>
                                     </div>
-                                </ng-container>
+                                    <div class="ml-4">
+                                        <div class="text-sm font-medium text-gray-900">{{ app.candidateName }}</div>
+                                        <div class="text-sm text-gray-500">{{ app.email }}</div>
+                                        <div class="text-xs text-gray-400" *ngIf="app.phone">{{ app.phone }}</div>
+                                    </div>
+                                </div>
+                            </td>
 
-                                <!-- Trường hợp 5: HIRED hoặc REJECTED (Đã hoàn tất) -->
-                                <ng-container *ngIf="app.status === 'HIRED' || app.status === 'REJECTED'">
-                                    <span class="text-gray-500 text-xs italic flex items-center gap-1">
-                                        <span class="material-symbols-outlined" style="font-size: 14px;">check</span>
-                                        Đã hoàn tất
-                                    </span>
-                                </ng-container>
-                            </div>
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
+                            <!-- Applied Date -->
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="text-sm text-gray-900">{{ formatDate(app.appliedAt) }}</div>
+                            </td>
 
-        <!-- Pagination -->
-        <div *ngIf="filteredApplications().length > 0"
-            class="flex flex-col md:flex-row items-center justify-between gap-4 p-4 border-t border-gray-100 bg-white">
-            <!-- Results info -->
-            <div class="text-sm text-gray-600">
-                Hiển thị
-                <span class="font-bold text-gray-900">{{ (currentPage - 1) * itemsPerPage + 1 }}</span>
-                đến
-                <span class="font-bold text-gray-900">{{ Math.min(currentPage * itemsPerPage,
-                    filteredApplications().length) }}</span>
-                trong tổng số
-                <span class="font-bold text-gray-900">{{ filteredApplications().length }}</span>
-                ứng viên
+                            <!-- Job Title -->
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="text-sm font-medium text-blue-600">{{ app.jobTitle }}</div>
+                            </td>
+
+                            <!-- AI Match Score -->
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div *ngIf="app.matchScore" [ngClass]="getScoreColor(app.matchScore)"
+                                    class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border"
+                                    [title]="app.aiExplanation || ''">
+                                    {{ app.matchScore }}%
+                                </div>
+                                <span *ngIf="!app.matchScore" class="text-gray-400 text-sm">-</span>
+                            </td>
+
+                            <!-- CV -->
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                <button (click)="viewCv(app.cvUrl); $event.stopPropagation()"
+                                    class="text-blue-600 hover:text-blue-800 transition-colors flex items-center gap-1">
+                                    <span class="material-symbols-outlined" style="font-size: 18px;">description</span>
+                                    Xem
+                                </button>
+                            </td>
+
+                            <!-- Status -->
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <span [ngClass]="getStatusClass(app.status)">
+                                    {{ getStatusLabel(app.status) }}
+                                </span>
+                            </td>
+
+                            <!-- Actions -->
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                <div class="flex items-center gap-2">
+                                    <!-- Trường hợp 1: NEW_APPLIED hoặc ACTIVE -->
+                                    <ng-container *ngIf="app.status === 'NEW_APPLIED' || app.status === 'ACTIVE'">
+                                        <button
+                                            (click)="updateStatus(app.applicationId, 'INTERVIEW'); $event.stopPropagation()"
+                                            class="px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-xs font-semibold flex items-center gap-1">
+                                            <span class="material-symbols-outlined"
+                                                style="font-size: 14px;">event</span>
+                                            📅 Mời Phỏng vấn
+                                        </button>
+                                        <button
+                                            (click)="updateStatus(app.applicationId, 'REJECTED'); $event.stopPropagation()"
+                                            class="px-3 py-1.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-xs font-semibold flex items-center gap-1">
+                                            <span class="material-symbols-outlined"
+                                                style="font-size: 14px;">close</span>
+                                            Loại hồ sơ
+                                        </button>
+                                    </ng-container>
+
+                                    <!-- Trường hợp 2: INTERVIEW (Đã mời PV - Chờ Interviewer đánh giá) -->
+                                    <ng-container *ngIf="app.status === 'INTERVIEW'">
+                                        <span
+                                            class="px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg text-xs font-medium flex items-center gap-1 border border-blue-200">
+                                            <span class="material-symbols-outlined"
+                                                style="font-size: 14px;">schedule</span>
+                                            Đã mời PV - Chờ đánh giá
+                                        </span>
+                                    </ng-container>
+
+                                    <!-- Trường hợp 3: PENDING_OFFER (PV Pass - Chờ gửi offer) HOẶC Waitlist -->
+                                    <ng-container *ngIf="app.status === 'Pending_Offer' || app.status === 'Waitlist'">
+                                        <button (click)="openOfferModal(app); $event.stopPropagation()"
+                                            class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-xs font-semibold flex items-center gap-2 shadow-sm">
+                                            <span class="material-symbols-outlined" style="font-size: 16px;">mail</span>
+                                            📧 Gửi Offer
+                                        </button>
+                                        <button
+                                            (click)="updateStatus(app.applicationId, 'REJECTED'); $event.stopPropagation()"
+                                            class="ml-2 px-3 py-1.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-xs font-semibold flex items-center gap-1">
+                                            <span class="material-symbols-outlined"
+                                                style="font-size: 14px;">close</span>
+                                            Loại
+                                        </button>
+                                    </ng-container>
+
+                                    <!-- Trường hợp 4: OFFER_SENT (Đã gửi offer - Chờ phản hồi) -->
+                                    <ng-container *ngIf="app.status === 'Offer_Sent'">
+                                        <div class="flex flex-col gap-2">
+                                            <span
+                                                class="px-3 py-1.5 bg-orange-50 text-orange-700 rounded-lg text-xs font-medium flex items-center justify-center gap-1 border border-orange-200">
+                                                <span class="material-symbols-outlined"
+                                                    style="font-size: 14px;">mail_outline</span>
+                                                Đã gửi Offer
+                                            </span>
+                                            <div class="flex flex-col sm:flex-row gap-1">
+                                                <button
+                                                    (click)="updateStatus(app.applicationId, 'HIRED'); $event.stopPropagation()"
+                                                    title="Ứng viên đồng ý"
+                                                    class="flex-1 px-2 py-1.5 bg-green-50 text-green-700 border border-green-200 rounded-md hover:bg-green-100 hover:text-green-800 transition-colors text-[11px] font-semibold flex items-center justify-center gap-1">
+                                                    <span class="material-symbols-outlined"
+                                                        style="font-size: 14px;">check_circle</span>
+                                                    Đồng ý
+                                                </button>
+                                                <button
+                                                    (click)="updateStatus(app.applicationId, 'REJECTED'); $event.stopPropagation()"
+                                                    title="Ứng viên từ chối"
+                                                    class="flex-1 px-2 py-1.5 bg-gray-50 text-gray-700 border border-gray-200 rounded-md hover:bg-gray-100 hover:text-gray-900 transition-colors text-[11px] font-semibold flex items-center justify-center gap-1">
+                                                    <span class="material-symbols-outlined"
+                                                        style="font-size: 14px;">cancel</span>
+                                                    Từ chối
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </ng-container>
+
+                                    <!-- Trường hợp 5: HIRED hoặc REJECTED (Đã hoàn tất) -->
+                                    <ng-container *ngIf="app.status === 'HIRED' || app.status === 'REJECTED'">
+                                        <span class="text-gray-500 text-xs italic flex items-center gap-1">
+                                            <span class="material-symbols-outlined"
+                                                style="font-size: 14px;">check</span>
+                                            Đã hoàn tất
+                                        </span>
+                                    </ng-container>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
 
-            <!-- Page numbers -->
-            <nav class="flex items-center gap-1" *ngIf="totalPages() > 1">
-                <!-- Previous button -->
-                <button (click)="previousPage()" [disabled]="currentPage === 1"
-                    class="px-3 py-2 text-sm font-medium rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 text-gray-700">
-                    <span
-                        class="material-symbols-outlined text-[18px] leading-none text-center block mt-1">chevron_left</span>
-                </button>
+            <!-- Pagination -->
+            <div *ngIf="filteredApplications().length > 0"
+                class="flex flex-col md:flex-row items-center justify-between gap-4 p-4 border-t border-gray-100 bg-white">
+                <!-- Results info -->
+                <div class="text-sm text-gray-600">
+                    Hiển thị
+                    <span class="font-bold text-gray-900">{{ (currentPage - 1) * itemsPerPage + 1 }}</span>
+                    đến
+                    <span class="font-bold text-gray-900">{{ Math.min(currentPage * itemsPerPage,
+                        filteredApplications().length) }}</span>
+                    trong tổng số
+                    <span class="font-bold text-gray-900">{{ filteredApplications().length }}</span>
+                    ứng viên
+                </div>
 
                 <!-- Page numbers -->
-                <button *ngFor="let page of getPageNumbers()" (click)="page > 0 ? changePage(page) : null"
-                    [disabled]="page === -1" [class.bg-blue-600]="page === currentPage"
-                    [class.text-white]="page === currentPage"
-                    [class.hover:bg-gray-100]="page !== currentPage && page > 0"
-                    class="min-w-[40px] px-3 py-2 text-sm font-bold rounded-lg transition-all disabled:cursor-default text-gray-700">
-                    {{ page > 0 ? page : '...' }}
-                </button>
+                <nav class="flex items-center gap-1" *ngIf="totalPages() > 1">
+                    <!-- Previous button -->
+                    <button (click)="previousPage()" [disabled]="currentPage === 1"
+                        class="px-3 py-2 text-sm font-medium rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 text-gray-700">
+                        <span
+                            class="material-symbols-outlined text-[18px] leading-none text-center block mt-1">chevron_left</span>
+                    </button>
 
-                <!-- Next button -->
-                <button (click)="nextPage()" [disabled]="currentPage === totalPages()"
-                    class="px-3 py-2 text-sm font-medium rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 text-gray-700">
-                    <span
-                        class="material-symbols-outlined text-[18px] leading-none text-center block mt-1">chevron_right</span>
-                </button>
-            </nav>
-        </div>
-    </div>
+                    <!-- Page numbers -->
+                    <button *ngFor="let page of getPageNumbers()" (click)="page > 0 ? changePage(page) : null"
+                        [disabled]="page === -1" [class.bg-blue-600]="page === currentPage"
+                        [class.text-white]="page === currentPage"
+                        [class.hover:bg-gray-100]="page !== currentPage && page > 0"
+                        class="min-w-[40px] px-3 py-2 text-sm font-bold rounded-lg transition-all disabled:cursor-default text-gray-700">
+                        {{ page > 0 ? page : '...' }}
+                    </button>
 
-    <!-- Error State -->
-    <div *ngIf="!isLoading && hasError" class="bg-white rounded-xl shadow-sm border border-red-200 p-12 text-center">
-        <div class="flex flex-col items-center gap-4">
-            <div class="w-24 h-24 rounded-full bg-red-50 flex items-center justify-center">
-                <span class="material-symbols-outlined text-red-500" style="font-size: 48px;">error</span>
-            </div>
-            <div>
-                <h3 class="text-lg font-semibold text-gray-900 mb-1">Lỗi</h3>
-                <p class="text-gray-600 text-sm">{{ errorMessage }}</p>
+                    <!-- Next button -->
+                    <button (click)="nextPage()" [disabled]="currentPage === totalPages()"
+                        class="px-3 py-2 text-sm font-medium rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 text-gray-700">
+                        <span
+                            class="material-symbols-outlined text-[18px] leading-none text-center block mt-1">chevron_right</span>
+                    </button>
+                </nav>
             </div>
         </div>
-    </div>
 
-    <!-- Empty State -->
-    <div *ngIf="!isLoading && !hasError && isEmpty"
-        class="bg-white rounded-xl shadow-sm border border-gray-100 p-12 text-center">
-        <div class="flex flex-col items-center gap-4">
-            <div class="w-24 h-24 rounded-full bg-gray-100 flex items-center justify-center">
-                <span class="material-symbols-outlined text-gray-400" style="font-size: 48px;">inbox</span>
-            </div>
-            <div>
-                <h3 class="text-lg font-semibold text-gray-900 mb-1">Chưa có hồ sơ nào</h3>
-                <p class="text-gray-500 text-sm">Chưa có ứng viên nào nộp hồ sơ cho vị trí này</p>
+        <!-- Error State -->
+        <div *ngIf="!isLoading && hasError"
+            class="bg-white rounded-xl shadow-sm border border-red-200 p-12 text-center">
+            <div class="flex flex-col items-center gap-4">
+                <div class="w-24 h-24 rounded-full bg-red-50 flex items-center justify-center">
+                    <span class="material-symbols-outlined text-red-500" style="font-size: 48px;">error</span>
+                </div>
+                <div>
+                    <h3 class="text-lg font-semibold text-gray-900 mb-1">Lỗi</h3>
+                    <p class="text-gray-600 text-sm">{{ errorMessage }}</p>
+                </div>
             </div>
         </div>
-    </div>
 
-    <!-- Modal Lên Lịch Phỏng Vấn -->
+        <!-- Empty State -->
+        <div *ngIf="!isLoading && !hasError && isEmpty"
+            class="bg-white rounded-xl shadow-sm border border-gray-100 p-12 text-center">
+            <div class="flex flex-col items-center gap-4">
+                <div class="w-24 h-24 rounded-full bg-gray-100 flex items-center justify-center">
+                    <span class="material-symbols-outlined text-gray-400" style="font-size: 48px;">inbox</span>
+                </div>
+                <div>
+                    <h3 class="text-lg font-semibold text-gray-900 mb-1">Chưa có hồ sơ nào</h3>
+                    <p class="text-gray-500 text-sm">Chưa có ứng viên nào nộp hồ sơ cho vị trí này</p>
+                </div>
+            </div>
+        </div>
+    </ng-container>
+
+    <!-- TAB AI RECOMMENDATIONS -->
+    <ng-container *ngIf="activeTab === 'RECOMMENDATIONS'">
+        <div class="mb-4 bg-purple-50 rounded-xl p-4 border border-purple-100">
+            <h3 class="text-purple-800 font-semibold mb-1 flex items-center gap-2">
+                <span class="material-symbols-outlined text-purple-600">tips_and_updates</span>
+                Hệ thống AI Headhunt
+            </h3>
+            <p class="text-sm text-purple-700 drop-shadow-sm">
+                Dựa trên yêu cầu của vị trí này, AI đã phân tích và gợi ý những ứng viên có bộ kỹ năng trùng khớp nhất
+                từ hệ thống. Bạn có thể xem hồ sơ và liên hệ với họ.
+            </p>
+        </div>
+
+        <!-- Loading State -->
+        <div *ngIf="isLoadingRecommendations" class="py-12 flex justify-center">
+            <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500"></div>
+        </div>
+
+        <div *ngIf="!isLoadingRecommendations && recommendedCandidates.length === 0"
+            class="text-center py-12 bg-white rounded-xl border border-gray-100">
+            <div class="w-16 h-16 mx-auto bg-gray-50 rounded-full flex items-center justify-center mb-3">
+                <span class="material-symbols-outlined text-gray-400 text-3xl">group_off</span>
+            </div>
+            <p class="text-gray-500">Không tìm thấy ứng viên phù hợp. Hệ thống cần thêm thời gian để thu thập dữ liệu kỹ
+                năng.</p>
+        </div>
+
+        <div *ngIf="!isLoadingRecommendations && recommendedCandidates.length > 0"
+            class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <!-- Candidate Card -->
+            <div *ngFor="let candidate of recommendedCandidates"
+                class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow relative">
+
+                <!-- Score Badge -->
+                <div
+                    class="absolute top-0 right-0 bg-gradient-to-r from-purple-500 to-blue-500 text-white text-xs font-bold px-3 py-1.5 rounded-bl-lg shadow-sm z-10 flex items-center gap-1">
+                    Phù hợp {{ candidate.matchScore }}%
+                </div>
+
+                <div class="p-5 pt-8">
+                    <div class="flex items-center gap-4 mb-4">
+                        <img *ngIf="candidate.avatarUrl" [src]="candidate.avatarUrl"
+                            class="w-14 h-14 rounded-full border border-gray-100 object-cover" alt="Avatar">
+                        <div *ngIf="!candidate.avatarUrl"
+                            class="w-14 h-14 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold text-xl border border-blue-200">
+                            {{ candidate.fullName.charAt(0).toUpperCase() }}
+                        </div>
+                        <div>
+                            <h4 class="font-bold text-gray-900 text-lg">{{ candidate.fullName }}</h4>
+                            <p class="text-sm text-gray-500">{{ candidate.title || 'Ứng viên' }}</p>
+                            <p class="text-xs text-gray-400 mt-0.5">{{ candidate.yearsOfExperience }} năm kinh nghiệm
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="mb-5">
+                        <p class="text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wider">Kỹ năng chung</p>
+                        <div class="flex flex-wrap gap-1.5">
+                            <span *ngFor="let skill of candidate.skills?.slice(0, 4)"
+                                class="px-2.5 py-1 rounded bg-purple-50 text-purple-700 text-xs font-medium border border-purple-100">
+                                {{ skill }}
+                            </span>
+                            <span *ngIf="(candidate.skills?.length || 0) > 4"
+                                class="px-2.5 py-1 rounded bg-gray-50 text-gray-600 text-xs font-medium border border-gray-200">
+                                +{{ (candidate.skills?.length || 0) - 4 }}
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="border-t border-gray-100 pt-4 flex gap-2">
+                        <button
+                            class="flex-1 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm font-semibold flex items-center justify-center gap-2">
+                            <span class="material-symbols-outlined text-sm">mail</span>
+                            Gửi thư mời
+                        </button>
+                        <button
+                            class="px-4 py-2 bg-gray-50 text-gray-700 border border-gray-200 rounded-lg hover:bg-gray-100 transition-colors text-sm font-semibold">
+                            Xem hồ sơ
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </ng-container>
+
+    <!-- Modal Lên Lịch Phỏng Vấn (Giữ nguyên) -->
     <div *ngIf="showInterviewModal"
         class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
         <div class="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">

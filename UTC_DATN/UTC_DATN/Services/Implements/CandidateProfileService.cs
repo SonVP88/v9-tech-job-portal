@@ -193,18 +193,53 @@ namespace UTC_DATN.Services.Implements
             }
             candidate.UpdatedAt = DateTime.UtcNow;
 
-            // Xử lý dto.Skills (danh sách tên kỹ năng)
+            // Cập nhật Skills: Xóa hết skills cũ
+            if (candidate.CandidateSkills != null && candidate.CandidateSkills.Any())
+            {
+                _context.CandidateSkills.RemoveRange(candidate.CandidateSkills);
+            }
+
+            // Xử lý dto.Skills (danh sách tên kỹ năng từ frontend)
+            var finalSkillIds = new List<Guid>();
+
+            // Ưu tiên 1: Nếu frontend gửi SkillIds hợp lệ (chọn từ autocomplete)
+            var validSkillIds = dto.SkillIds.Where(id => id != Guid.Empty).Distinct().ToList();
+            if (validSkillIds.Any())
+            {
+                // Xác minh rằng các SkillId này thực sự tồn tại trong DB
+                var existingIds = await _context.Skills
+                    .Where(s => validSkillIds.Contains(s.SkillId))
+                    .Select(s => s.SkillId)
+                    .ToListAsync();
+                finalSkillIds.AddRange(existingIds);
+            }
+
+            // Ưu tiên 2: Fallback - xử lý skills không có ID (do tự nhập)
             if (dto.Skills != null && dto.Skills.Any())
             {
-                foreach (var skillName in dto.Skills)
+                // Xác định chỉ số skills tương ứng với Guid.Empty
+                var skillNamesToProcess = new List<string>();
+                for (int i = 0; i < dto.Skills.Count; i++)
                 {
+                    var hasId = i < dto.SkillIds.Count && dto.SkillIds[i] != Guid.Empty;
+                    if (!hasId)
+                    {
+                        skillNamesToProcess.Add(dto.Skills[i]);
+                    }
+                }
+
+                foreach (var skillName in skillNamesToProcess)
+                {
+                    if (string.IsNullOrWhiteSpace(skillName)) continue;
+
                     var normalizedName = skillName.Trim().ToUpper();
+
+                    // 1. Tìm hoặc tạo mới trong bảng Skills
                     var skill = await _context.Skills
-                        .FirstOrDefaultAsync(s => s.NormalizedName == normalizedName || s.Name.ToUpper() == normalizedName);
+                        .FirstOrDefaultAsync(s => s.NormalizedName == normalizedName);
 
                     if (skill == null)
                     {
-                        // Tạo skill mới
                         skill = new Skill
                         {
                             SkillId = Guid.NewGuid(),
@@ -213,36 +248,26 @@ namespace UTC_DATN.Services.Implements
                             CreatedAt = DateTime.UtcNow
                         };
                         _context.Skills.Add(skill);
-                        // Save changes để có ID (nếu cần thiết, hoặc EF tự track)
-                        // Tuy nhiên để an toàn và có ID ngay, có thể save luôn hoặc để EF lo
+                        await _context.SaveChangesAsync();
                     }
-                    
-                    // Thêm vào list IDs nếu chưa có
-                    if (!dto.SkillIds.Contains(skill.SkillId))
+
+                    if (!finalSkillIds.Contains(skill.SkillId))
                     {
-                        dto.SkillIds.Add(skill.SkillId);
+                        finalSkillIds.Add(skill.SkillId);
                     }
                 }
-                
-                // Save skills mới tạo để có ID trước khi link
-                await _context.SaveChangesAsync();
             }
 
-            // Cập nhật Skills: Xóa hết skills cũ, thêm mới
-            _context.CandidateSkills.RemoveRange(candidate.CandidateSkills);
-
-            foreach (var skillId in dto.SkillIds)
+            // Gắn link vào bảng trung gian CandidateSkills
+            foreach (var skillId in finalSkillIds.Distinct())
             {
-                // Verify skill exists (chỉ để chắc chắn)
-                var skillExists = await _context.Skills.AnyAsync(s => s.SkillId == skillId);
-                if (skillExists)
-                {
                     candidate.CandidateSkills.Add(new CandidateSkill
                     {
                         CandidateId = candidate.CandidateId,
-                        SkillId = skillId
+                        SkillId = skillId,
+                        Level = (byte)1, // Beginner mặc định
+                        Years = 0m
                     });
-                }
             }
 
             await _context.SaveChangesAsync();

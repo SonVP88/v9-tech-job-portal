@@ -210,11 +210,18 @@ export class EmployeeManagement implements OnInit {
    * Format date sang tiếng Việt
    */
   formatDate(dateStr: string): string {
+    if (!dateStr) return '';
+    // Fix: Nếu backend gửi UTC mà không có Z ở cuối, browser sẽ hiểu nhầm là giờ Local.
+    if (!dateStr.endsWith('Z') && !dateStr.includes('+')) {
+      dateStr += 'Z';
+    }
     const date = new Date(dateStr);
     return date.toLocaleDateString('vi-VN', {
       year: 'numeric',
       month: '2-digit',
-      day: '2-digit'
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit'
     });
   }
 

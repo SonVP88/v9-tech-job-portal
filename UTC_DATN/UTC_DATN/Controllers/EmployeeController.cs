@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 using UTC_DATN.DTOs.Employee;
 using UTC_DATN.Services.Interfaces;
 
@@ -96,14 +97,18 @@ namespace UTC_DATN.Controllers
 
         [HttpPut("{id}/deactivate")]
         [Authorize(Roles = "ADMIN")]
-        public async Task<IActionResult> DeactivateEmployee(Guid id)
+        public async Task<IActionResult> DeactivateEmployee(Guid id, [FromBody] DeactivateRequest? request = null)
         {
-            var result = await _employeeService.DeactivateEmployeeAsync(id);
+            if (!Guid.TryParse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value, out Guid adminId))
+                return Unauthorized();
+            var fullName = User.FindFirst("FullName")?.Value ?? "User";
+            var role = User.FindFirst(ClaimTypes.Role)?.Value ?? "Admin";
+            var adminName = $"{fullName} {role}";
+
+            var result = await _employeeService.DeactivateEmployeeAsync(id, adminId, adminName, request?.Reason);
             
             if (!result)
-            {
                 return NotFound(new { message = "Không tìm thấy nhân viên" });
-            }
 
             return Ok(new { message = "Vô hiệu hóa nhân viên thành công" });
         }

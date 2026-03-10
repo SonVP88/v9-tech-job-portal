@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, ChangeDetectorRef, inject } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectorRef, inject, NgZone } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -38,6 +38,12 @@ export class ManageApplications implements OnInit, OnDestroy {
   errorMessage = '';
 
   private toast = inject(ToastService);
+  private ngZone = inject(NgZone);
+
+  // Tabs
+  activeTab: 'APPLICATIONS' | 'RECOMMENDATIONS' = 'APPLICATIONS';
+  recommendedCandidates: any[] = [];
+  isLoadingRecommendations = false;
 
   // Modal state
   showInterviewModal = false;
@@ -135,6 +141,38 @@ export class ManageApplications implements OnInit, OnDestroy {
    */
   getRefreshInterval(): number {
     return this.DEMO_MODE ? this.REFRESH_INTERVAL_DEMO : this.REFRESH_INTERVAL_PROD;
+  }
+
+  // Chuyển tab và load data nếu cần
+  switchTab(tab: 'APPLICATIONS' | 'RECOMMENDATIONS'): void {
+    this.activeTab = tab;
+    if (tab === 'RECOMMENDATIONS' && this.recommendedCandidates.length === 0 && this.jobId) {
+      this.loadRecommendedCandidates();
+    }
+  }
+
+  loadRecommendedCandidates(): void {
+    if (!this.jobId) return;
+    this.isLoadingRecommendations = true;
+
+    this.ngZone.runOutsideAngular(() => {
+      this.jobService.getRecommendedCandidates(this.jobId, 10).subscribe({
+        next: (candidates) => {
+          this.ngZone.run(() => {
+            this.recommendedCandidates = candidates;
+            this.isLoadingRecommendations = false;
+            this.cdr.detectChanges();
+          });
+        },
+        error: (err) => {
+          console.error('Error loading AI candidates:', err);
+          this.ngZone.run(() => {
+            this.isLoadingRecommendations = false;
+            this.cdr.detectChanges();
+          });
+        }
+      });
+    });
   }
 
   /**

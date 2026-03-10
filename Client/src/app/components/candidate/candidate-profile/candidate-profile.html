@@ -174,24 +174,40 @@
 
                 <div class="mt-8 space-y-3">
                     <label class="text-sm font-semibold text-slate-700 dark:text-slate-300">Kỹ năng chuyên môn</label>
-                    <div
-                        class="flex flex-wrap gap-2 p-4 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg">
-                        <span *ngFor="let skill of skills; let i = index"
-                            class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-800 dark:text-slate-200 rounded-md text-sm shadow-sm group">
-                            {{ skill }}
-                            <button (click)="removeSkill(i)"
-                                class="text-slate-400 hover:text-red-500 transition-colors flex items-center justify-center rounded-full w-5 h-5 hover:bg-slate-100 dark:hover:bg-slate-600">
-                                <span class="material-icons text-[16px] leading-none">close</span>
-                            </button>
-                        </span>
-                        <div class="flex-1 min-w-[150px]">
-                            <input
-                                class="w-full bg-transparent border-none focus:ring-0 text-sm p-1.5 placeholder:text-slate-400"
-                                placeholder="Nhập kỹ năng và nhấn Enter..." type="text" [(ngModel)]="newSkillInput"
-                                (keydown.enter)="addSkill()" />
+                    <p class="text-xs text-slate-400">Gõ để tìm kiếm kỹ năng từ hệ thống. AI sẽ dùng kỹ năng này để gợi
+                        ý việc làm phù hợp.</p>
+                    <div class="relative">
+                        <div
+                            class="flex flex-wrap gap-2 p-4 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg">
+                            <span *ngFor="let skill of skills; let i = index"
+                                class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 text-blue-800 dark:text-blue-200 rounded-md text-sm shadow-sm group">
+                                {{ skill.name }}
+                                <button (click)="removeSkill(i)"
+                                    class="text-blue-400 hover:text-red-500 transition-colors flex items-center justify-center rounded-full w-5 h-5 hover:bg-blue-100 dark:hover:bg-blue-800">
+                                    <span class="material-icons text-[16px] leading-none">close</span>
+                                </button>
+                            </span>
+                            <div class="flex-1 min-w-[150px]">
+                                <input
+                                    class="w-full bg-transparent border-none focus:ring-0 text-sm p-1.5 placeholder:text-slate-400"
+                                    placeholder="Nhập kỹ năng và nhấn Enter..." type="text" [ngModel]="newSkillInput"
+                                    (ngModelChange)="onSkillInputChange($event)" (keydown.enter)="addSkill()"
+                                    (blur)="hideSuggestions()" />
+                            </div>
+                        </div>
+                        <!-- Autocomplete Dropdown -->
+                        <div *ngIf="showSkillSuggestions"
+                            class="absolute z-20 left-0 right-0 mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg overflow-hidden">
+                            <div *ngFor="let suggestion of filteredSkills"
+                                (mousedown)="selectSuggestedSkill(suggestion)"
+                                class="flex items-center justify-between px-4 py-2.5 hover:bg-blue-50 dark:hover:bg-blue-900/30 cursor-pointer text-sm text-slate-800 dark:text-slate-200 hover:text-blue-700 dark:hover:text-blue-300 transition-colors">
+                                <span>{{ suggestion.name }}</span>
+                                <span class="material-icons text-[16px] text-slate-300">add</span>
+                            </div>
                         </div>
                     </div>
                 </div>
+
             </section>
 
             <!-- CV MANAGEMENT TAB -->

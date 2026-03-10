@@ -10,6 +10,10 @@ export interface EmployeeDto {
   role: string;
   isActive: boolean;
   createdAt: string;
+  // Audit Trail
+  lockedAt?: string;
+  lockedByName?: string;
+  lockReason?: string;
 }
 
 export interface CreateEmployeeRequest {

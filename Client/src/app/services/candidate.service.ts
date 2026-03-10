@@ -48,6 +48,13 @@ export interface UpdateCandidateProfileDto {
     skills?: string[];
 }
 
+export interface SkillDto {
+    skillId: string;
+    name: string;
+    normalizedName?: string;
+}
+
+
 @Injectable({
     providedIn: 'root'
 })
@@ -58,6 +65,13 @@ export class CandidateService {
 
     getProfile(): Observable<CandidateProfileDto> {
         return this.http.get<CandidateProfileDto>(`${this.apiUrl}/profile?t=${new Date().getTime()}`);
+    }
+
+    getAllSkills(search?: string): Observable<SkillDto[]> {
+        const url = search
+            ? `https://localhost:7181/api/master-data/skills?search=${encodeURIComponent(search)}`
+            : `https://localhost:7181/api/master-data/skills`;
+        return this.http.get<SkillDto[]>(url);
     }
 
     updateProfile(dto: UpdateCandidateProfileDto): Observable<any> {

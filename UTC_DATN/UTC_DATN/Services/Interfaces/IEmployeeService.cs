@@ -13,7 +13,7 @@ namespace UTC_DATN.Services.Interfaces
         /// Tạo nhân viên mới
         /// </summary>
         Task<EmployeeDto?> CreateEmployeeAsync(CreateEmployeeRequest request);
-        Task<bool> DeactivateEmployeeAsync(Guid userId);
+        Task<bool> DeactivateEmployeeAsync(Guid userId, Guid adminId, string adminName, string? reason = null);
         Task<bool> ReactivateEmployeeAsync(Guid userId);
         Task<EmployeeDto?> UpdateEmployeeAsync(Guid userId, CreateEmployeeRequest request);
     }

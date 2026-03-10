@@ -36,7 +36,11 @@ namespace UTC_DATN.Services.Implements
                     Phone = x.user.Phone,
                     Role = x.role.Code,
                     IsActive = x.user.IsActive,
-                    CreatedAt = x.user.CreatedAt
+                    CreatedAt = x.user.CreatedAt,
+                    // Audit Trail
+                    LockedAt = x.user.LockedAt,
+                    LockedByName = x.user.LockedByName,
+                    LockReason = x.user.LockReason
                 })
                 .OrderByDescending(e => e.CreatedAt)
                 .ToListAsync();
@@ -110,16 +114,19 @@ namespace UTC_DATN.Services.Implements
             };
         }
 
-        public async Task<bool> DeactivateEmployeeAsync(Guid userId)
+        public async Task<bool> DeactivateEmployeeAsync(Guid userId, Guid adminId, string adminName, string? reason = null)
         {
             var user = await _context.Users.FindAsync(userId);
             if (user == null)
-            {
-                return false; 
-            }
-            user.IsActive = false;
-            await _context.SaveChangesAsync();
+                return false;
 
+            user.IsActive = false;
+            user.LockedAt = DateTime.UtcNow;
+            user.LockedById = adminId;
+            user.LockedByName = adminName;
+            user.LockReason = reason;
+
+            await _context.SaveChangesAsync();
             return true;
         }
 

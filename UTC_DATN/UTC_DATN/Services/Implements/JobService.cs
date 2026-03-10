@@ -193,17 +193,19 @@ public class JobService : IJobService
     }
 
     /// <summary>
-    /// Đóng tin tuyển dụng (Status = CLOSED)
+    /// Đóng tin tuyển dụng (Status = CLOSED) và ghi audit trail
     /// </summary>
-    public async Task<bool> CloseJobAsync(Guid id)
+    public async Task<bool> CloseJobAsync(Guid id, Guid closedById, string closedByName)
     {
         var job = await _context.Jobs.FindAsync(id);
         if (job == null || job.IsDeleted)
-        {
             return false;
-        }
 
         job.Status = "CLOSED";
+        job.ClosedAt = DateTime.UtcNow;
+        job.ClosedById = closedById;
+        job.ClosedByName = closedByName;
+
         await _context.SaveChangesAsync();
         return true;
     }
@@ -507,7 +509,9 @@ public class JobService : IJobService
         var jobs = await _context.Jobs
             .AsNoTracking()
             .Where(j => !j.IsDeleted) // Removed Status == "OPEN" check to show all jobs to HR
-            .OrderByDescending(j => j.CreatedAt)
+            // Ưu tiên: OPEN lên trước, CLOSED xuống dưới -> Cùng Status thì mới nhất lên đầu
+            .OrderByDescending(j => j.Status == "OPEN") 
+            .ThenByDescending(j => j.CreatedAt)
             .Select(j => new JobHomeDto
             {
                 JobId = j.JobId,
@@ -524,7 +528,12 @@ public class JobService : IJobService
                 Deadline = j.Deadline,
                 CreatedDate = j.CreatedAt,
                 Status = j.Status,
-                Skills = j.JobSkillMaps.Select(jsm => jsm.Skill.Name).ToList()
+                NumberOfPositions = j.NumberOfPositions,
+                TotalHired = j.Applications.Count(a => a.Status == "HIRED"),
+                Skills = j.JobSkillMaps.Select(jsm => jsm.Skill.Name).ToList(),
+                // Audit Trail
+                ClosedByName = j.ClosedByName,
+                ClosedAt = j.ClosedAt
             })
             .ToListAsync();
 

@@ -43,6 +43,10 @@ public partial class Job
 
     public DateTime? ClosedAt { get; set; }
 
+    // Audit Trail: Ai đã đóng job này?
+    public Guid? ClosedById { get; set; }
+    public string ClosedByName { get; set; }
+
     public DateTime? Deadline { get; set; }
 
     public bool IsDeleted { get; set; }

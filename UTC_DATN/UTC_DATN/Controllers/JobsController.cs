@@ -120,16 +120,20 @@ public class JobsController : ControllerBase
     {
         try
         {
-            var result = await _jobService.CloseJobAsync(id);
+            // Lấy thông tin người thực hiện
+            var closedByIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (!Guid.TryParse(closedByIdClaim, out Guid closedById))
+                return Unauthorized();
+            var fullName = User.FindFirst("FullName")?.Value ?? "User";
+            var role = User.FindFirst(ClaimTypes.Role)?.Value ?? "Admin";
+            var closedByName = $"{fullName} {role}";
+
+            var result = await _jobService.CloseJobAsync(id, closedById, closedByName);
 
             if (result)
-            {
-                return Ok(new { message = "Đã ngừng đăng tin tuyển dụng" });
-            }
+                return Ok(new { message = "Dã ngưng đăng tin tuyển dụng" });
             else
-            {
                 return BadRequest(new { message = "Thao tác thất bại hoặc không tìm thấy tin tuyển dụng" });
-            }
         }
         catch (Exception ex)
         {

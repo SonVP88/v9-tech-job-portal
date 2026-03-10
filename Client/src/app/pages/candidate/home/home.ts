@@ -46,6 +46,10 @@ export class Home implements OnInit {
   // Saved Jobs
   savedJobIds = new Set<string>();
 
+  // AI Recommendation
+  recommendedJobs: any[] = [];
+  loadingRecommended = false;
+
   private apiUrl = '/api';
 
   constructor(
@@ -64,7 +68,33 @@ export class Home implements OnInit {
     this.loadSystemStats();
     if (this.authService.isAuthenticated()) {
       this.loadSavedIds();
+      this.loadRecommendedJobs();
     }
+  }
+
+  loadRecommendedJobs(): void {
+    if (!this.authService.isAuthenticated()) return;
+    this.loadingRecommended = true;
+
+    this.ngZone.runOutsideAngular(() => {
+      this.jobService.getRecommendedJobs(6).subscribe({
+        next: (jobs) => {
+          this.ngZone.run(() => {
+            this.recommendedJobs = jobs;
+            this.loadingRecommended = false;
+            this.cdr.detectChanges();
+            console.log(' AI Recommended jobs:', jobs);
+          });
+        },
+        error: (err) => {
+          console.error(' AI Recommendation error:', err);
+          this.ngZone.run(() => {
+            this.loadingRecommended = false;
+            this.cdr.detectChanges();
+          });
+        }
+      });
+    });
   }
 
   private loadSavedIds(): void {

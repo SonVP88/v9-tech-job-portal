@@ -26,8 +26,15 @@ public class JobHomeDto
     public DateTime? Deadline { get; set; } // Map từ Job.ClosedAt
     
     public DateTime CreatedDate { get; set; } // Map từ Job.CreatedAt
-    
     public string Status { get; set; } = string.Empty; // OPEN or CLOSED
 
+    public int? NumberOfPositions { get; set; } // Số lượng cần tuyển
+    
+    public int TotalHired { get; set; } // Số lượng ứng viên đã gửi offer và xác nhận (HIRED)
+
     public List<string> Skills { get; set; } = new List<string>(); // Danh sách tên skills
+
+    // Audit Trail
+    public string? ClosedByName { get; set; } // Ai đã đóng job này?
+    public DateTime? ClosedAt { get; set; } // Khi nào job này bị đóng?
 }

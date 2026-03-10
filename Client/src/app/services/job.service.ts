@@ -36,6 +36,11 @@ export interface JobDto {
     createdDate: string;
     status?: string;
     skills?: string[];
+    numberOfPositions?: number;
+    totalHired?: number;
+    // Audit Trail
+    closedAt?: string;
+    closedByName?: string;
 }
 
 export interface JobDetailDto extends JobDto {
@@ -153,5 +158,13 @@ export class JobService {
         if (minSalary) params = params.set('minSalary', minSalary.toString());
 
         return this.http.get<JobDto[]>(`${this.apiUrl}/public/jobs/search`, { params });
+    }
+
+    getRecommendedJobs(top: number = 10): Observable<any[]> {
+        return this.http.get<any[]>(`${this.apiUrl}/recommendation/jobs?top=${top}`);
+    }
+
+    getRecommendedCandidates(jobId: string, top: number = 10): Observable<any[]> {
+        return this.http.get<any[]>(`${this.apiUrl}/recommendation/candidates/${jobId}?top=${top}`);
     }
 }

@@ -27,6 +27,12 @@ public partial class User
 
     public DateTime? UpdatedAt { get; set; }
 
+    // Audit Trail: Ai đã khóa tài khoản này?
+    public DateTime? LockedAt { get; set; }
+    public Guid? LockedById { get; set; }
+    public string LockedByName { get; set; }
+    public string LockReason { get; set; }
+
     // Company Information
     public string CompanyName { get; set; }
     public string CompanyWebsite { get; set; }

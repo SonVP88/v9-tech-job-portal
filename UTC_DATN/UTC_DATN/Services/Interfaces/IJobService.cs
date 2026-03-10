@@ -12,7 +12,7 @@ public interface IJobService
     
     Task<bool> UpdateJobAsync(Guid id, UpdateJobRequest request);
     Task<bool> DeleteJobAsync(Guid id);
-    Task<bool> CloseJobAsync(Guid id);
+    Task<bool> CloseJobAsync(Guid id, Guid closedById, string closedByName);
     Task<bool> OpenJobAsync(Guid id);
 
     Task<JobDetailDto?> GetJobByIdAsync(Guid id);
