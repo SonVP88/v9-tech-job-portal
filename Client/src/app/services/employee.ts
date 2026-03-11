@@ -51,8 +51,8 @@ export class EmployeeService {
     return this.http.post<EmployeeDto>(this.apiUrl, request);
   }
 
-  deactivateEmployee(userId: string): Observable<any> {
-    return this.http.put(`${this.apiUrl}/${userId}/deactivate`, {});
+  deactivateEmployee(userId: string, reason?: string): Observable<any> {
+    return this.http.put(`${this.apiUrl}/${userId}/deactivate`, { reason });
   }
 
   reactivateEmployee(userId: string): Observable<any> {
@@ -61,5 +61,12 @@ export class EmployeeService {
 
   updateEmployee(userId: string, request: CreateEmployeeRequest): Observable<EmployeeDto> {
     return this.http.put<EmployeeDto>(`${this.apiUrl}/${userId}`, request);
+  }
+
+  /**
+   * Kiểm tra lịch phỏng vấn chưa thực hiện của Interviewer (dùng trước khi khóa)
+   */
+  getPendingInterviews(userId: string): Observable<{ count: number; interviews: any[] }> {
+    return this.http.get<{ count: number; interviews: any[] }>(`${this.apiUrl}/${userId}/pending-interviews`);
   }
 }

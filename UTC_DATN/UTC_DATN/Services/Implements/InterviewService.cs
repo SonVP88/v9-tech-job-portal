@@ -105,7 +105,10 @@ public class InterviewService : IInterviewService
             // 7. Gửi email thông báo với CC
             try
             {
-                var candidateEmail = application.Candidate?.Email ?? application.ContactEmail;
+                // Ưu tiên ContactEmail (email nhập trên form) → Fallback sang Candidate.Email
+                var candidateEmail = !string.IsNullOrEmpty(application.ContactEmail)
+                    ? application.ContactEmail
+                    : application.Candidate?.Email;
                 var candidateName = application.Candidate?.FullName ?? "Ứng viên";
                 var jobTitle = application.Job?.Title ?? "Vị trí tuyển dụng";
 

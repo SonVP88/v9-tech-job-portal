@@ -41,7 +41,7 @@
         </div>
         <div class="flex items-center gap-4">
             <!-- Nếu chưa đăng nhập: hiển thị nút Sign In -->
-            <button *ngIf="!isLoggedIn"
+            <button *ngIf="!isLoggedIn" [routerLink]="['/login']"
                 class="hidden sm:flex cursor-pointer items-center justify-center rounded-xl h-10 px-6 bg-primary text-white text-sm font-bold shadow-lg shadow-primary/20 hover:bg-primary/90 transition-all">
                 Đăng nhập
             </button>

@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using UTC_DATN.DTOs.Auth;
 using UTC_DATN.Services.Interfaces;
 
@@ -32,7 +32,7 @@ namespace UTC_DATN.Controllers
 
             if (result)
             {
-                return Ok("User registered successfully");
+                return Ok(new { message = "Đăng ký tài khoản thành công!" });
             }
 
             return BadRequest(new { message = "Email này đã được đăng ký trong hệ thống." });
@@ -50,7 +50,7 @@ namespace UTC_DATN.Controllers
 
             if (result == null)
             {
-                return Unauthorized("Invalid credentials");
+                return Unauthorized(new { message = "Thông tin đăng nhập không chính xác" });
             }
 
             return Ok(new { Token = result });
@@ -69,13 +69,13 @@ namespace UTC_DATN.Controllers
 
             if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out Guid userId))
             {
-                return Unauthorized("Không xác thực được người dùng.");
+                return Unauthorized(new { message = "Không xác thực được người dùng." });
             }
 
             var result = await _authService.ChangePasswordAsync(userId, request);
             if (!result)
             {
-                return BadRequest("Mật khẩu hiện tại không chính xác hoặc có lỗi xảy ra.");
+                return BadRequest(new { message = "Mật khẩu hiện tại không chính xác hoặc có lỗi xảy ra." });
             }
 
             return Ok(new { message = "Đổi mật khẩu thành công!" });

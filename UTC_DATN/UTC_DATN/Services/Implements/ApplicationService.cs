@@ -117,70 +117,96 @@ public class ApplicationService : IApplicationService
                 await _context.SaveChangesAsync();
                 _logger.LogInformation("Đã tạo bản ghi File: {FileId}", fileEntity.FileId);
 
-                // === BƯỚC 3: TÌM/TẠO CANDIDATE (LOGIC MỚI - UserId-based) ===
+                // === BƯỚC 3: TÌM/TẠO CANDIDATE (LOGIC MỚI BẢO VỆ DANH TÍNH) ===
                 Candidate? candidate = null;
-                var normalizedEmail = request.Email.Trim().ToUpper();
 
-                // Priority 1: Tìm theo UserId (nếu có)
+                // Priority 1: Dành cho User ĐÃ ĐĂNG NHẬP
                 if (userId.HasValue)
                 {
-                    candidate = await _context.Candidates
-                        .FirstOrDefaultAsync(c => c.UserId == userId.Value);
-                    
-                    if (candidate != null)
+                    var userEntity = await _context.Users.FindAsync(userId.Value);
+                    if (userEntity != null)
                     {
-                        _logger.LogInformation(" Tìm thấy Candidate qua UserId: {CandidateId}", candidate.CandidateId);
-                    }
-                }
+                        var normalizedIdentityEmail = userEntity.Email.Trim().ToUpper();
 
-                // Priority 2: Tìm theo Email (fallback)
-                if (candidate == null)
-                {
-                    candidate = await _context.Candidates
-                        .FirstOrDefaultAsync(c => c.NormalizedEmail == normalizedEmail);
-                    
-                    if (candidate != null)
-                    {
-                        _logger.LogInformation(" Tìm thấy Candidate qua Email: {CandidateId}", candidate.CandidateId);
-                        
-                        // Nếu tìm thấy qua Email NHƯNG chưa có UserId -> Link ngay!
-                        if (userId.HasValue && candidate.UserId == null)
+                        // Tìm qua UserId trước
+                        candidate = await _context.Candidates.FirstOrDefaultAsync(c => c.UserId == userId.Value);
+
+                        if (candidate == null)
                         {
-                            candidate.UserId = userId.Value;
-                            _logger.LogInformation("🔗 Auto-link Candidate {CandidateId} với User {UserId}", 
-                                candidate.CandidateId, userId.Value);
+                            // Tìm theo Identity Email của acc này nếu họ từng apply diện Guest
+                            candidate = await _context.Candidates.FirstOrDefaultAsync(c => c.NormalizedEmail == normalizedIdentityEmail);
+
+                            if (candidate != null)
+                            {
+                                // Auto-link
+                                candidate.UserId = userId.Value;
+                                _logger.LogInformation("🔗 Auto-link Candidate {CandidateId} với User {UserId} qua Email {Email}", 
+                                    candidate.CandidateId, userId.Value, userEntity.Email);
+                            }
+                            else
+                            {
+                                // Chưa từng apply -> Tạo mới Candidate lấy Email chuẩn của User Account! (Không lấy email trong form)
+                                candidate = new Candidate
+                                {
+                                    CandidateId = Guid.NewGuid(),
+                                    Email = userEntity.Email,
+                                    NormalizedEmail = normalizedIdentityEmail,
+                                    FullName = request.FullName,
+                                    Phone = request.Phone,
+                                    Summary = request.Introduction,
+                                    Source = "CAREER_SITE",
+                                    UserId = userId.Value,
+                                    CreatedAt = DateTime.UtcNow,
+                                    IsDeleted = false
+                                };
+                                _context.Candidates.Add(candidate);
+                                _logger.LogInformation("➕ Tạo mới Candidate: {CandidateId} với UserId: {UserId}", candidate.CandidateId, userId.Value);
+                            }
+                        }
+                        else
+                        {
+                            // Cập nhật Profile Candidate (tên, sđt) nhưng GIỮ NGUYÊN Email Identity
+                            candidate.FullName = request.FullName;
+                            candidate.Phone = request.Phone;
+                            candidate.Summary = request.Introduction;
+                            candidate.UpdatedAt = DateTime.UtcNow;
+                            _logger.LogInformation(" Cập nhật Candidate: {CandidateId}", candidate.CandidateId);
                         }
                     }
                 }
 
-                // Nếu không tìm thấy -> Tạo mới
+                // Priority 2: Nếu chưa tìm được (User KHÔNG ĐĂNG NHẬP, hoặc account ko lệ thuộc DB -> GUEST)
                 if (candidate == null)
                 {
-                    candidate = new Candidate
+                    var normalizedContactEmail = request.Email.Trim().ToUpper();
+                    candidate = await _context.Candidates.FirstOrDefaultAsync(c => c.NormalizedEmail == normalizedContactEmail);
+
+                    if (candidate == null)
                     {
-                        CandidateId = Guid.NewGuid(),
-                        Email = request.Email.Trim(),
-                        NormalizedEmail = normalizedEmail,
-                        FullName = request.FullName,
-                        Phone = request.Phone,
-                        Summary = request.Introduction,
-                        Source = "CAREER_SITE",
-                        UserId = userId, // Gán UserId ngay từ đầu!
-                        CreatedAt = DateTime.UtcNow,
-                        IsDeleted = false
-                    };
-                    _context.Candidates.Add(candidate);
-                    _logger.LogInformation("➕ Tạo mới Candidate: {CandidateId} với UserId: {UserId}", 
-                        candidate.CandidateId, userId?.ToString() ?? "NULL");
-                }
-                else
-                {
-                    // Update thông tin Candidate (nếu đã tồn tại)
-                    candidate.FullName = request.FullName;
-                    candidate.Phone = request.Phone;
-                    candidate.Summary = request.Introduction;
-                    candidate.UpdatedAt = DateTime.UtcNow;
-                    _logger.LogInformation(" Cập nhật Candidate: {CandidateId}", candidate.CandidateId);
+                        candidate = new Candidate
+                        {
+                            CandidateId = Guid.NewGuid(),
+                            Email = request.Email.Trim(), // Form email
+                            NormalizedEmail = normalizedContactEmail,
+                            FullName = request.FullName,
+                            Phone = request.Phone,
+                            Summary = request.Introduction,
+                            Source = "CAREER_SITE",
+                            UserId = null,
+                            CreatedAt = DateTime.UtcNow,
+                            IsDeleted = false
+                        };
+                        _context.Candidates.Add(candidate);
+                        _logger.LogInformation("➕ Tạo mới Candidate Guest: {CandidateId} qua Email: {Email}", candidate.CandidateId, request.Email);
+                    }
+                    else
+                    {
+                        candidate.FullName = request.FullName;
+                        candidate.Phone = request.Phone;
+                        candidate.Summary = request.Introduction;
+                        candidate.UpdatedAt = DateTime.UtcNow;
+                        _logger.LogInformation(" Cập nhật Candidate Guest: {CandidateId}", candidate.CandidateId);
+                    }
                 }
 
                 await _context.SaveChangesAsync();

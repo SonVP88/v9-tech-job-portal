@@ -46,7 +46,7 @@ namespace UTC_DATN.Controllers
                 .ThenInclude(ur => ur.Role)
                 .FirstOrDefaultAsync(u => u.UserId == userId);
 
-            if (user == null) return NotFound("User not found");
+            if (user == null) return NotFound(new { message = "Không tìm thấy người dùng" });
 
             // Assuming single role for simplicity or verify implementation
             var role = user.UserRoles.FirstOrDefault()?.Role?.Name ?? "Candidate";
@@ -69,7 +69,7 @@ namespace UTC_DATN.Controllers
             if (userId == Guid.Empty) return Unauthorized();
 
             var user = await _context.Users.FindAsync(userId);
-            if (user == null) return NotFound("User not found");
+            if (user == null) return NotFound(new { message = "Không tìm thấy người dùng" });
 
             user.FullName = dto.FullName;
             user.Phone = dto.Phone;
@@ -79,7 +79,7 @@ namespace UTC_DATN.Controllers
             }
 
             await _context.SaveChangesAsync();
-            return Ok(new { message = "Profile updated successfully" });
+            return Ok(new { message = "Cập nhật hồ sơ thành công" });
         }
 
         [HttpGet("company")]
@@ -89,7 +89,7 @@ namespace UTC_DATN.Controllers
             if (userId == Guid.Empty) return Unauthorized();
 
             var user = await _context.Users.FindAsync(userId);
-            if (user == null) return NotFound("User not found");
+            if (user == null) return NotFound(new { message = "Không tìm thấy người dùng" });
 
             return Ok(new CompanyInfoDto
             {
@@ -110,7 +110,7 @@ namespace UTC_DATN.Controllers
                 .Where(u => u.UserRoles.Any(ur => ur.Role.Name == "Admin"))
                 .FirstOrDefaultAsync();
 
-            if (user == null) return NotFound(new { message = "Company info not found" });
+            if (user == null) return NotFound(new { message = "Không tìm thấy thông tin công ty" });
 
             return Ok(new CompanyInfoDto
             {
@@ -130,7 +130,7 @@ namespace UTC_DATN.Controllers
             if (userId == Guid.Empty) return Unauthorized();
 
             var user = await _context.Users.FindAsync(userId);
-            if (user == null) return NotFound("User not found");
+            if (user == null) return NotFound(new { message = "Không tìm thấy người dùng" });
 
             user.CompanyName = dto.Name;
             user.CompanyWebsite = dto.Website;
@@ -140,7 +140,7 @@ namespace UTC_DATN.Controllers
             user.CompanyLogoUrl = dto.LogoUrl;
 
             await _context.SaveChangesAsync();
-            return Ok(new { message = "Company info updated successfully" });
+            return Ok(new { message = "Cập nhật thông tin công ty thành công" });
         }
     }
 }

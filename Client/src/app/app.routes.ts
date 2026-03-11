@@ -11,6 +11,7 @@ import { ManageApplications } from './pages/hr/manage-applications/manage-applic
 import { EmployeeManagement } from './pages/admin/employee-management/employee-management';
 import { ForbiddenComponent } from './pages/forbidden/forbidden.component';
 import { roleGuard } from './guards/role.guard';
+import { authGuard } from './guards/auth.guard';
 import { CandidateDetail } from './components/admin/candidate-detail/candidate-detail';
 import { jobResolver } from './resolvers/job-search.resolver';
 import { profileResolver } from './resolvers/profile.resolver';
@@ -22,6 +23,7 @@ export const routes: Routes = [
   {
     path: 'candidate',
     children: [
+      // Public - không cần đăng nhập
       { path: 'home', component: Home },
       {
         path: 'jobs',
@@ -29,23 +31,31 @@ export const routes: Routes = [
         resolve: { jobs: jobResolver }
       },
       { path: 'job-detail/:id', component: JobDetail },
-      { path: 'my-applications', component: MyApplications },
-      {
-        path: 'profile',
-        loadComponent: () => import('./components/candidate/candidate-profile/candidate-profile').then(m => m.CandidateProfile),
-        resolve: { profile: profileResolver }
-      },
       {
         path: 'company',
         loadComponent: () => import('./pages/candidate/company/company').then(m => m.CompanyComponent)
       },
+      // Private - yêu cầu đăng nhập
+      {
+        path: 'my-applications',
+        component: MyApplications,
+        canActivate: [authGuard]
+      },
+      {
+        path: 'profile',
+        loadComponent: () => import('./components/candidate/candidate-profile/candidate-profile').then(m => m.CandidateProfile),
+        resolve: { profile: profileResolver },
+        canActivate: [authGuard]
+      },
       {
         path: 'saved-jobs',
-        loadComponent: () => import('./pages/candidate/saved-jobs/saved-jobs').then(m => m.SavedJobsComponent)
+        loadComponent: () => import('./pages/candidate/saved-jobs/saved-jobs').then(m => m.SavedJobsComponent),
+        canActivate: [authGuard]
       },
       {
         path: 'settings',
-        loadComponent: () => import('./pages/candidate/candidate-settings/candidate-settings').then(m => m.CandidateSettingsComponent)
+        loadComponent: () => import('./pages/candidate/candidate-settings/candidate-settings').then(m => m.CandidateSettingsComponent),
+        canActivate: [authGuard]
       },
       { path: '', redirectTo: 'home', pathMatch: 'full' }
     ]
@@ -98,6 +108,7 @@ export const routes: Routes = [
       { path: '', redirectTo: 'dashboard', pathMatch: 'full' }
     ]
   },
-  { path: '', redirectTo: 'login', pathMatch: 'full' },
-  { path: '**', redirectTo: 'login' }
+  // Trang chủ mặc định → vào trang job listing (không cần login)
+  { path: '', redirectTo: 'candidate/home', pathMatch: 'full' },
+  { path: '**', redirectTo: 'candidate/home' }
 ];

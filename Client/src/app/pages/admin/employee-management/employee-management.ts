@@ -359,35 +359,73 @@ export class EmployeeManagement implements OnInit {
   }
 
   /**
-   * Delete (deactivate) employee
+   * Delete (deactivate) employee - with pending interviews check
    */
-  deleteEmployee(userId: string): void {
-    if (!confirm('Bạn có chắc chắn muốn vô hiệu hóa nhân viên này?')) {
-      return;
-    }
-
+  deleteEmployee(userId: string, employeeName: string, employeeRole: string): void {
     this.isLoading.set(true);
 
-    this.employeeService.deactivateEmployee(userId).subscribe({
-      next: () => {
-        console.log(' Employee deactivated');
-        this.successMessage.set(' Vô hiệu hóa nhân viên thành công!');
-        this.toast.success('Thành công', 'Vô hiệu hóa nhân viên thành công!');
-
-        setTimeout(() => {
-          this.successMessage.set(null);
-          this.loadEmployees();
-        }, 1500);
-
+    // Bước 1: Kiểm tra lịch phỏng vấn còn lại
+    this.employeeService.getPendingInterviews(userId).subscribe({
+      next: (data) => {
         this.isLoading.set(false);
-        this.cdr.detectChanges();
+
+        let confirmMessage = `Bạn có chắc muốn khóa tài khoản "${employeeName}" (${employeeRole})?`;
+
+        // Nếu là Interviewer và đang có lịch phỏng vấn
+        if (employeeRole === 'INTERVIEWER' && data.count > 0) {
+          const interviewList = data.interviews
+            .slice(0, 5) // Hiển tối đa 5 lịch
+            .map((i: any) => {
+              const d = new Date(i.scheduledStart + 'Z');
+              const formatted = d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+              return `  • ${i.candidateName} \u2013 ${i.jobTitle} (${formatted})`;
+            })
+            .join('\n');
+
+          confirmMessage = `⚠️ CảNH BÁO: "${employeeName}" đang có ${data.count} lịch phỏng vấn chưa thực hiện:\n\n${interviewList}\n\n`
+            + (data.count > 5 ? `... và ${data.count - 5} lịch khác.\n\n` : '')
+            + `Nếu khóa tài khoản, người phỏng vấn này sẽ không thể đăng nhập để thực hiện các buổi phỏng vấn đó.\nBạn vẫn muốn tiếp tục khóa?`;
+        }
+
+        if (!confirm(confirmMessage)) return;
+
+        // Bước 2: Yêu cầu nhập lý do khóa
+        const reason = window.prompt('Nhập lý do khóa tài khoản (có thể bỏ trống):') ?? undefined;
+
+        // Bước 3: Gọi API khóa
+        this.isLoading.set(true);
+        this.employeeService.deactivateEmployee(userId, reason).subscribe({
+          next: () => {
+            this.successMessage.set('🔒 Vô hiệu hóa nhân viên thành công!');
+            this.toast.success('Thành công', 'Vô hiệu hóa nhân viên thành công!');
+            setTimeout(() => { this.successMessage.set(null); this.loadEmployees(); }, 1500);
+            this.isLoading.set(false);
+            this.cdr.detectChanges();
+          },
+          error: (error) => {
+            this.errorMessage.set('Không thể vô hiệu hóa nhân viên. Vui lòng thử lại.');
+            this.toast.error('Lỗi', 'Không thể vô hiệu hóa nhân viên. Vui lòng thử lại.');
+            this.isLoading.set(false);
+            this.cdr.detectChanges();
+          }
+        });
       },
-      error: (error) => {
-        console.error(' Error deactivating employee:', error);
-        this.errorMessage.set('Không thể vô hiệu hóa nhân viên. Vui lòng thử lại.');
-        this.toast.error('Lỗi', 'Không thể vô hiệu hóa nhân viên. Vui lòng thử lại.');
+      error: () => {
+        // Nếu không kiểm tra được, vẫn cho phép khóa nhưng cảnh báo không kiểm tra được
         this.isLoading.set(false);
-        this.cdr.detectChanges();
+        if (!confirm(`Bạn có chắc muốn khóa tài khoản "${employeeName}"? (Không kiểm tra được lịch phỏng vấn)`)) return;
+        this.isLoading.set(true);
+        this.employeeService.deactivateEmployee(userId).subscribe({
+          next: () => {
+            this.toast.success('Thành công', 'Vô hiệu hóa nhân viên thành công!');
+            setTimeout(() => this.loadEmployees(), 1500);
+            this.isLoading.set(false);
+          },
+          error: () => {
+            this.toast.error('Lỗi', 'Không thể vô hiệu hóa.');
+            this.isLoading.set(false);
+          }
+        });
       }
     });
   }

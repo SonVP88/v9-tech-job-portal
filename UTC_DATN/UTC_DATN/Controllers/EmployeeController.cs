@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
+using UTC_DATN.Data;
 using UTC_DATN.DTOs.Employee;
 using UTC_DATN.Services.Interfaces;
 
@@ -11,10 +13,12 @@ namespace UTC_DATN.Controllers
     public class EmployeeController : ControllerBase
     {
         private readonly IEmployeeService _employeeService;
+        private readonly UTC_DATNContext _context;
 
-        public EmployeeController(IEmployeeService employeeService)
+        public EmployeeController(IEmployeeService employeeService, UTC_DATNContext context)
         {
             _employeeService = employeeService;
+            _context = context;
         }
 
         /// <summary>
@@ -94,6 +98,35 @@ namespace UTC_DATN.Controllers
 
             return CreatedAtAction(nameof(GetEmployees), new { id = employee.UserId }, employee);
         }
+
+        [HttpGet("{id}/pending-interviews")]
+        [Authorize(Roles = "ADMIN")]
+        public async Task<IActionResult> GetPendingInterviews(Guid id)
+        {
+            var pendingInterviews = await _context.Interviews
+                .Include(i => i.Application)
+                    .ThenInclude(a => a.Candidate)
+                .Include(i => i.Application)
+                    .ThenInclude(a => a.Job)
+                .Where(i => i.InterviewerId == id
+                         && i.Status == "SCHEDULED"
+                         && i.ScheduledStart > DateTime.UtcNow)
+                .Select(i => new
+                {
+                    interviewId = i.InterviewId,
+                    candidateName = i.Application.Candidate != null ? i.Application.Candidate.FullName : "N/A",
+                    jobTitle = i.Application.Job != null ? i.Application.Job.Title : "N/A",
+                    scheduledStart = i.ScheduledStart
+                })
+                .ToListAsync();
+
+            return Ok(new
+            {
+                count = pendingInterviews.Count,
+                interviews = pendingInterviews
+            });
+        }
+
 
         [HttpPut("{id}/deactivate")]
         [Authorize(Roles = "ADMIN")]

@@ -63,10 +63,15 @@ export class JobDetail implements OnInit {
   ) { }
 
   ngOnInit(): void {
+    // Regex for standard email format
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    // Regex for Vietnamese phone numbers (10 digits starting with 0)
+    const phoneRegex = /(84|0[3|5|7|8|9])+([0-9]{8})\b/;
+
     this.applyForm = this.fb.group({
-      fullName: ['', [Validators.required, Validators.maxLength(200)]],
-      email: ['', [Validators.required, Validators.email, Validators.maxLength(320)]],
-      phone: ['', [Validators.required, Validators.maxLength(50)]],
+      fullName: ['', [Validators.required, Validators.minLength(2), Validators.maxLength(100)]],
+      email: ['', [Validators.required, Validators.pattern(emailRegex), Validators.maxLength(100)]],
+      phone: ['', [Validators.required, Validators.pattern(phoneRegex)]],
       introduction: ['', [Validators.maxLength(2000)]]
     });
 
@@ -180,7 +185,7 @@ export class JobDetail implements OnInit {
     const token = localStorage.getItem('authToken');
     if (!token) {
       this.toast.warning('Yêu cầu đăng nhập', 'Bạn cần đăng nhập để lưu công việc này!');
-      this.router.navigate(['/candidate/login']);
+      this.router.navigate(['/login'], { queryParams: { returnUrl: this.router.url } });
       return;
     }
 
@@ -377,6 +382,33 @@ export class JobDetail implements OnInit {
     this.isModalOpen = true;
     this.submitSuccess = false;
     this.submitError = null;
+
+    // Auto-fill email từ tài khoản đang đăng nhập (nếu có)
+    const token = localStorage.getItem('authToken');
+    if (token) {
+      try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        // Lấy email từ claim 'email' hoặc 'sub' hoặc 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress'
+        const emailFromToken =
+          payload['email'] ||
+          payload['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress'] ||
+          payload['unique_name'] ||
+          null;
+        if (emailFromToken) {
+          this.applyForm.patchValue({ email: emailFromToken });
+        }
+      } catch (e) {
+        // Bỏ qua nếu token không hợp lệ
+      }
+    }
+  }
+
+  /**
+   * Helper method to check if a form field is invalid and touched
+   */
+  isFieldInvalid(fieldName: string): boolean {
+    const field = this.applyForm.get(fieldName);
+    return field ? (field.invalid && (field.dirty || field.touched)) : false;
   }
 
   /**
