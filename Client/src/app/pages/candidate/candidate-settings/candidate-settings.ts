@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, AfterViewInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
@@ -7,6 +7,7 @@ import { CandidateHeaderComponent } from '../../../components/shared/candidate-h
 import { CandidateFooter } from '../../../components/shared/candidate-footer/candidate-footer';
 import { CandidateSettingsService, NotificationSettings } from '../../../services/candidate-settings.service';
 import { ToastService } from '../../../services/toast.service';
+import { AuthService } from '../../../services/auth.service';
 
 type Tab = 'security' | 'notifications';
 
@@ -17,7 +18,7 @@ type Tab = 'security' | 'notifications';
     templateUrl: './candidate-settings.html',
     styleUrl: './candidate-settings.scss'
 })
-export class CandidateSettingsComponent implements OnInit {
+export class CandidateSettingsComponent implements OnInit, AfterViewInit {
     activeTab: Tab = 'security';
 
     currentPassword = '';
@@ -40,15 +41,12 @@ export class CandidateSettingsComponent implements OnInit {
 
     constructor(
         private settingsService: CandidateSettingsService,
-        private toast: ToastService
+        private toast: ToastService,
+        private authService: AuthService
     ) { }
 
     ngOnInit(): void {
         this.loadNotificationSettings();
-    }
-
-    setTab(tab: Tab): void {
-        this.activeTab = tab;
     }
 
     changePassword(): void {
@@ -122,5 +120,55 @@ export class CandidateSettingsComponent implements OnInit {
         const current = this.notifSubject.getValue();
         if (!current) return;
         this.notifSubject.next({ ...current, [key]: !current[key] });
+    }
+
+    ngAfterViewInit(): void {
+        if (this.activeTab === 'security') {
+            this.initGoogleButton();
+        }
+    }
+
+    setTab(tab: Tab): void {
+        this.activeTab = tab;
+        if (tab === 'security') {
+            setTimeout(() => this.initGoogleButton(), 100);
+        }
+    }
+
+    initGoogleButton(): void {
+        const google = (window as any).google;
+        if (!google) {
+            setTimeout(() => this.initGoogleButton(), 500);
+            return;
+        }
+
+        google.accounts.id.initialize({
+            client_id: '731740261588-jno35lom7hluee8n0oh9u5tqn7i437kb.apps.googleusercontent.com',
+            callback: (response: any) => this.handleGoogleLinkCallback(response)
+        });
+
+        const btnDiv = document.getElementById('google-link-btn');
+        if (btnDiv) {
+            google.accounts.id.renderButton(btnDiv, {
+                theme: 'outline',
+                size: 'large',
+                shape: 'rectangular',
+                width: btnDiv.offsetWidth || 360,
+                text: 'continue_with',
+                logo_alignment: 'center'
+            });
+        }
+    }
+
+    handleGoogleLinkCallback(response: any): void {
+        const idToken = response.credential;
+        this.authService.linkGoogle(idToken).subscribe({
+            next: (res) => {
+                this.toast.success('Liên kết thành công!', res.message);
+            },
+            error: (err) => {
+                this.toast.error('Liên kết thất bại', err.error?.message || 'Email tài khoản Google không khớp với email đăng nhập của bạn.');
+            }
+        });
     }
 }

@@ -89,4 +89,16 @@ export class AuthService {
     changePassword(data: any): Observable<any> {
         return this.http.post(`${environment.apiUrl}/auth/change-password`, data);
     }
+
+    forgotPassword(email: string): Observable<any> {
+        return this.http.post(`${environment.apiUrl}/auth/forgot-password`, { email });
+    }
+
+    googleLogin(idToken: string): Observable<any> {
+        return this.http.post(`${environment.apiUrl}/auth/google-login`, { idToken });
+    }
+
+    linkGoogle(idToken: string): Observable<any> {
+        return this.http.post(`${environment.apiUrl}/auth/link-google`, { idToken });
+    }
 }

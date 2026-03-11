@@ -22,12 +22,18 @@
     </div>
 
     <div class="w-full md:w-1/2 p-8 md:p-12 lg:p-16 flex flex-col justify-center bg-card-light dark:bg-card-dark">
-      <div class="mb-10">
+      <div class="mb-10" *ngIf="!isForgotPasswordMode">
         <h1 class="text-3xl font-bold text-slate-900 dark:text-white mb-2 tracking-tight">Chào Mừng Trở Lại</h1>
         <p class="text-slate-500 dark:text-slate-400">Vui lòng nhập thông tin để đăng nhập.</p>
       </div>
 
-      <form [formGroup]="loginForm" class="flex flex-col gap-6" (ngSubmit)="onSubmit()">
+      <div class="mb-10" *ngIf="isForgotPasswordMode">
+        <h1 class="text-3xl font-bold text-slate-900 dark:text-white mb-2 tracking-tight">Khôi Phục Mật Khẩu</h1>
+        <p class="text-slate-500 dark:text-slate-400">Nhập email của bạn để nhận mật khẩu mới.</p>
+      </div>
+
+      <!-- LOGIN FORM -->
+      <form *ngIf="!isForgotPasswordMode" [formGroup]="loginForm" class="flex flex-col gap-6" (ngSubmit)="onSubmit()">
         <div>
           <label class="block text-sm font-medium text-slate-900 dark:text-slate-200 mb-1.5" for="email">Email</label>
           <input formControlName="email"
@@ -73,7 +79,7 @@
               nhớ đăng nhập</span>
           </label>
           <a class="text-sm font-medium text-primary hover:text-primary-hover hover:underline outline-none focus:ring-2 focus:ring-primary/20 rounded"
-            href="#">
+            href="javascript:void(0)" (click)="toggleForgotPasswordMode()">
             Quên mật khẩu?
           </a>
         </div>
@@ -84,12 +90,52 @@
           Đăng Nhập
         </button>
 
+        <!-- Divider -->
+        <div class="flex items-center gap-3 my-1">
+          <div class="flex-1 h-px bg-slate-200 dark:bg-slate-700"></div>
+          <span class="text-xs text-slate-400 dark:text-slate-500">hoặc</span>
+          <div class="flex-1 h-px bg-slate-200 dark:bg-slate-700"></div>
+        </div>
+
+        <!-- Google Login Button - rendered by Google SDK -->
+        <div id="google-login-btn" class="w-full flex justify-center"></div>
+
         <div class="text-center mt-4">
           <p class="text-sm text-slate-600 dark:text-slate-400">
             Chưa có tài khoản?
             <a class="font-medium text-primary hover:text-primary-hover hover:underline ml-1"
               routerLink="/register">Đăng ký ngay</a>
           </p>
+        </div>
+      </form>
+
+      <!-- FORGOT PASSWORD FORM -->
+      <form *ngIf="isForgotPasswordMode" [formGroup]="forgotPasswordForm" class="flex flex-col gap-6" (ngSubmit)="onForgotPasswordSubmit()">
+        <div>
+          <label class="block text-sm font-medium text-slate-900 dark:text-slate-200 mb-1.5" for="forgot-email">Email đã đăng ký</label>
+          <input formControlName="email"
+            class="block w-full rounded-lg border-slate-300 dark:border-slate-600 bg-background-light dark:bg-background-dark text-slate-900 dark:text-white focus:border-primary focus:ring-primary sm:text-sm py-3 px-4 placeholder:text-slate-400 border"
+            id="forgot-email" placeholder="name@company.com" type="email" />
+
+          <div *ngIf="forgotPasswordForm.get('email')?.touched && forgotPasswordForm.get('email')?.invalid"
+            class="text-red-500 text-xs mt-1">
+            <span *ngIf="forgotPasswordForm.get('email')?.hasError('required')">Email không được để trống</span>
+            <span *ngIf="forgotPasswordForm.get('email')?.hasError('email')">Email không đúng định dạng</span>
+          </div>
+        </div>
+
+        <button
+          class="w-full bg-primary hover:bg-primary-hover text-white font-semibold py-3 px-4 rounded-lg shadow-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 dark:focus:ring-offset-gray-900 mt-2 disabled:opacity-50 disabled:cursor-not-allowed"
+          type="submit" [disabled]="forgotPasswordForm.invalid">
+          Gửi Mật Khẩu
+        </button>
+
+        <div class="text-center mt-4">
+          <a class="font-medium text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300 hover:underline inline-flex items-center gap-1 cursor-pointer"
+             (click)="toggleForgotPasswordMode()">
+            <span class="material-symbols-outlined text-sm">arrow_back</span>
+            Quay lại đăng nhập
+          </a>
         </div>
       </form>
     </div>
