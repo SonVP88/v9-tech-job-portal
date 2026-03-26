@@ -10,4 +10,5 @@ public class MyApplicationDto
     public DateTime AppliedAt { get; set; }
     public string Status { get; set; } = string.Empty;
     public string? CvUrl { get; set; }
+    public DateTime? LastViewedAt { get; set; }
 }

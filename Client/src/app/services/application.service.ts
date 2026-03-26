@@ -25,6 +25,7 @@ export interface MyApplicationDto {
     jobLocation?: string;
     appliedAt: string;
     status: string;
+    lastViewedAt?: string;
     cvUrl?: string;
 }
 
@@ -120,5 +121,12 @@ export class ApplicationService {
      */
     getCandidateProfile(candidateId: string): Observable<CandidateProfileDto> {
         return this.http.get<CandidateProfileDto>(`${this.apiUrl}/candidate/profile/${candidateId}`);
+    }
+
+    /**
+     * Ghi nhận lượt xem CV (Dành cho HR/Admin)
+     */
+    trackCvView(applicationId: string): Observable<ApiResponse<any>> {
+        return this.http.post<ApiResponse<any>>(`${this.apiUrl}/applications/${applicationId}/track-view`, {});
     }
 }

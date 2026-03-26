@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using UTC_DATN.Data;
 
@@ -11,9 +12,11 @@ using UTC_DATN.Data;
 namespace UTC_DATN.Migrations
 {
     [DbContext(typeof(UTC_DATNContext))]
-    partial class UTC_DATNContextModelSnapshot : ModelSnapshot
+    [Migration("20260311041636_AddAuthProvider")]
+    partial class AddAuthProvider
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

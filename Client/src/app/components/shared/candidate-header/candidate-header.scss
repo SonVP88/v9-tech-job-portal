@@ -1,0 +1,57 @@
+/* Custom Scrollbar */
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(156, 163, 175, 0.5) transparent;
+
+  &::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background-color: rgba(156, 163, 175, 0.5);
+    border-radius: 3px;
+
+    &:hover {
+      background-color: rgba(107, 114, 128, 0.7);
+    }
+  }
+}
+
+/* Dark mode scrollbar */
+:host-context(.dark) .custom-scrollbar {
+  scrollbar-color: rgba(71, 85, 105, 0.5) transparent;
+
+  &::-webkit-scrollbar-thumb {
+    background-color: rgba(71, 85, 105, 0.5);
+
+    &:hover {
+      background-color: rgba(100, 116, 139, 0.7);
+    }
+  }
+}
+
+/* Line Clamp Utility */
+.line-clamp-3 {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Mobile responsiveness for notification popup */
+@media (max-width: 768px) {
+  .notification-popup {
+    position: fixed;
+    top: 80px;
+    left: 0;
+    right: 0;
+    border-radius: 0;
+    width: 100%;
+    max-height: calc(100vh - 80px);
+  }
+}

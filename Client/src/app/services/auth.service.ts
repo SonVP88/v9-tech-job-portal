@@ -1,4 +1,4 @@
-import { Injectable, PLATFORM_ID, inject } from '@angular/core';
+import { Injectable, PLATFORM_ID, inject, NgZone } from '@angular/core';
 import { Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
@@ -13,8 +13,55 @@ import { ChatbotService } from './chatbot.service';
 export class AuthService {
     private platformId = inject(PLATFORM_ID);
     private chatbotService = inject(ChatbotService);
+    private ngZone = inject(NgZone);
 
-    constructor(private router: Router, private http: HttpClient) { }
+    private idleTimer: any;
+    private readonly IDLE_TIMEOUT = 5 * 60 * 1000; // 5 phút
+
+    constructor(private router: Router, private http: HttpClient) { 
+        this.startIdleTimer();
+    }
+
+    startIdleTimer(): void {
+        if (!isPlatformBrowser(this.platformId) || typeof window === 'undefined') return;
+
+        // Chạy ngoài NgZone để tránh trigger Change Detection khi user di chuột hoặc gõ phím liên tục
+        this.ngZone.runOutsideAngular(() => {
+            ['mousemove', 'keydown', 'click', 'scroll', 'touchstart'].forEach(eventName => {
+                window.addEventListener(eventName, () => this.resetIdleTimer());
+            });
+        });
+
+        this.resetIdleTimer();
+    }
+
+    resetIdleTimer(): void {
+        if (!isPlatformBrowser(this.platformId) || typeof window === 'undefined') return;
+        
+        // Đoạn này có thể gọi liên tục nên cần check nhanh
+        if (this.idleTimer) {
+            clearTimeout(this.idleTimer);
+        }
+
+        // Chỉ xử lý đăng xuất khi đã xác thực
+        if (!this.isAuthenticated()) return;
+
+        this.ngZone.runOutsideAngular(() => {
+            this.idleTimer = setTimeout(() => {
+                this.ngZone.run(() => {
+                    console.log('Phiên đăng nhập hết hạn do không hoạt động trong 5 phút.');
+                    this.logout(true); // Gửi cờ báo hiệu đăng xuất do timeout
+                });
+            }, this.IDLE_TIMEOUT);
+        });
+    }
+
+    stopIdleTimer(): void {
+        if (this.idleTimer) {
+            clearTimeout(this.idleTimer);
+            this.idleTimer = null;
+        }
+    }
 
     isAuthenticated(): boolean {
         if (!isPlatformBrowser(this.platformId)) return false;
@@ -51,7 +98,7 @@ export class AuthService {
         return user ? user.role : null;
     }
 
-    logout(): void {
+    logout(isTimeout: boolean = false): void {
         if (isPlatformBrowser(this.platformId) && typeof window !== 'undefined') {
             console.log('🚪 Đăng xuất - Xóa token khỏi localStorage');
             localStorage.removeItem('authToken');
@@ -62,10 +109,16 @@ export class AuthService {
             }
         }
 
+        this.stopIdleTimer();
+
         // Xóa hoàn toàn lịch sử trò chuyện Chatbot khỏi RAM
         this.chatbotService.clearChat();
 
-        this.router.navigate(['/login']);
+        this.router.navigate(['/login']).then(() => {
+            if (isTimeout) {
+                alert('Phiên đăng nhập đã tự động kết thúc do không hoạt động trong 5 phút. Vui lòng đăng nhập lại.');
+            }
+        });
     }
 
     saveToken(token: string): boolean {
@@ -78,6 +131,10 @@ export class AuthService {
         try {
             localStorage.setItem('authToken', token);
             console.log(' Token saved successfully');
+            
+            // Bắt đầu đếm thời gian timeout ngay khi vừa lưu token xong
+            this.resetIdleTimer();
+            
             return true;
         } catch (error) {
             console.error(' Error saving token:', error);

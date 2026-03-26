@@ -191,44 +191,24 @@
 
         <!-- Pagination -->
         <div *ngIf="filteredJobs().length > 0"
-            class="flex flex-col md:flex-row items-center justify-between gap-4 p-4 border-t border-gray-200 dark:border-slate-800">
-            <!-- Results info -->
-            <div class="text-sm text-gray-600 dark:text-slate-400">
-                Hiển thị
-                <span class="font-bold text-slate-900 dark:text-white">{{ (currentPage() - 1) * itemsPerPage + 1
-                    }}</span>
-                đến
-                <span class="font-bold text-slate-900 dark:text-white">{{ Math.min(currentPage() * itemsPerPage,
-                    filteredJobs().length) }}</span>
-                trong tổng số
-                <span class="font-bold text-slate-900 dark:text-white">{{ filteredJobs().length }}</span>
-                tin tuyển dụng
+            class="px-6 py-4 bg-gray-50 dark:bg-slate-900/50 border-t border-gray-100 dark:border-slate-800 flex items-center justify-between">
+            <p class="text-xs text-gray-500 dark:text-slate-400 font-medium">
+                Hiển thị {{ (currentPage() - 1) * itemsPerPage + 1 }} - {{ Math.min(currentPage() * itemsPerPage,
+                filteredJobs().length) }} trên tổng số {{ filteredJobs().length }} tin tuyển dụng
+            </p>
+            <div class="flex gap-1" *ngIf="totalPages() > 1">
+                <button [disabled]="currentPage() === 1" (click)="changePage(currentPage() - 1)"
+                    class="p-1 px-3 border border-gray-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 dark:text-white disabled:opacity-50 text-sm font-medium transition-colors hover:bg-gray-50">
+                    Trước
+                </button>
+                <div class="flex items-center px-4 font-bold text-sm text-slate-900 dark:text-white">
+                    {{ currentPage() }} / {{ totalPages() }}
+                </div>
+                <button [disabled]="currentPage() === totalPages()" (click)="changePage(currentPage() + 1)"
+                    class="p-1 px-3 border border-gray-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 dark:text-white disabled:opacity-50 text-sm font-medium transition-colors hover:bg-gray-50">
+                    Sau
+                </button>
             </div>
-
-            <!-- Page numbers -->
-            <nav class="flex items-center gap-1" *ngIf="totalPages() > 1">
-                <!-- Previous button -->
-                <button (click)="previousPage()" [disabled]="currentPage() === 1"
-                    class="px-3 py-2 text-sm font-medium rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-slate-800 text-gray-700 dark:text-slate-300">
-                    <span class="material-symbols-outlined text-[18px]">chevron_left</span>
-                </button>
-
-                <!-- Page numbers -->
-                <button *ngFor="let page of getPageNumbers()" (click)="page > 0 ? changePage(page) : null"
-                    [disabled]="page === -1" [class.bg-primary]="page === currentPage()"
-                    [class.text-white]="page === currentPage()"
-                    [class.hover:bg-gray-100]="page !== currentPage() && page > 0"
-                    [class.dark:hover:bg-slate-800]="page !== currentPage() && page > 0"
-                    class="min-w-[40px] px-3 py-2 text-sm font-bold rounded-lg transition-all disabled:cursor-default text-gray-700 dark:text-slate-300">
-                    {{ page > 0 ? page : '...' }}
-                </button>
-
-                <!-- Next button -->
-                <button (click)="nextPage()" [disabled]="currentPage() === totalPages()"
-                    class="px-3 py-2 text-sm font-medium rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-slate-800 text-gray-700 dark:text-slate-300">
-                    <span class="material-symbols-outlined text-[18px]">chevron_right</span>
-                </button>
-            </nav>
         </div>
     </div>
 </div>

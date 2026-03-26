@@ -231,7 +231,7 @@
 
                             <!-- CV -->
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                <button (click)="viewCv(app.cvUrl); $event.stopPropagation()"
+                                <button (click)="viewCv(app); $event.stopPropagation()"
                                     class="text-blue-600 hover:text-blue-800 transition-colors flex items-center gap-1">
                                     <span class="material-symbols-outlined" style="font-size: 18px;">description</span>
                                     Xem
@@ -339,44 +339,24 @@
 
             <!-- Pagination -->
             <div *ngIf="filteredApplications().length > 0"
-                class="flex flex-col md:flex-row items-center justify-between gap-4 p-4 border-t border-gray-100 bg-white">
-                <!-- Results info -->
-                <div class="text-sm text-gray-600">
-                    Hiển thị
-                    <span class="font-bold text-gray-900">{{ (currentPage - 1) * itemsPerPage + 1 }}</span>
-                    đến
-                    <span class="font-bold text-gray-900">{{ Math.min(currentPage * itemsPerPage,
-                        filteredApplications().length) }}</span>
-                    trong tổng số
-                    <span class="font-bold text-gray-900">{{ filteredApplications().length }}</span>
-                    ứng viên
+                class="px-6 py-4 bg-gray-50 border-t border-gray-100 flex items-center justify-between">
+                <p class="text-xs text-gray-500 font-medium">
+                    Hiển thị {{ (currentPage - 1) * itemsPerPage + 1 }} - {{ Math.min(currentPage * itemsPerPage,
+                    filteredApplications().length) }} trên tổng số {{ filteredApplications().length }} ứng viên
+                </p>
+                <div class="flex gap-1" *ngIf="totalPages() > 1">
+                    <button [disabled]="currentPage === 1" (click)="changePage(currentPage - 1)"
+                        class="p-1 px-3 border border-gray-200 rounded-lg bg-white disabled:opacity-50 text-sm font-medium transition-colors hover:bg-gray-50">
+                        Trước
+                    </button>
+                    <div class="flex items-center px-4 font-bold text-sm text-gray-900">
+                        {{ currentPage }} / {{ totalPages() }}
+                    </div>
+                    <button [disabled]="currentPage === totalPages()" (click)="changePage(currentPage + 1)"
+                        class="p-1 px-3 border border-gray-200 rounded-lg bg-white disabled:opacity-50 text-sm font-medium transition-colors hover:bg-gray-50">
+                        Sau
+                    </button>
                 </div>
-
-                <!-- Page numbers -->
-                <nav class="flex items-center gap-1" *ngIf="totalPages() > 1">
-                    <!-- Previous button -->
-                    <button (click)="previousPage()" [disabled]="currentPage === 1"
-                        class="px-3 py-2 text-sm font-medium rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 text-gray-700">
-                        <span
-                            class="material-symbols-outlined text-[18px] leading-none text-center block mt-1">chevron_left</span>
-                    </button>
-
-                    <!-- Page numbers -->
-                    <button *ngFor="let page of getPageNumbers()" (click)="page > 0 ? changePage(page) : null"
-                        [disabled]="page === -1" [class.bg-blue-600]="page === currentPage"
-                        [class.text-white]="page === currentPage"
-                        [class.hover:bg-gray-100]="page !== currentPage && page > 0"
-                        class="min-w-[40px] px-3 py-2 text-sm font-bold rounded-lg transition-all disabled:cursor-default text-gray-700">
-                        {{ page > 0 ? page : '...' }}
-                    </button>
-
-                    <!-- Next button -->
-                    <button (click)="nextPage()" [disabled]="currentPage === totalPages()"
-                        class="px-3 py-2 text-sm font-medium rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 text-gray-700">
-                        <span
-                            class="material-symbols-outlined text-[18px] leading-none text-center block mt-1">chevron_right</span>
-                    </button>
-                </nav>
             </div>
         </div>
 
@@ -529,14 +509,24 @@
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Ngày phỏng vấn *</label>
                         <input type="date" [(ngModel)]="interviewForm.date" (ngModelChange)="updateEmailPreview()"
+                            [class.border-red-500]="interviewForm.date && !isValidFutureDate()"
+                            [class.focus:ring-red-500]="interviewForm.date && !isValidFutureDate()"
                             class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        <p *ngIf="dateValidationError" class="text-xs text-red-500 mt-1">{{ dateValidationError }}</p>
+                        <p *ngIf="!dateValidationError && interviewForm.date" class="text-xs text-green-600 mt-1">✅ Ngày này là ngày lao động hợp lệ</p>
+                        <p class="text-xs text-gray-500 mt-1">💡 Phải là ngày lao động (Thứ 2-6), không phải lễ Việt Nam</p>
                     </div>
 
                     <!-- Giờ phỏng vấn -->
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Giờ phỏng vấn *</label>
                         <input type="time" [(ngModel)]="interviewForm.time" (ngModelChange)="updateEmailPreview()"
+                            [class.border-red-500]="interviewForm.time && !isValidBusinessHours()"
+                            [class.focus:ring-red-500]="interviewForm.time && !isValidBusinessHours()"
                             class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        <p *ngIf="timeValidationError" class="text-xs text-red-500 mt-1">{{ timeValidationError }}</p>
+                        <p *ngIf="!timeValidationError && interviewForm.time" class="text-xs text-green-600 mt-1">✅ Nằm trong giờ hành chính</p>
+                        <p class="text-xs text-gray-500 mt-1">💡 Giờ hành chính Việt Nam: 8:00 - 18:00 (8 AM - 6 PM)</p>
                     </div>
 
                     <!-- Custom Dropdown - Người phỏng vấn -->
@@ -744,7 +734,10 @@
                         </label>
                         <input type="text" [(ngModel)]="interviewForm.location" (ngModelChange)="updateEmailPreview()"
                             [placeholder]="interviewForm.type === 'ONLINE' ? 'VD: https://meet.google.com/xxx' : 'VD: 123 Đường ABC, Quận 1, TP.HCM'"
+                            [class.border-red-500]="interviewForm.location && !isValidLocation()"
+                            [class.focus:ring-red-500]="interviewForm.location && !isValidLocation()"
                             class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        <p *ngIf="locationValidationError" class="text-xs text-red-500 mt-1">{{ locationValidationError }}</p>
                     </div>
                 </div>
 

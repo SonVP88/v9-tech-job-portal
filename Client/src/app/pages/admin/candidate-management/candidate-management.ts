@@ -20,7 +20,7 @@ export class CandidateManagementComponent implements OnInit {
   // Pagination & Search
   searchTerm = '';
   pageConfig = 1;
-  pageSize = 10;
+  pageSize = 6;
   totalItems = 0;
   totalPages = 0;
   

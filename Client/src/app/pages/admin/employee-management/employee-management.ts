@@ -27,7 +27,7 @@ export class EmployeeManagement implements OnInit {
 
   // Pagination
   currentPage = signal(1);
-  itemsPerPage = 10;
+  itemsPerPage = 6;
 
   // Edit employee
   selectedEmployee = signal<EmployeeDto | null>(null);

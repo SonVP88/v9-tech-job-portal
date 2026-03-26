@@ -27,7 +27,7 @@ export class JobListComponent implements OnInit {
 
     // Pagination
     currentPage = signal(1);
-    itemsPerPage = 9;
+    itemsPerPage = 6;
 
     // Expose Math for template
     Math = Math;

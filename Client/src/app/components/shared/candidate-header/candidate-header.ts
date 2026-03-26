@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, Router } from '@angular/router';
 import { AuthService } from '../../../services/auth.service';
@@ -9,8 +9,9 @@ import { NotificationService, NotificationDto } from '../../../services/notifica
     standalone: true,
     imports: [CommonModule, RouterModule],
     templateUrl: './candidate-header.html',
+    styleUrl: './candidate-header.scss',
 })
-export class CandidateHeaderComponent implements OnInit {
+export class CandidateHeaderComponent implements OnInit, OnDestroy {
     isLoggedIn = false;
     userFullName = '';
     userRole = '';
@@ -133,6 +134,17 @@ export class CandidateHeaderComponent implements OnInit {
             day: '2-digit',
             month: '2-digit'
         });
+    }
+
+    getTypeLabel(type: string): string {
+        const labels: { [key: string]: string } = {
+            'JOB_OPPORTUNITY': '💼 Cơ hội việc làm',
+            'APPLICATION_UPDATE': '📋 Cập nhật đơn ứng tuyển',
+            'SECURITY': '🔒 Bảo mật tài khoản',
+            'INTERVIEW': '📞 Cuộc phỏng vấn',
+            'MESSAGE': '💬 Tin nhắn mới'
+        };
+        return labels[type] || 'Thông báo';
     }
 
     backToAdmin(): void {

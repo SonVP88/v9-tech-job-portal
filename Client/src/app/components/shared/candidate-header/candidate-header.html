@@ -62,51 +62,67 @@
 
                     <!-- Notification Dropdown -->
                     <div *ngIf="isNotificationDropdownOpen"
-                        class="absolute right-0 mt-3 w-80 bg-white dark:bg-slate-900 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-800 py-2 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
+                        class="fixed md:absolute right-0 md:right-0 top-20 md:top-auto md:mt-3 w-full md:w-[450px] bg-white dark:bg-slate-900 rounded-none md:rounded-xl shadow-2xl border-t md:border border-slate-200 dark:border-slate-800 z-50 flex flex-col max-h-[calc(100vh-80px)] md:max-h-[600px]">
+                        <!-- Header -->
                         <div
-                            class="px-4 py-2 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center">
-                            <h3 class="font-bold text-slate-900 dark:text-white">Thông báo</h3>
+                            class="px-4 py-3 md:px-4 md:py-3 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center sticky top-0 bg-white dark:bg-slate-900 z-10">
+                            <div>
+                                <h3 class="font-bold text-slate-900 dark:text-white">Thông báo</h3>
+                                <p class="text-xs text-slate-500 dark:text-slate-400">{{ notifications.length }} thông báo</p>
+                            </div>
                             <button *ngIf="unreadCount > 0" (click)="markAllAsRead()"
-                                class="text-xs text-primary hover:underline">Đã xem hết</button>
+                                class="text-xs text-primary hover:underline font-medium px-2 py-1">Đã xem hết</button>
                         </div>
 
-                        <div class="max-h-[350px] overflow-y-auto">
-                            <div *ngIf="notifications.length === 0" class="p-8 text-center text-slate-500">
+                        <!-- Content -->
+                        <div class="flex-1 overflow-y-auto custom-scrollbar">
+                            <!-- Empty State -->
+                            <div *ngIf="notifications.length === 0" class="p-12 text-center text-slate-500">
                                 <span
-                                    class="material-symbols-outlined text-slate-300 text-4xl mb-2">notifications_off</span>
-                                <p class="text-sm">Chưa có thông báo nào</p>
+                                    class="material-symbols-outlined text-slate-300 text-5xl block mb-3">notifications_off</span>
+                                <p class="text-sm font-medium">Chưa có thông báo nào</p>
+                                <p class="text-xs text-slate-400 mt-1">Quay lại sau để kiểm tra</p>
                             </div>
 
-                            <div *ngFor="let n of notifications" (click)="markAsRead(n)" [class.bg-blue-50]="!n.isRead"
-                                [class.dark:bg-blue-900\/10]="!n.isRead"
-                                class="px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer transition-colors border-b border-slate-50 dark:border-slate-800 last:border-0 relative">
-                                <div class="flex gap-3">
-                                    <div
-                                        [class]="'w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ' + 
-                                        (n.type === 'JOB_OPPORTUNITY' ? 'bg-green-100 text-green-600' : 
-                                         n.type === 'APPLICATION_UPDATE' ? 'bg-blue-100 text-blue-600' : 
-                                         n.type === 'SECURITY' ? 'bg-amber-100 text-amber-600' : 'bg-slate-100 text-slate-600')">
-                                        <span class="material-symbols-outlined text-xl">
-                                            {{ n.type === 'JOB_OPPORTUNITY' ? 'work' :
-                                            n.type === 'APPLICATION_UPDATE' ? 'assignment' :
-                                            n.type === 'SECURITY' ? 'security' : 'notifications' }}
-                                        </span>
+                            <!-- Notifications List -->
+                            <div *ngIf="notifications.length > 0" class="divide-y divide-slate-100 dark:divide-slate-800">
+                                <div *ngFor="let n of notifications" (click)="markAsRead(n)" 
+                                    [class.bg-blue-50]="!n.isRead"
+                                    [class.dark:bg-blue-900/10]="!n.isRead"
+                                    class="p-4 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer transition-colors relative group">
+                                    
+                                    <div class="flex gap-3">
+                                        <!-- Icon -->
+                                        <div
+                                            [class]="'w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 ' + 
+                                            (n.type === 'JOB_OPPORTUNITY' ? 'bg-green-100 text-green-600' : 
+                                             n.type === 'APPLICATION_UPDATE' ? 'bg-blue-100 text-blue-600' : 
+                                             n.type === 'SECURITY' ? 'bg-amber-100 text-amber-600' : 'bg-slate-100 text-slate-600')">
+                                            <span class="material-symbols-outlined text-2xl">
+                                                {{ n.type === 'JOB_OPPORTUNITY' ? 'work' :
+                                                n.type === 'APPLICATION_UPDATE' ? 'assignment' :
+                                                n.type === 'SECURITY' ? 'security' : 'notifications' }}
+                                            </span>
+                                        </div>
+
+                                        <!-- Content -->
+                                        <div class="flex-1 min-w-0">
+                                            <div class="flex items-start justify-between gap-2">
+                                                <div class="flex-1">
+                                                    <p class="text-sm font-bold text-slate-900 dark:text-white truncate">{{ n.title }}</p>
+                                                    <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                                                        {{ getTypeLabel(n.type) }}
+                                                    </p>
+                                                </div>
+                                                <div *ngIf="!n.isRead" class="w-2 h-2 bg-blue-600 rounded-full mt-1.5 flex-shrink-0"></div>
+                                            </div>
+                                            <p class="text-sm text-slate-600 dark:text-slate-400 line-clamp-3 mt-1.5 leading-relaxed">{{
+                                                n.message }}</p>
+                                            <p class="text-[11px] text-slate-400 dark:text-slate-500 mt-2">{{ formatDate(n.createdAt) }}</p>
+                                        </div>
                                     </div>
-                                    <div class="flex-1 min-w-0">
-                                        <p class="text-sm font-bold text-slate-900 dark:text-white truncate">{{ n.title
-                                            }}</p>
-                                        <p class="text-xs text-slate-600 dark:text-slate-400 line-clamp-2 mt-0.5">{{
-                                            n.message }}</p>
-                                        <p class="text-[10px] text-slate-400 mt-1">{{ formatDate(n.createdAt) }}</p>
-                                    </div>
-                                    <div *ngIf="!n.isRead" class="w-2 h-2 bg-blue-600 rounded-full mt-1"></div>
                                 </div>
                             </div>
-                        </div>
-
-                        <div class="px-4 py-2 border-t border-slate-100 dark:border-slate-800 text-center">
-                            <button class="text-xs text-slate-500 hover:text-primary transition-colors">Xem tất
-                                cả</button>
                         </div>
                     </div>
                 </div>

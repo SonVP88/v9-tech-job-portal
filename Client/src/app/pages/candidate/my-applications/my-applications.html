@@ -79,6 +79,10 @@
                   <span class="material-symbols-outlined" style="font-size: 16px;">calendar_today</span>
                   <span>Ứng tuyển: {{ formatDate(app.appliedAt) }}</span>
                 </div>
+                <div *ngIf="app.lastViewedAt" class="flex items-center gap-1 text-blue-500 font-medium animate-pulse">
+                  <span class="material-symbols-outlined" style="font-size: 16px;">visibility</span>
+                  <span>HR đã xem hồ sơ lúc {{ formatDateTime(app.lastViewedAt) }}</span>
+                </div>
               </div>
             </div>
           </div>

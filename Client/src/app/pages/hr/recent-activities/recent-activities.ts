@@ -12,6 +12,7 @@ import { DashboardService, DashboardActivityDto } from '../../../services/dashbo
 export class RecentActivitiesComponent implements OnInit {
     private dashboardService = inject(DashboardService);
     private cdr = inject(ChangeDetectorRef);
+    Math = Math;
 
     activities = signal<DashboardActivityDto[]>([]);
     isLoading = signal(false);
@@ -20,7 +21,7 @@ export class RecentActivitiesComponent implements OnInit {
     currentPage = signal(1);
     totalPages = signal(1);
     totalItems = signal(0);
-    itemsPerPage = 15;
+    itemsPerPage = 6;
 
     ngOnInit(): void {
         this.loadActivities(this.currentPage());

@@ -267,7 +267,6 @@ public class ApplicationService : IApplicationService
                     Status = "ACTIVE",
                     AppliedAt = DateTime.UtcNow,
                     LastStageChangedAt = DateTime.UtcNow,
-                    // Snapshot thông tin liên lạc tại thời điểm nộp hồ sơ
                     ContactEmail = request.Email?.Trim(),
                     ContactPhone = request.Phone?.Trim()
                 };
@@ -305,7 +304,7 @@ public class ApplicationService : IApplicationService
                         }
                         else
                         {
-                            // 2. Gọi AI để chấm điểm (Sử dụng Document AI Native với File Path)
+                            // 2. Gọi AI để chấm điểm 
                             _logger.LogInformation("Gửi trực tiếp tệp PDF cho AI: {FilePath}", savedFilePath);
                             var aiScore = await _aiMatchingService.ScoreApplicationAsync(savedFilePath, fullJobDescription);
                             
@@ -387,7 +386,6 @@ public class ApplicationService : IApplicationService
                     _logger.LogError(ex, " Lỗi khi tạo thông báo cho Admin/HR");
                 }
 
-                // Commit transaction
                 await transaction.CommitAsync();
                 _logger.LogInformation("Hoàn thành nộp hồ sơ thành công cho JobId: {JobId}", request.JobId);
 
@@ -395,7 +393,6 @@ public class ApplicationService : IApplicationService
             }
             catch (Exception ex)
             {
-                // Rollback transaction
                 await transaction.RollbackAsync();
                 _logger.LogError(ex, "Lỗi khi xử lý transaction, đang rollback");
 
@@ -413,7 +410,6 @@ public class ApplicationService : IApplicationService
         {
             _logger.LogError(ex, "Lỗi khi nộp hồ sơ");
             
-            // Xóa file vật lý nếu có lỗi và file đã được lưu
             if (!string.IsNullOrEmpty(savedFilePath) && System.IO.File.Exists(savedFilePath))
             {
                 try
@@ -432,7 +428,6 @@ public class ApplicationService : IApplicationService
     }
     public async Task<List<ApplicationDto>> GetApplicationsByJobIdAsync(Guid jobId)
     {
-        // OPTIMIZED: Use projection instead of Include to load only needed fields
         var applications = await _context.Applications
             .AsNoTracking()
             .Where(a => a.JobId == jobId)
@@ -447,10 +442,9 @@ public class ApplicationService : IApplicationService
                 Status = a.Status,
                 CvUrl = a.ResumeDocument != null && a.ResumeDocument.File != null 
                     ? a.ResumeDocument.File.Url 
-                    : "",
+                    : (a.Candidate.CandidateDocuments.Where(d => d.DocType == "CV").OrderByDescending(d => d.IsPrimary).Select(d => d.File.Url).FirstOrDefault() ?? ""),
                 JobTitle = a.Job.Title,
                 JobId = a.JobId,
-                // Get latest AI score (avoid loading all scores)
                 LatestScore = a.ApplicationAiScores
                     .OrderByDescending(s => s.CreatedAt)
                     .Select(s => new { s.MatchingScore, s.MatchedSkillsJson })
@@ -459,8 +453,6 @@ public class ApplicationService : IApplicationService
             .OrderByDescending(a => a.LatestScore != null ? a.LatestScore.MatchingScore : -1)
             .ThenByDescending(a => a.AppliedAt)
             .ToListAsync();
-
-        // Map to DTO
         var result = applications.Select(a =>
         {
             string explanation = null;
@@ -478,7 +470,6 @@ public class ApplicationService : IApplicationService
                 }
                 catch
                 {
-                    // Ignore JSON parse error
                 }
             }
 
@@ -528,8 +519,6 @@ public class ApplicationService : IApplicationService
                 var jobTitle = application.Job?.Title ?? "Vị trí ứng tuyển";
                 var companyName = application.Job?.CreatedByNavigation?.FullName ?? "Công ty";
 
-                // Ưu tiên lấy ContactEmail (snapshot tại thời điểm nộp hồ sơ)
-                // Fallback sang Candidate.Email nếu ContactEmail null (hồ sơ cũ)
                 var emailToSend = !string.IsNullOrEmpty(application.ContactEmail) 
                     ? application.ContactEmail 
                     : application.Candidate?.Email;
@@ -565,8 +554,6 @@ public class ApplicationService : IApplicationService
             }
             catch (Exception emailEx)
             {
-                // Không throw exception nếu gửi email thất bại, chỉ log warning
-                // Để không ảnh hưởng đến luồng chính (status đã được cập nhật thành công)
                 _logger.LogWarning(emailEx, " Không thể gửi email thông báo, nhưng status đã được cập nhật thành công.");
             }
         }
@@ -775,6 +762,7 @@ public class ApplicationService : IApplicationService
                 JobLocation = a.Job.Location,
                 AppliedAt = a.AppliedAt,
                 Status = a.Status,
+                LastViewedAt = a.LastViewedAt,
                 CvUrl = a.ResumeDocument != null && a.ResumeDocument.File != null 
                     ? a.ResumeDocument.File.Url 
                     : null
@@ -785,6 +773,57 @@ public class ApplicationService : IApplicationService
             applications.Count, candidate.CandidateId);
 
         return applications;
+    }
+
+    public async Task<bool> TrackViewAsync(Guid applicationId, Guid viewerId)
+    {
+        try
+        {
+            var application = await _context.Applications
+                .Include(a => a.Candidate)
+                .Include(a => a.Job)
+                .FirstOrDefaultAsync(a => a.ApplicationId == applicationId);
+
+            if (application == null) return false;
+
+            // 1. Tạo bản ghi Log chi tiết
+            var view = new ApplicationView
+            {
+                ViewId = Guid.NewGuid(),
+                ApplicationId = applicationId,
+                ViewerId = viewerId,
+                ViewedAt = DateTime.UtcNow
+            };
+            _context.ApplicationViews.Add(view);
+
+            // 2. Cập nhật Cache field trong bảng Applications (đã thêm vào SQL migration)
+            application.LastViewedAt = DateTime.UtcNow;
+            application.LastViewedBy = viewerId;
+
+            await _context.SaveChangesAsync();
+
+            // 3. Thông báo cho ứng viên
+            if (application.Candidate != null && application.Candidate.UserId.HasValue)
+            {
+                var viewer = await _context.Users.FindAsync(viewerId);
+                var viewerName = viewer?.FullName ?? "Nhà tuyển dụng";
+
+                await _notificationService.CreateNotificationAsync(
+                    application.Candidate.UserId.Value,
+                    "Hồ sơ đã được xem",
+                    $"{viewerName} đã xem hồ sơ của bạn cho vị trí {application.Job?.Title}.",
+                    "CV_VIEWED",
+                    applicationId.ToString()
+                );
+            }
+
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Lỗi khi ghi nhận lượt xem CV cho Application: {Id}", applicationId);
+            return false;
+        }
     }
 
     public async Task<List<ApplicationDto>> GetAllApplicationsAsync()
@@ -803,7 +842,7 @@ public class ApplicationService : IApplicationService
                 Status = a.Status,
                 CvUrl = a.ResumeDocument != null && a.ResumeDocument.File != null 
                     ? a.ResumeDocument.File.Url 
-                    : "",
+                    : (a.Candidate.CandidateDocuments.Where(d => d.DocType == "CV").OrderByDescending(d => d.IsPrimary).Select(d => d.File.Url).FirstOrDefault() ?? ""),
                 JobTitle = a.Job.Title,
                 JobId = a.JobId,
                 LatestScore = a.ApplicationAiScores
@@ -829,7 +868,8 @@ public class ApplicationService : IApplicationService
                         }
                     }
                 }
-                catch { /* Ignore JSON parse error */ }
+                catch {
+                }
             }
 
             return new ApplicationDto

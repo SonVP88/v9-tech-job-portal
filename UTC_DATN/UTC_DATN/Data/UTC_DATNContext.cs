@@ -100,6 +100,7 @@ public partial class UTC_DATNContext : DbContext
     public virtual DbSet<Notification> Notifications { get; set; }
     public virtual DbSet<SavedJob> SavedJobs { get; set; }
     public virtual DbSet<CoverLetter> CoverLetters { get; set; }
+    public virtual DbSet<ApplicationView> ApplicationViews { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -178,6 +179,8 @@ public partial class UTC_DATNContext : DbContext
             entity.Property(e => e.AppliedAt).HasDefaultValueSql("(sysutcdatetime())");
             entity.Property(e => e.LastStageChangedAt).HasDefaultValueSql("(sysutcdatetime())");
             entity.Property(e => e.Source).HasMaxLength(100);
+            entity.Property(e => e.LastViewedAt).HasColumnType("datetime2");
+            entity.Property(e => e.LastViewedBy).HasColumnName("LastViewedBy");
             entity.Property(e => e.Status)
                 .IsRequired()
                 .HasMaxLength(30)
@@ -993,6 +996,23 @@ public partial class UTC_DATNContext : DbContext
                 .HasForeignKey(d => d.UserId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_UserRoles_Users");
+        });
+
+        modelBuilder.Entity<ApplicationView>(entity =>
+        {
+            entity.HasKey(e => e.ViewId);
+            entity.Property(e => e.ViewId).HasDefaultValueSql("(newid())");
+            entity.Property(e => e.ViewedAt).HasDefaultValueSql("(sysutcdatetime())");
+
+            entity.HasOne(d => d.Application).WithMany()
+                .HasForeignKey(d => d.ApplicationId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_ApplicationViews_Applications");
+
+            entity.HasOne(d => d.Viewer).WithMany()
+                .HasForeignKey(d => d.ViewerId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_ApplicationViews_Users");
         });
 
         OnModelCreatingPartial(modelBuilder);

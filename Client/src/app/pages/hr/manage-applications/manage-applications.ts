@@ -66,7 +66,29 @@ export class ManageApplications implements OnInit, OnDestroy {
   emailPreviewContent = '';
   aiOpeningText = ''; // Lưu đoạn mở đầu do AI sinh
 
-  // Loading states
+  // ==================== INTERVIEW VALIDATION ====================
+  // Validation errors
+  dateValidationError = '';
+  timeValidationError = '';
+  locationValidationError = '';
+  
+  // Constants for validation
+  readonly BUSINESS_HOURS_START = 8; // 8 AM (Giờ hành chính VN)
+  readonly BUSINESS_HOURS_END = 18; // 6 PM (Giờ hành chính VN)
+  readonly MIN_LOCATION_LENGTH = 5;
+
+  // Danh sách ngày lễ Việt Nam (DD-MM format) - Tự động cập nhật từ API
+  vietnameseHolidays: string[] = [
+    '01-01', // Tết Dương Lịch (mặc định)
+    '17-02', '18-02', '19-02', '20-02', '21-02', '22-02', '23-02', // Tết Nguyên Đán 2026 (mặc định)
+    '30-04', '01-05', // Ngày Giải phóng - Quốc tế Lao động
+    '02-09'  // Ngày Quốc khánh
+  ];
+
+  // Loading state for holidays
+  isLoadingHolidays = false;
+
+  // Loading states for other operations
   isGeneratingAI = false;
   isSendingEmail = false;
 
@@ -128,6 +150,7 @@ export class ManageApplications implements OnInit, OnDestroy {
       this.jobId = params['jobId'];
 
       this.loadApplications();
+      this.loadVietnamHolidays(); // Tải danh sách ngày lễ từ API
       this.startAutoRefresh();
     });
   }
@@ -385,16 +408,31 @@ export class ManageApplications implements OnInit, OnDestroy {
   }
 
   /**
-   * Mở CV trong tab mới
+   * Mở CV trong tab mới và ghi nhận lượt xem
    */
-  viewCv(cvUrl: string): void {
-    if (cvUrl) {
-      // If cvUrl is relative path, prepend backend URL
-      const fullUrl = cvUrl.startsWith('http')
-        ? cvUrl
-        : `https://localhost:7181${cvUrl}`;
-      window.open(fullUrl, '_blank');
+  viewCv(app: any): void {
+    if (!app || !app.cvUrl) {
+      this.toast.error('Lỗi', 'Ứng viên này không có CV hoặc định dạng CV không hợp lệ.');
+      return;
     }
+
+    // 1. Gọi API tracking (không cần chờ kết quả để mở CV)
+    this.applicationService.trackCvView(app.applicationId).subscribe({
+      next: () => console.log('CV view tracked'),
+      error: (err: any) => console.error('CV view tracking error', err)
+    });
+
+    // 2. Mở CV
+    let url = app.cvUrl;
+    if (!url.startsWith('http')) {
+      const clean = url.startsWith('/') ? url.substring(1) : url;
+      url = `https://localhost:7181/${clean}`;
+    }
+    if (url.startsWith('http://') && window.location.protocol === 'https:') {
+      url = url.replace('http://', 'https://');
+    }
+    
+    window.open(url, '_blank');
   }
 
   /**
@@ -427,6 +465,12 @@ export class ManageApplications implements OnInit, OnDestroy {
       interviewerId: ''
     };
     this.aiOpeningText = '';
+    
+    // Reset validation errors
+    this.dateValidationError = '';
+    this.timeValidationError = '';
+    this.locationValidationError = '';
+    
     this.updateEmailPreview();
 
     // Load danh sách Interviewer
@@ -534,6 +578,72 @@ Phòng Nhân sự`;
           console.error(' Error generating AI opening:', error);
           alert('Có lỗi khi tạo nội dung AI. Vui lòng thử lại!');
           this.isGeneratingAI = false;
+          this.cdr.detectChanges();
+        }
+      });
+  }
+
+  /**
+   * ==================== VIETNAM HOLIDAYS LOADING ====================
+   * 
+   * API ENDPOINT CẦN IMPLEMENT TRÊN BACKEND:
+   * GET /api/master-data/vietnam-holidays/{year}
+   * 
+   * Response Format:
+   * {
+   *   "holidays": ["01-01", "17-02", "18-02", ..., "02-09"],
+   *   "year": 2026,
+   *   "count": 8
+   * }
+   * 
+   * Chi tiết:
+   * - holidays: Array<string> - Danh sách ngày lễ (format DD-MM)
+   * - year: number - Năm  
+   * - count: number - Số lượng ngày lễ trong năm
+   * 
+   * Ví dụ Response cho năm 2026:
+   * {
+   *   "holidays": [
+   *     "01-01", // Tết Dương Lịch
+   *     "17-02", "18-02", "19-02", "20-02", "21-02", "22-02", "23-02", // Tết Nguyên Đán
+   *     "30-04", "01-05", // Giải phóng - Lao động
+   *     "02-09"  // Quốc khánh
+   *   ],
+   *   "year": 2026,
+   *   "count": 15
+   * }
+   * 
+   * ==================== END API REQUIREMENT ====================
+   */
+
+  /**
+   * Tải danh sách ngày lễ Việt Nam từ API
+   * API sẽ trả về danh sách ngày lễ cho năm hiện tại au một lần, sau đó cache lại
+   */
+  loadVietnamHolidays(): void {
+    this.isLoadingHolidays = true;
+    const token = localStorage.getItem('auth_token');
+    const headers = new HttpHeaders({
+      'Authorization': `Bearer ${token}`
+    });
+
+    const currentYear = new Date().getFullYear();
+
+    this.http.get<{ holidays: string[] }>(`${this.apiUrl}/master-data/vietnam-holidays/${currentYear}`, { headers })
+      .subscribe({
+        next: (response) => {
+          if (response && response.holidays && response.holidays.length > 0) {
+            // Cập nhật danh sách ngày lễ từ API (format: DD-MM)
+            this.vietnameseHolidays = response.holidays;
+            console.log(`✅ Loaded ${this.vietnameseHolidays.length} Vietnam holidays for year ${currentYear}`);
+          }
+          this.isLoadingHolidays = false;
+          this.cdr.detectChanges();
+        },
+        error: (error) => {
+          console.warn('⚠️ Không thể tải danh sách ngày lễ từ API, sử dụng danh sách mặc định:', error);
+          // Giữ danh sách mặc định nếu API lỗi
+          this.isLoadingHolidays = false;
           this.cdr.detectChanges();
         }
       });
@@ -677,15 +787,178 @@ Phòng Nhân sự`;
   }
 
   /**
-   * Kiểm tra form hợp lệ
+   * Lấy tên ngày tiếng Việt (Thứ 2, Thứ 3, ..., Chủ nhật)
+   */
+  getDayNameInVietnamese(date: Date): string {
+    const dayOfWeek = date.getDay();
+    const dayNames = ['Chủ nhật', 'Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7'];
+    return dayNames[dayOfWeek];
+  }
+
+  /**
+   * Kiểm tra ngày có phải thứ 7 hoặc chủ nhật không (Weekday: 0-6, 0=Chủ nhật, 6=Thứ 7)
+   */
+  isWeekend(date: Date): boolean {
+    const dayOfWeek = date.getDay();
+    return dayOfWeek === 0 || dayOfWeek === 6; // 0 = Sunday, 6 = Saturday
+  }
+
+  /**
+   * Kiểm tra ngày có phải ngày lễ Việt Nam không (DD-MM format)
+   */
+  isVietnamHoliday(date: Date): boolean {
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const dateString = `${day}-${month}`;
+    return this.vietnameseHolidays.includes(dateString);
+  }
+
+  /**
+   * Kiểm tra ngày có phải ngày lao động của Việt Nam không
+   * (không phải weekend, không phải lễ)
+   */
+  isValidWorkingDay(date: Date): boolean {
+    return !this.isWeekend(date) && !this.isVietnamHoliday(date);
+  }
+
+  /**
+   * Kiểm tra ngày phỏng vấn là ngày lao động trong tương lai
+   */
+  isValidFutureDate(): boolean {
+    if (!this.interviewForm.date) {
+      this.dateValidationError = '';
+      return false;
+    }
+
+    const selectedDate = new Date(this.interviewForm.date);
+    selectedDate.setHours(0, 0, 0, 0);
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    if (selectedDate < today) {
+      this.dateValidationError = '❌ Ngày phỏng vấn phải là ngày trong tương lai';
+      return false;
+    }
+
+    // Kiểm tra ngày lễ Việt Nam
+    if (this.isVietnamHoliday(selectedDate)) {
+      this.dateValidationError = '❌ Ngày này là ngày lễ Việt Nam, không thể lên lịch phỏng vấn';
+      return false;
+    }
+
+    // Kiểm tra weekend (thứ 7, chủ nhật)
+    if (this.isWeekend(selectedDate)) {
+      const dayName = selectedDate.getDay() === 0 ? 'Chủ nhật' : 'Thứ 7';
+      this.dateValidationError = `❌ ${dayName} không phải ngày lao động, vui lòng chọn ngày khác`;
+      return false;
+    }
+
+    this.dateValidationError = '';
+    return true;
+  }
+
+  /**
+   * Kiểm tra giờ phỏng vấn có nằm trong giờ hành chính (8 AM - 6 PM)
+   */
+  isValidBusinessHours(): boolean {
+    if (!this.interviewForm.time) {
+      this.timeValidationError = '';
+      return false;
+    }
+
+    const timeParts = this.interviewForm.time.split(':');
+    const hours = parseInt(timeParts[0]);
+
+    if (hours < this.BUSINESS_HOURS_START || hours >= this.BUSINESS_HOURS_END) {
+      this.timeValidationError = `❌ Thời gian phỏng vấn phải nằm trong giờ hành chính (${this.BUSINESS_HOURS_START}:00 - ${this.BUSINESS_HOURS_END}:00)`;
+      return false;
+    }
+
+    this.timeValidationError = '';
+    return true;
+  }
+
+  /**
+   * Kiểm tra URL hợp lệ cho online interviews
+   */
+  isValidMeetingLink(): boolean {
+    // Nếu là offline, không cần validate URL
+    if (this.interviewForm.type === 'OFFLINE') {
+      this.locationValidationError = '';
+      return true;
+    }
+
+    const location = this.interviewForm.location?.trim() || '';
+    
+    if (!location) {
+      this.locationValidationError = '❌ Vui lòng nhập link meeting';
+      return false;
+    }
+
+    // Kiểm tra có phải URL hợp lệ không
+    try {
+      new URL(location);
+      this.locationValidationError = '';
+      return true;
+    } catch (e) {
+      this.locationValidationError = '❌ Địa chỉ link meeting không hợp lệ (ví dụ: https://meet.google.com/xxxxx)';
+      return false;
+    }
+  }
+
+  /**
+   * Kiểm tra địa điểm offline hợp lệ
+   */
+  isValidOfflineLocation(): boolean {
+    // Nếu là online, không cần validate địa điểm
+    if (this.interviewForm.type === 'ONLINE') {
+      this.locationValidationError = '';
+      return true;
+    }
+
+    const location = this.interviewForm.location?.trim() || '';
+    
+    if (!location || location.length < this.MIN_LOCATION_LENGTH) {
+      this.locationValidationError = `❌ Vui lòng nhập địa điểm (tối thiểu ${this.MIN_LOCATION_LENGTH} ký tự)`;
+      return false;
+    }
+
+    this.locationValidationError = '';
+    return true;
+  }
+
+  /**
+   * Kiểm tra location (offline hoặc online)
+   */
+  isValidLocation(): boolean {
+    if (this.interviewForm.type === 'ONLINE') {
+      return this.isValidMeetingLink();
+    } else {
+      return this.isValidOfflineLocation();
+    }
+  }
+
+  /**
+   * Kiểm tra form hợp lệ (các trường bắt buộc + validation chi tiết)
    */
   isFormValid(): boolean {
-    return !!(
+    // Kiểm tra các trường bắt buộc không rỗng
+    const hasRequiredFields = !!(
       this.interviewForm.date &&
       this.interviewForm.time &&
       this.interviewForm.location &&
       this.interviewForm.interviewerId &&
       this.emailPreviewContent.trim()
+    );
+
+    if (!hasRequiredFields) return false;
+
+    // Kiểm tra chi tiết từng trường
+    return (
+      this.isValidFutureDate() &&
+      this.isValidBusinessHours() &&
+      this.isValidLocation()
     );
   }
 

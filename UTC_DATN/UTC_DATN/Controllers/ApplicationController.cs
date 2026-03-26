@@ -372,4 +372,34 @@ public class ApplicationController : ControllerBase
             });
         }
     }
+
+    /// <summary>
+    /// API ghi nhận lượt xem CV (Dành cho HR/Admin)
+    /// </summary>
+    [HttpPost("{id}/track-view")]
+    [Authorize(Roles = "HR, ADMIN")]
+    public async Task<IActionResult> TrackView(Guid id)
+    {
+        try
+        {
+            var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var viewerId))
+            {
+                return Unauthorized(new { success = false, message = "Vui lòng đăng nhập." });
+            }
+
+            var result = await _applicationService.TrackViewAsync(id, viewerId);
+
+            if (result)
+            {
+                return Ok(new { success = true, message = "Đã ghi nhận lượt xem CV" });
+            }
+            return NotFound(new { success = false, message = "Không tìm thấy hồ sơ" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Lỗi khi ghi nhận lượt xem hồ sơ ID: {Id}", id);
+            return StatusCode(500, new { success = false, message = "Có lỗi xảy ra" });
+        }
+    }
 }

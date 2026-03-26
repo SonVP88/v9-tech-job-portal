@@ -35,7 +35,7 @@ export class SkillManagementComponent implements OnInit {
 
     // Pagination
     currentPage = 1;
-    pageSize = 20;
+    pageSize = 6;
     totalPages = 1;
     totalCount = 0;
 

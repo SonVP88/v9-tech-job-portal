@@ -83,4 +83,25 @@ export class DashboardService {
             params: { weeks: weeks.toString() }
         });
     }
+
+    /**
+     * Lấy thông báo/hoạt động riêng của candidate
+     * Backend sẽ kiểm tra quyền dựa trên JWT token
+     * Đảm bảo candidate chỉ có thể xem thông báo của chính họ
+     */
+    getCandidateActivities(page: number = 1, pageSize: number = 15): Observable<{ totalItems: number, totalPages: number, currentPage: number, items: DashboardActivityDto[] }> {
+        return this.http.get<{ totalItems: number, totalPages: number, currentPage: number, items: DashboardActivityDto[] }>(`${this.apiUrl}/candidate-activities`, {
+            params: {
+                page: page.toString(),
+                pageSize: pageSize.toString()
+            }
+        });
+    }
+
+    /**
+     * Lấy số lượng thông báo chưa đọc của candidate
+     */
+    getCandidateUnreadCount(): Observable<{ unreadCount: number }> {
+        return this.http.get<{ unreadCount: number }>(`${this.apiUrl}/candidate-unread-count`);
+    }
 }

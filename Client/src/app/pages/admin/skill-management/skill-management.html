@@ -136,28 +136,22 @@
 
         <!-- Pagination -->
         <div *ngIf="totalPages > 1"
-            class="bg-gray-50 dark:bg-slate-800 px-6 py-4 border-t border-gray-200 dark:border-slate-700">
-            <div class="flex items-center justify-between">
-                <div class="text-sm text-gray-600 dark:text-gray-400">
-                    Hiển thị {{ (currentPage - 1) * pageSize + 1 }} - {{ Math.min(currentPage * pageSize, totalCount) }}
-                    / {{ totalCount }}
+            class="px-6 py-4 bg-gray-50 dark:bg-slate-900/50 border-t border-gray-100 dark:border-slate-800 flex items-center justify-between">
+            <p class="text-xs text-gray-500 dark:text-slate-400 font-medium">
+                Hiển thị {{ (currentPage - 1) * pageSize + 1 }} - {{ Math.min(currentPage * pageSize, totalCount) }} trên tổng số {{ totalCount }} kỹ năng
+            </p>
+            <div class="flex gap-1">
+                <button [disabled]="currentPage === 1" (click)="changePage(currentPage - 1)"
+                    class="p-1 px-3 border border-gray-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 dark:text-white disabled:opacity-50 text-sm font-medium transition-colors hover:bg-gray-50">
+                    Trước
+                </button>
+                <div class="flex items-center px-4 font-bold text-sm text-slate-900 dark:text-white">
+                    {{ currentPage }} / {{ totalPages }}
                 </div>
-                <div class="flex items-center gap-2">
-                    <button (click)="changePage(currentPage - 1)" [disabled]="currentPage === 1"
-                        class="px-3 py-1.5 rounded-lg border border-gray-300 dark:border-slate-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
-                        Trước
-                    </button>
-                    <button *ngFor="let page of getPageNumbers()" (click)="changePage(page)"
-                        [class.bg-primary]="page === currentPage" [class.text-white]="page === currentPage"
-                        [class.border-primary]="page === currentPage"
-                        class="px-3 py-1.5 rounded-lg border border-gray-300 dark:border-slate-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors min-w-[40px]">
-                        {{ page }}
-                    </button>
-                    <button (click)="changePage(currentPage + 1)" [disabled]="currentPage === totalPages"
-                        class="px-3 py-1.5 rounded-lg border border-gray-300 dark:border-slate-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
-                        Sau
-                    </button>
-                </div>
+                <button [disabled]="currentPage === totalPages" (click)="changePage(currentPage + 1)"
+                    class="p-1 px-3 border border-gray-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 dark:text-white disabled:opacity-50 text-sm font-medium transition-colors hover:bg-gray-50">
+                    Sau
+                </button>
             </div>
         </div>
     </div>

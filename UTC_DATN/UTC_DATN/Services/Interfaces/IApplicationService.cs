@@ -29,6 +29,11 @@ public interface IApplicationService
     Task<List<MyApplicationDto>> GetMyApplicationsAsync(Guid userId);
 
     /// <summary>
+    /// Ghi nhận lượt xem CV của HR/Admin
+    /// </summary>
+    Task<bool> TrackViewAsync(Guid applicationId, Guid viewerId);
+
+    /// <summary>
     /// Lấy toàn bộ danh sách hồ sơ ứng tuyển (Dành cho HR/Admin)
     /// </summary>
     Task<List<ApplicationDto>> GetAllApplicationsAsync();

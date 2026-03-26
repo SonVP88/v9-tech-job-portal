@@ -97,11 +97,11 @@ export class CandidateDetail implements OnInit {
   loadCandidateProfile(candidateId: string): void {
     this.isLoadingProfile.set(true);
     this.appService.getCandidateProfile(candidateId).subscribe({
-      next: (data) => {
+      next: (data: CandidateProfileDto) => {
         this.profile.set(data);
         this.isLoadingProfile.set(false);
       },
-      error: (err) => {
+      error: (err: any) => {
         console.error('❌ Profile load error:', err);
         this.isLoadingProfile.set(false);
       }
@@ -137,7 +137,7 @@ export class CandidateDetail implements OnInit {
         this.routerDataSig.update(d => ({ ...d, status: newStatus }));
         this.isUpdatingStatus.set(false);
       },
-      error: (err) => {
+      error: (err: any) => {
         console.error('❌ Update status error:', err);
         this.toast.error('Lỗi', 'Không thể cập nhật trạng thái.');
         this.isUpdatingStatus.set(false);
@@ -146,8 +146,17 @@ export class CandidateDetail implements OnInit {
   }
 
   // ── File actions (copy từ candidate-profile) ──
-  previewFileWithAuth(url: string): void {
+  previewFileWithAuth(url: string, docType: string = 'OTHER'): void {
     if (!url) return;
+
+    // Nếu là CV, thực hiện tracking
+    if (docType === 'CV' && this.rd?.applicationId) {
+      this.appService.trackCvView(this.rd.applicationId).subscribe({
+        next: () => console.log('CV view tracked from detail'),
+        error: (err: any) => console.error('CV view tracking error', err)
+      });
+    }
+
     // Fix URL (giống candidate-profile.previewCV)
     if (!url.startsWith('http')) {
       const clean = url.startsWith('/') ? url.substring(1) : url;
