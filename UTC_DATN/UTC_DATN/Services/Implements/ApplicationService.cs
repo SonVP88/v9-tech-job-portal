@@ -22,6 +22,24 @@ public class ApplicationService : IApplicationService
     // Kích thước file tối đa: 5MB
     private const long MaxFileSize = 5 * 1024 * 1024;
 
+    private static readonly HashSet<string> TerminalApplicationStatuses = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "HIRED",
+        "REJECTED",
+        "WAITLIST"
+    };
+
+    private static readonly Dictionary<string, string> StatusToStageCodeMap = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["ACTIVE"] = "NEW_APPLIED",
+        ["NEW_APPLIED"] = "NEW_APPLIED",
+        ["INTERVIEW"] = "INTERVIEW",
+        ["Pending_Offer"] = "OFFER",
+        ["Offer_Sent"] = "OFFER",
+        ["OFFER_ACCEPTED"] = "OFFER",
+        ["REJECTED"] = "REJECTED"
+    };
+
     public ApplicationService(
         UTC_DATNContext context,
         IWebHostEnvironment environment,
@@ -38,6 +56,75 @@ public class ApplicationService : IApplicationService
         _emailService = emailService;
         _notificationService = notificationService;
         _serviceProvider = serviceProvider;  // ← NEW: Store service provider
+    }
+
+    private sealed class SlaSnapshot
+    {
+        public DateTime? DueAt { get; init; }
+        public string Status { get; init; } = "DISABLED";
+        public int? OverdueDays { get; init; }
+        public int? MaxDays { get; init; }
+        public int? WarnBeforeDays { get; init; }
+    }
+
+    private static SlaSnapshot CalculateSlaSnapshot(DateTime enteredStageAt, PipelineStage? stage, string? appStatus)
+    {
+        if (stage == null)
+        {
+            return new SlaSnapshot();
+        }
+
+        if (!string.IsNullOrWhiteSpace(appStatus) && TerminalApplicationStatuses.Contains(appStatus))
+        {
+            return new SlaSnapshot();
+        }
+
+        if (stage.IsSlaEnabled != true || !stage.SlaMaxDays.HasValue || stage.SlaMaxDays.Value <= 0)
+        {
+            return new SlaSnapshot
+            {
+                MaxDays = stage.SlaMaxDays,
+                WarnBeforeDays = stage.SlaWarnBeforeDays
+            };
+        }
+
+        var maxDays = stage.SlaMaxDays.Value;
+        var warnBeforeDays = stage.SlaWarnBeforeDays.GetValueOrDefault(1);
+        if (warnBeforeDays < 0)
+        {
+            warnBeforeDays = 0;
+        }
+
+        var now = DateTime.UtcNow;
+        var dueAt = enteredStageAt.AddDays(maxDays);
+        var warningAt = dueAt.AddDays(-warnBeforeDays);
+
+        if (now > dueAt)
+        {
+            var overdueDays = (int)Math.Ceiling((now - dueAt).TotalDays);
+            if (overdueDays < 1)
+            {
+                overdueDays = 1;
+            }
+
+            return new SlaSnapshot
+            {
+                DueAt = dueAt,
+                Status = "OVERDUE",
+                OverdueDays = overdueDays,
+                MaxDays = maxDays,
+                WarnBeforeDays = warnBeforeDays
+            };
+        }
+
+        return new SlaSnapshot
+        {
+            DueAt = dueAt,
+            Status = now >= warningAt ? "WARNING" : "ON_TRACK",
+            OverdueDays = 0,
+            MaxDays = maxDays,
+            WarnBeforeDays = warnBeforeDays
+        };
     }
 
 
@@ -148,15 +235,16 @@ public class ApplicationService : IApplicationService
                             }
                             else
                             {
-                                // Chưa từng apply -> Tạo mới Candidate lấy Email chuẩn của User Account! (Không lấy email trong form)
+                                // Chưa từng apply -> Tạo mới Candidate từ hồ sơ tài khoản.
+                                // Không lấy FullName/Phone từ form apply để tránh ghi đè profile khi apply hộ người khác.
                                 candidate = new Candidate
                                 {
                                     CandidateId = Guid.NewGuid(),
                                     Email = userEntity.Email,
                                     NormalizedEmail = normalizedIdentityEmail,
-                                    FullName = request.FullName,
-                                    Phone = request.Phone,
-                                    Summary = request.Introduction,
+                                    FullName = userEntity.FullName,
+                                    Phone = userEntity.Phone,
+                                    Summary = null,
                                     Source = "CAREER_SITE",
                                     UserId = userId.Value,
                                     CreatedAt = DateTime.UtcNow,
@@ -168,12 +256,9 @@ public class ApplicationService : IApplicationService
                         }
                         else
                         {
-                            // Cập nhật Profile Candidate (tên, sđt) nhưng GIỮ NGUYÊN Email Identity
-                            candidate.FullName = request.FullName;
-                            candidate.Phone = request.Phone;
-                            candidate.Summary = request.Introduction;
-                            candidate.UpdatedAt = DateTime.UtcNow;
-                            _logger.LogInformation(" Cập nhật Candidate: {CandidateId}", candidate.CandidateId);
+                            // User đã đăng nhập: KHÔNG đồng bộ FullName/Phone từ form apply vào profile Candidate.
+                            // Form apply có thể là dữ liệu liên hệ tạm thời cho lần ứng tuyển này.
+                            _logger.LogInformation(" Giữ nguyên profile Candidate {CandidateId} cho User đăng nhập", candidate.CandidateId);
                         }
                     }
                 }
@@ -270,6 +355,7 @@ public class ApplicationService : IApplicationService
                     Status = "ACTIVE",
                     AppliedAt = DateTime.UtcNow,
                     LastStageChangedAt = DateTime.UtcNow,
+                    ContactName = request.FullName?.Trim(),
                     ContactEmail = request.Email?.Trim(),
                     ContactPhone = request.Phone?.Trim()
                 };
@@ -326,7 +412,7 @@ public class ApplicationService : IApplicationService
                         await _notificationService.CreateNotificationAsync(
                             adminId,
                             "Có hồ sơ ứng tuyển mới",
-                            $"Ứng viên {candidate.FullName} vừa nộp hồ sơ vào vị trí {job.Title}.",
+                            $"Ứng viên {application.ContactName ?? candidate.FullName ?? "Ứng viên"} vừa nộp hồ sơ vào vị trí {job.Title}.",
                             "NEW_APPLICATION",
                             application.ApplicationId.ToString()
                         );
@@ -387,16 +473,20 @@ public class ApplicationService : IApplicationService
             {
                 ApplicationId = a.ApplicationId,
                 CandidateId = a.CandidateId,
-                CandidateName = a.Candidate.FullName ?? "Unknown",
-                Email = a.Candidate.Email ?? "",
-                Phone = a.Candidate.Phone ?? "",
+                CandidateName = a.ContactName ?? a.Candidate.FullName ?? "Unknown",
+                Email = a.ContactEmail ?? a.Candidate.Email ?? "",
+                Phone = a.ContactPhone ?? a.Candidate.Phone ?? "",
                 AppliedAt = a.AppliedAt,
+                LastStageChangedAt = a.LastStageChangedAt,
                 Status = a.Status,
                 CvUrl = a.ResumeDocument != null && a.ResumeDocument.File != null 
                     ? a.ResumeDocument.File.Url 
                     : (a.Candidate.CandidateDocuments.Where(d => d.DocType == "CV").OrderByDescending(d => d.IsPrimary).Select(d => d.File.Url).FirstOrDefault() ?? ""),
                 JobTitle = a.Job.Title,
                 JobId = a.JobId,
+                CurrentStageCode = a.CurrentStage.Code,
+                CurrentStageName = a.CurrentStage.Name,
+                CurrentStage = a.CurrentStage,
                 LatestScore = a.ApplicationAiScores
                     .OrderByDescending(s => s.CreatedAt)
                     .Select(s => new { s.MatchingScore, s.MatchedSkillsJson })
@@ -408,6 +498,7 @@ public class ApplicationService : IApplicationService
         var result = applications.Select(a =>
         {
             string explanation = null;
+            var sla = CalculateSlaSnapshot(a.LastStageChangedAt, a.CurrentStage, a.Status);
             if (a.LatestScore != null && !string.IsNullOrEmpty(a.LatestScore.MatchedSkillsJson))
             {
                 try
@@ -438,14 +529,21 @@ public class ApplicationService : IApplicationService
                 JobTitle = a.JobTitle,
                 JobId = a.JobId,
                 MatchScore = (int?)a.LatestScore?.MatchingScore,
-                AiExplanation = explanation
+                AiExplanation = explanation,
+                CurrentStageCode = a.CurrentStageCode,
+                CurrentStageName = a.CurrentStageName,
+                SlaDueAt = sla.DueAt,
+                SlaStatus = sla.Status,
+                SlaOverdueDays = sla.OverdueDays,
+                SlaMaxDays = sla.MaxDays,
+                SlaWarnBeforeDays = sla.WarnBeforeDays
             };
         }).ToList();
 
         return result;
     }
 
-    public async Task<UpdateApplicationStatusResponse?> UpdateStatusAsync(Guid applicationId, string newStatus, bool isHrAction = true)
+    public async Task<UpdateApplicationStatusResponse?> UpdateStatusAsync(Guid applicationId, string newStatus, bool isHrAction = true, Guid? actorUserId = null)
     {
         var application = await _context.Applications
             .Include(a => a.Candidate)
@@ -457,17 +555,45 @@ public class ApplicationService : IApplicationService
 
         var oldStatus = application.Status;
         application.Status = newStatus;
+
+        // Khi đổi status, cố gắng đồng bộ stage tương ứng để SLA reset đúng mốc.
+        if (StatusToStageCodeMap.TryGetValue(newStatus, out var mappedStageCode))
+        {
+            var targetStage = await _context.PipelineStages
+                .FirstOrDefaultAsync(s => s.Code == mappedStageCode);
+
+            if (targetStage != null && targetStage.StageId != application.CurrentStageId)
+            {
+                var oldStageId = application.CurrentStageId;
+                application.CurrentStageId = targetStage.StageId;
+                application.LastStageChangedAt = DateTime.UtcNow;
+
+                _context.ApplicationStageHistories.Add(new ApplicationStageHistory
+                {
+                    HistoryId = Guid.NewGuid(),
+                    ApplicationId = application.ApplicationId,
+                    FromStageId = oldStageId,
+                    ToStageId = targetStage.StageId,
+                    ChangedBy = actorUserId,
+                    Reason = $"Auto sync from status change: {oldStatus} -> {newStatus}",
+                    ChangedAt = DateTime.UtcNow
+                });
+            }
+        }
         
         var saveResult = await _context.SaveChangesAsync() > 0;
 
         // Gửi email tự động nếu status là HIRED hoặc REJECTED
-        if (saveResult && (newStatus == "HIRED" || newStatus == "REJECTED"))
+        // NOTE: Theo yêu cầu hiện tại, khi CANDIDATE tự bấm Đồng ý/Từ chối Offer
+        // (isHrAction = false) thì KHÔNG gửi email tự động nữa để tránh spam.
+        // Chỉ giữ gửi email cho các hành động từ phía HR/Admin.
+        if (saveResult && isHrAction && (newStatus == "HIRED" || newStatus == "REJECTED"))
         {
             try
             {
                 _logger.LogInformation("📧 Bắt đầu gửi email thông báo cho ứng viên. Status: {Status}", newStatus);
                 
-                var candidateName = application.Candidate?.FullName ?? "Ứng viên";
+                var candidateName = application.ContactName ?? application.Candidate?.FullName ?? "Ứng viên";
                 var jobTitle = application.Job?.Title ?? "Vị trí ứng tuyển";
                 var companyName = application.Job?.CreatedByNavigation?.FullName ?? "Công ty";
 
@@ -526,6 +652,11 @@ public class ApplicationService : IApplicationService
                         notifMessage = $"Chúc mừng bạn đã trúng tuyển vị trí {application.Job?.Title}. Vui lòng kiểm tra email để biết thêm chi tiết.";
                         notifType = "OFFER";
                         break;
+                    case "OFFER_ACCEPTED":
+                        notifTitle = "Đã ghi nhận đồng ý Offer";
+                        notifMessage = $"Bạn đã đồng ý Offer cho vị trí {application.Job?.Title}. Bộ phận HR sẽ xác nhận bước nhận việc tiếp theo.";
+                        notifType = "OFFER";
+                        break;
                     case "REJECTED":
                         // Phân biệt HR từ chối vs Candidate từ chối offer
                         if (isHrAction)
@@ -582,7 +713,7 @@ public class ApplicationService : IApplicationService
         }
 
         // 9. THÔNG BÁO NGƯỢC LẠI CHO HR - CHỈ KHI CANDIDATE TỰ PHẢN HỒI OFFER (không gửi khi HR tự reject)
-        if (saveResult && !isHrAction && (newStatus == "HIRED" || newStatus == "REJECTED"))
+        if (saveResult && !isHrAction && (newStatus == "OFFER_ACCEPTED" || newStatus == "REJECTED"))
         {
             _logger.LogInformation("[DEBUG] Block 9 triggered (candidate action). oldStatus={Old}, newStatus={New}", oldStatus, newStatus);
             try
@@ -591,14 +722,14 @@ public class ApplicationService : IApplicationService
 
                 if (hrUser != null)
                 {
-                    var candidateName = application.Candidate?.FullName ?? "Ứng viên";
+                    var candidateName = application.ContactName ?? application.Candidate?.FullName ?? "Ứng viên";
                     var jobTitle = application.Job?.Title ?? "vị trí ứng tuyển";
                     string hrNotifTitle, hrNotifMessage;
 
-                    if (newStatus == "HIRED")
+                    if (newStatus == "OFFER_ACCEPTED")
                     {
                         hrNotifTitle = $"{candidateName} đã đồng ý nhận việc";
-                        hrNotifMessage = $"{candidateName} đã CHẤP NHẬN offer cho vị trí \"{jobTitle}\". Vui lòng tiến hành các bước onboarding.";
+                        hrNotifMessage = $"{candidateName} đã CHẤP NHẬN offer cho vị trí \"{jobTitle}\". Vui lòng xác nhận nhận việc để hoàn tất tuyển dụng.";
                     }
                     else
                     {
@@ -639,6 +770,22 @@ public class ApplicationService : IApplicationService
         {
             try
             {
+                // Soft mode: đưa các hồ sơ còn active vào Waitlist để HR duyệt batch reject sau.
+                var remainingActiveApplications = await _context.Applications
+                    .Include(a => a.Candidate)
+                    .Where(a => a.JobId == application.JobId
+                        && a.ApplicationId != application.ApplicationId
+                        && a.Status != "HIRED"
+                        && a.Status != "REJECTED"
+                        && a.Status != "Waitlist")
+                    .ToListAsync();
+
+                foreach (var otherApp in remainingActiveApplications)
+                {
+                    otherApp.Status = "Waitlist";
+                    otherApp.LastStageChangedAt = DateTime.UtcNow;
+                }
+
                 // Tự động đóng Job
                 application.Job.Status = "CLOSED";
                 application.Job.ClosedAt = DateTime.UtcNow;
@@ -646,6 +793,29 @@ public class ApplicationService : IApplicationService
                 
                 await _context.SaveChangesAsync();
                 _logger.LogInformation(" Đã TỰ ĐỘNG ĐÓNG Job {JobId} vì đã tuyển đủ {Hired}/{Pos}", application.JobId, totalHired, application.Job.NumberOfPositions.Value);
+                _logger.LogInformation(" Đã chuyển {Count} hồ sơ còn lại sang Waitlist cho Job {JobId}", remainingActiveApplications.Count, application.JobId);
+
+                // Thông báo cho các ứng viên bị đưa vào waitlist
+                foreach (var otherApp in remainingActiveApplications)
+                {
+                    if (otherApp.Candidate?.UserId != null)
+                    {
+                        try
+                        {
+                            await _notificationService.CreateNotificationAsync(
+                                otherApp.Candidate.UserId.Value,
+                                "Hồ sơ của bạn đang ở danh sách chờ",
+                                $"Vị trí {application.Job.Title} đã tuyển đủ chỉ tiêu hiện tại. Hồ sơ của bạn được chuyển vào danh sách chờ để ưu tiên khi có nhu cầu tiếp theo.",
+                                "APPLICATION_UPDATE",
+                                otherApp.ApplicationId.ToString()
+                            );
+                        }
+                        catch (Exception candidateNotifEx)
+                        {
+                            _logger.LogWarning(candidateNotifEx, " Không thể gửi thông báo waitlist cho ApplicationId {ApplicationId}", otherApp.ApplicationId);
+                        }
+                    }
+                }
 
                 var hrUser = application.Job.CreatedByNavigation;
                 if (hrUser?.UserId != null)
@@ -653,7 +823,7 @@ public class ApplicationService : IApplicationService
                     await _notificationService.CreateNotificationAsync(
                         hrUser.UserId,
                         $"Đã tự động đóng tin tuyển dụng \"{application.Job.Title}\"",
-                        $"Job \"{application.Job.Title}\" đã tuyển đủ {totalHired}/{application.Job.NumberOfPositions.Value} vị trí và đã được hệ thống tự động đóng lại.",
+                        $"Job \"{application.Job.Title}\" đã tuyển đủ {totalHired}/{application.Job.NumberOfPositions.Value} vị trí, hệ thống đã đóng job và chuyển {remainingActiveApplications.Count} hồ sơ còn lại sang Waitlist để bạn duyệt tiếp.",
                         "APPLICATION_UPDATE",
                         application.JobId.ToString()
                     );
@@ -787,16 +957,20 @@ public class ApplicationService : IApplicationService
             {
                 ApplicationId = a.ApplicationId,
                 CandidateId = a.CandidateId,
-                CandidateName = a.Candidate.FullName ?? "Unknown",
-                Email = a.Candidate.Email ?? "",
-                Phone = a.Candidate.Phone ?? "",
+                CandidateName = a.ContactName ?? a.Candidate.FullName ?? "Unknown",
+                Email = a.ContactEmail ?? a.Candidate.Email ?? "",
+                Phone = a.ContactPhone ?? a.Candidate.Phone ?? "",
                 AppliedAt = a.AppliedAt,
+                LastStageChangedAt = a.LastStageChangedAt,
                 Status = a.Status,
                 CvUrl = a.ResumeDocument != null && a.ResumeDocument.File != null 
                     ? a.ResumeDocument.File.Url 
                     : (a.Candidate.CandidateDocuments.Where(d => d.DocType == "CV").OrderByDescending(d => d.IsPrimary).Select(d => d.File.Url).FirstOrDefault() ?? ""),
                 JobTitle = a.Job.Title,
                 JobId = a.JobId,
+                CurrentStageCode = a.CurrentStage.Code,
+                CurrentStageName = a.CurrentStage.Name,
+                CurrentStage = a.CurrentStage,
                 LatestScore = a.ApplicationAiScores
                     .OrderByDescending(s => s.CreatedAt)
                     .Select(s => new { s.MatchingScore, s.MatchedSkillsJson })
@@ -808,6 +982,7 @@ public class ApplicationService : IApplicationService
         var result = applications.Select(a =>
         {
             string explanation = null;
+            var sla = CalculateSlaSnapshot(a.LastStageChangedAt, a.CurrentStage, a.Status);
             if (a.LatestScore != null && !string.IsNullOrEmpty(a.LatestScore.MatchedSkillsJson))
             {
                 try
@@ -837,11 +1012,271 @@ public class ApplicationService : IApplicationService
                 JobTitle = a.JobTitle,
                 JobId = a.JobId,
                 MatchScore = (int?)a.LatestScore?.MatchingScore,
-                AiExplanation = explanation
+                AiExplanation = explanation,
+                CurrentStageCode = a.CurrentStageCode,
+                CurrentStageName = a.CurrentStageName,
+                SlaDueAt = sla.DueAt,
+                SlaStatus = sla.Status,
+                SlaOverdueDays = sla.OverdueDays,
+                SlaMaxDays = sla.MaxDays,
+                SlaWarnBeforeDays = sla.WarnBeforeDays
             };
         }).ToList();
 
         return result;
+    }
+
+    public async Task<List<SlaStageConfigDto>> GetSlaStageConfigsAsync()
+    {
+        return await _context.PipelineStages
+            .AsNoTracking()
+            .OrderBy(s => s.SortOrder)
+            .Select(s => new SlaStageConfigDto
+            {
+                StageId = s.StageId,
+                Code = s.Code,
+                Name = s.Name,
+                SortOrder = s.SortOrder,
+                IsTerminal = s.IsTerminal,
+                IsSlaEnabled = s.IsSlaEnabled == true,
+                SlaMaxDays = s.SlaMaxDays,
+                SlaWarnBeforeDays = s.SlaWarnBeforeDays
+            })
+            .ToListAsync();
+    }
+
+    public async Task<bool> UpdateSlaStageConfigAsync(Guid stageId, UpdateSlaStageConfigRequest request)
+    {
+        var stage = await _context.PipelineStages.FirstOrDefaultAsync(s => s.StageId == stageId);
+        if (stage == null)
+        {
+            return false;
+        }
+
+        if (request.IsSlaEnabled)
+        {
+            if (!request.SlaMaxDays.HasValue || request.SlaMaxDays.Value <= 0)
+            {
+                throw new ArgumentException("SlaMaxDays phải lớn hơn 0 khi bật SLA.");
+            }
+
+            if (request.SlaWarnBeforeDays.HasValue && request.SlaWarnBeforeDays.Value < 0)
+            {
+                throw new ArgumentException("SlaWarnBeforeDays không được âm.");
+            }
+        }
+
+        stage.IsSlaEnabled = request.IsSlaEnabled;
+        stage.SlaMaxDays = request.SlaMaxDays;
+        stage.SlaWarnBeforeDays = request.SlaWarnBeforeDays;
+
+        return await _context.SaveChangesAsync() > 0;
+    }
+
+    public async Task<SlaDashboardDto> GetSlaDashboardAsync(Guid? recruiterUserId = null)
+    {
+        const int severeOverdueThresholdDays = 3;
+
+        double CalculateComplianceRate(int onTrackCount, int totalCount)
+        {
+            if (totalCount <= 0)
+            {
+                return 0;
+            }
+
+            return Math.Round((double)onTrackCount * 100 / totalCount, 2);
+        }
+
+        double CalculateHealthScore(int totalCount, int overdueCount, int warningCount, int severeOverdueCount)
+        {
+            if (totalCount <= 0)
+            {
+                return 100;
+            }
+
+            var overdueRate = (double)overdueCount / totalCount;
+            var warningRate = (double)warningCount / totalCount;
+            var severeRate = (double)severeOverdueCount / totalCount;
+
+            var score = 100 - overdueRate * 70 - warningRate * 20 - severeRate * 10;
+            return Math.Round(Math.Clamp(score, 0, 100), 2);
+        }
+
+        string CalculateRiskLevel(double healthScore)
+        {
+            if (healthScore >= 85)
+            {
+                return "LOW";
+            }
+
+            if (healthScore >= 70)
+            {
+                return "MEDIUM";
+            }
+
+            return "HIGH";
+        }
+
+        var baseQuery = _context.Applications
+            .AsNoTracking()
+            .Where(a => a.Status != "HIRED" && a.Status != "REJECTED")
+            .Where(a => a.CurrentStage != null)
+            .Select(a => new
+            {
+                a.ApplicationId,
+                a.Status,
+                a.LastStageChangedAt,
+                RecruiterId = a.Job != null ? a.Job.CreatedBy : (Guid?)null,
+                RecruiterName = a.Job != null && a.Job.CreatedByNavigation != null
+                    ? a.Job.CreatedByNavigation.FullName
+                    : "Unassigned",
+                CandidateName = a.Candidate != null ? a.Candidate.FullName : "Unknown",
+                JobTitle = a.Job != null ? a.Job.Title : "Unknown",
+                StageName = a.CurrentStage != null ? a.CurrentStage.Name : "Unknown",
+                StageIsSlaEnabled = a.CurrentStage != null ? a.CurrentStage.IsSlaEnabled : null,
+                StageSlaMaxDays = a.CurrentStage != null ? a.CurrentStage.SlaMaxDays : null,
+                StageSlaWarnBeforeDays = a.CurrentStage != null ? a.CurrentStage.SlaWarnBeforeDays : null,
+            });
+
+        if (recruiterUserId.HasValue)
+        {
+            baseQuery = baseQuery.Where(x => x.RecruiterId == recruiterUserId.Value);
+        }
+
+        var rawApps = await baseQuery.ToListAsync();
+
+        var tracked = rawApps
+            .Select(a =>
+            {
+                var stage = new PipelineStage
+                {
+                    Name = a.StageName,
+                    IsSlaEnabled = a.StageIsSlaEnabled,
+                    SlaMaxDays = a.StageSlaMaxDays,
+                    SlaWarnBeforeDays = a.StageSlaWarnBeforeDays
+                };
+
+                return new
+                {
+                    a.ApplicationId,
+                    a.Status,
+                    a.LastStageChangedAt,
+                    a.RecruiterId,
+                    a.RecruiterName,
+                    a.CandidateName,
+                    a.JobTitle,
+                    StageName = a.StageName,
+                    Sla = CalculateSlaSnapshot(a.LastStageChangedAt, stage, a.Status)
+                };
+            })
+            .Where(x => x.Sla.Status != "DISABLED")
+            .ToList();
+
+        var recruiterStats = tracked
+            .GroupBy(x => new { x.RecruiterId, x.RecruiterName })
+            .Select(g =>
+            {
+                var overdue = g.Where(x => x.Sla.Status == "OVERDUE").ToList();
+                var warning = g.Count(x => x.Sla.Status == "WARNING");
+                var onTrack = g.Count(x => x.Sla.Status == "ON_TRACK");
+                var severeOverdue = overdue.Count(x => (x.Sla.OverdueDays ?? 0) >= severeOverdueThresholdDays);
+                var avgOverdue = overdue.Count > 0 ? overdue.Average(x => x.Sla.OverdueDays ?? 0) : 0;
+                var maxOverdue = overdue.Count > 0 ? overdue.Max(x => x.Sla.OverdueDays ?? 0) : 0;
+                var total = g.Count();
+                var complianceRate = CalculateComplianceRate(onTrack, total);
+                var healthScore = CalculateHealthScore(total, overdue.Count, warning, severeOverdue);
+
+                return new SlaRecruiterBottleneckDto
+                {
+                    RecruiterId = g.Key.RecruiterId,
+                    RecruiterName = g.Key.RecruiterName,
+                    TotalApplications = total,
+                    OnTrackApplications = onTrack,
+                    OverdueApplications = overdue.Count,
+                    WarningApplications = warning,
+                    SevereOverdueApplications = severeOverdue,
+                    ComplianceRate = complianceRate,
+                    SlaHealthScore = healthScore,
+                    RiskLevel = CalculateRiskLevel(healthScore),
+                    AvgOverdueDays = Math.Round(avgOverdue, 2),
+                    MaxOverdueDays = maxOverdue
+                };
+            })
+            .OrderBy(x => x.SlaHealthScore)
+            .ThenByDescending(x => x.OverdueApplications)
+            .ThenByDescending(x => x.WarningApplications)
+            .ThenByDescending(x => x.MaxOverdueDays)
+            .ToList();
+
+        var stageStats = tracked
+            .GroupBy(x => x.StageName)
+            .Select(g =>
+            {
+                var overdue = g.Where(x => x.Sla.Status == "OVERDUE").ToList();
+                var warning = g.Count(x => x.Sla.Status == "WARNING");
+                var onTrack = g.Count(x => x.Sla.Status == "ON_TRACK");
+                var severeOverdue = overdue.Count(x => (x.Sla.OverdueDays ?? 0) >= severeOverdueThresholdDays);
+                var avgOverdue = overdue.Count > 0 ? overdue.Average(x => x.Sla.OverdueDays ?? 0) : 0;
+                var maxOverdue = overdue.Count > 0 ? overdue.Max(x => x.Sla.OverdueDays ?? 0) : 0;
+                var total = g.Count();
+                var complianceRate = CalculateComplianceRate(onTrack, total);
+                var healthScore = CalculateHealthScore(total, overdue.Count, warning, severeOverdue);
+
+                return new SlaStageBottleneckDto
+                {
+                    StageName = g.Key,
+                    TotalApplications = total,
+                    OnTrackApplications = onTrack,
+                    OverdueApplications = overdue.Count,
+                    WarningApplications = warning,
+                    SevereOverdueApplications = severeOverdue,
+                    ComplianceRate = complianceRate,
+                    RiskLevel = CalculateRiskLevel(healthScore),
+                    AvgOverdueDays = Math.Round(avgOverdue, 2),
+                    MaxOverdueDays = maxOverdue
+                };
+            })
+            .OrderByDescending(x => x.OverdueApplications)
+            .ThenByDescending(x => x.WarningApplications)
+            .ThenByDescending(x => x.MaxOverdueDays)
+            .ToList();
+
+        var topStuck = tracked
+            .Where(x => x.Sla.Status == "OVERDUE")
+            .OrderByDescending(x => x.Sla.OverdueDays)
+            .Take(10)
+            .Select(x => new SlaStuckApplicationDto
+            {
+                ApplicationId = x.ApplicationId,
+                CandidateName = x.CandidateName,
+                JobTitle = x.JobTitle,
+                StageName = x.StageName,
+                RecruiterName = x.RecruiterName,
+                EnteredStageAt = x.LastStageChangedAt,
+                DueAt = x.Sla.DueAt ?? x.LastStageChangedAt,
+                OverdueDays = x.Sla.OverdueDays ?? 0
+            })
+            .ToList();
+
+        var totalTracked = tracked.Count;
+        var overdueCount = tracked.Count(x => x.Sla.Status == "OVERDUE");
+        var warningCount = tracked.Count(x => x.Sla.Status == "WARNING");
+        var onTrackCount = tracked.Count(x => x.Sla.Status == "ON_TRACK");
+        var severeOverdueCount = tracked.Count(x => x.Sla.Status == "OVERDUE" && (x.Sla.OverdueDays ?? 0) >= severeOverdueThresholdDays);
+
+        return new SlaDashboardDto
+        {
+            TotalTrackedApplications = totalTracked,
+            OnTrackApplications = onTrackCount,
+            OverdueApplications = overdueCount,
+            WarningApplications = warningCount,
+            SevereOverdueApplications = severeOverdueCount,
+            ComplianceRate = CalculateComplianceRate(onTrackCount, totalTracked),
+            SlaHealthScore = CalculateHealthScore(totalTracked, overdueCount, warningCount, severeOverdueCount),
+            Recruiters = recruiterStats,
+            Stages = stageStats,
+            TopStuckApplications = topStuck
+        };
     }
 
     /// <summary>

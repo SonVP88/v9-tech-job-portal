@@ -80,7 +80,35 @@
     <h3 class="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">{{ summary.newApplications }}</h3>
   </div>
 </div>
-<div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+
+<div class="grid grid-cols-1 xl:grid-cols-3 gap-6 mb-8">
+<!-- SLA ALERTS BANNER -->
+<div *ngIf="!isLoadingSlaAlerts && slaAlerts.length > 0" class="col-span-full bg-gradient-to-r from-red-50 to-orange-50 dark:from-red-900/30 dark:to-orange-900/30 rounded-xl border-2 border-red-200 dark:border-red-800 shadow-sm p-5 mb-4">
+  <div class="flex items-start gap-4">
+    <div class="text-3xl">🔔</div>
+    <div class="flex-1">
+      <h3 class="text-lg font-bold text-red-800 dark:text-red-200 mb-3">Cảnh Báo SLA - Cần Xử Lý Ngay</h3>
+      <div class="space-y-2">
+        <div *ngFor="let alert of slaAlerts.slice(0, 5)" class="flex items-start gap-3 p-2 bg-white/80 dark:bg-slate-900/50 rounded border-l-4"
+             [class.border-l-orange-400]="alert.iconColor === 'orange'"
+             [class.border-l-red-500]="alert.iconColor === 'red'">
+          <span class="material-symbols-outlined text-xl mt-1"
+                [class.text-orange-600]="alert.iconColor === 'orange'"
+                [class.text-red-600]="alert.iconColor === 'red'">{{ alert.icon }}</span>
+          <div class="flex-1 min-w-0">
+            <p class="font-semibold text-slate-900 dark:text-white text-sm">{{ alert.title }}</p>
+            <p class="text-xs text-gray-600 dark:text-slate-400 mt-1">{{ alert.description }}</p>
+            <p class="text-[11px] text-gray-500 mt-1">{{ getRelativeTime(alert.timestamp) }}</p>
+          </div>
+        </div>
+      </div>
+      <p *ngIf="slaAlerts.length > 5" class="text-xs text-red-700 dark:text-red-300 mt-3 font-semibold">
+        + {{ slaAlerts.length - 5 }} cảnh báo khác chưa xem
+      </p>
+    </div>
+  </div>
+</div>
+
   <div
     class="xl:col-span-2 bg-white dark:bg-slate-950 rounded-xl border border-gray-200 dark:border-slate-800 shadow-sm p-6">
     <div class="flex items-center justify-between mb-8">
@@ -150,6 +178,121 @@
     </div>
   </div>
 </div>
+
+<div class="bg-white dark:bg-slate-950 rounded-xl border border-gray-200 dark:border-slate-800 shadow-sm p-6 mb-8">
+  <div class="flex items-center justify-between mb-4">
+    <div>
+      <h3 class="text-lg font-bold text-slate-900 dark:text-white">Theo Dõi Tiến Độ Hồ Sơ (SLA)</h3>
+      <p class="text-sm text-gray-500 dark:text-slate-400">Giúp quản lý hồ sơ sắp trễ hạn, trễ hạn và cần xử lý gấp</p>
+    </div>
+    <div class="flex items-center gap-2 text-xs">
+      <button (click)="toggleSlaScope(false)" [class]="slaOnlyMy ? 'px-2 py-1 rounded-full border border-gray-300 text-gray-600 bg-white' : 'px-2 py-1 rounded-full border border-blue-200 text-blue-700 bg-blue-50'">
+        Toàn bộ
+      </button>
+      <span class="px-2 py-1 rounded-full bg-red-50 text-red-700 border border-red-200">Quá hạn: {{ slaDashboard.overdueApplications }}</span>
+      <span class="px-2 py-1 rounded-full bg-yellow-50 text-yellow-700 border border-yellow-200">Cảnh báo: {{ slaDashboard.warningApplications }}</span>
+    </div>
+  </div>
+
+  <div *ngIf="!isLoadingSla" class="grid grid-cols-1 md:grid-cols-4 gap-3 mb-4">
+    <div class="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2">
+      <p class="text-xs text-emerald-700 font-semibold uppercase tracking-wide">Tỷ lệ đúng hạn</p>
+      <p class="text-xl font-black text-emerald-800">{{ slaDashboard.complianceRate | number:'1.0-2' }}%</p>
+      <p class="text-xs text-emerald-700 mt-1">Đúng hạn: {{ slaDashboard.onTrackApplications }}/{{ slaDashboard.totalTrackedApplications }}</p>
+    </div>
+    <div class="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2">
+      <p class="text-xs text-blue-700 font-semibold uppercase tracking-wide">Chỉ số chất lượng xử lý</p>
+      <p class="text-xl font-black text-blue-800">{{ slaDashboard.slaHealthScore | number:'1.0-2' }}</p>
+      <p class="text-xs text-blue-700 mt-1">Điểm tổng hợp từ đúng hạn, cảnh báo và quá hạn</p>
+    </div>
+    <div class="rounded-lg border border-red-200 bg-red-50 px-3 py-2">
+      <p class="text-xs text-red-700 font-semibold uppercase tracking-wide">Quá hạn nặng</p>
+      <p class="text-xl font-black text-red-800">{{ slaDashboard.severeOverdueApplications }}</p>
+      <p class="text-xs text-red-700 mt-1">Hồ sơ quá hạn từ 3 ngày trở lên</p>
+    </div>
+    <div class="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2">
+      <p class="text-xs text-gray-700 font-semibold uppercase tracking-wide">Tổng hồ sơ đang theo dõi</p>
+      <p class="text-xl font-black text-gray-800">{{ slaDashboard.totalTrackedApplications }}</p>
+      <p class="text-xs text-gray-600 mt-1">Tổng hồ sơ đang nằm trong phạm vi SLA</p>
+    </div>
+  </div>
+
+  <div *ngIf="isLoadingSla" class="flex items-center justify-center h-24">
+    <div class="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+  </div>
+
+  <div *ngIf="!isLoadingSla" class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+    <div>
+      <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Tình trạng theo người phụ trách</p>
+      <div class="space-y-2" *ngIf="slaDashboard.recruiters.length > 0; else noRecruiterSla">
+        <div *ngFor="let item of slaDashboard.recruiters.slice(0, 5)" class="rounded-lg border border-gray-200 px-3 py-2 bg-gray-50">
+          <div class="flex items-center justify-between">
+            <p class="font-semibold text-sm text-slate-900 dark:text-white">{{ item.recruiterName }}</p>
+            <span class="text-[11px] px-2 py-0.5 rounded-full border" [class]="getRiskClass(item.riskLevel)">{{ getRiskLabel(item.riskLevel) }}</span>
+          </div>
+          <p class="text-xs text-gray-600 mt-1">Tổng: {{ item.totalApplications }} | Đúng hạn: {{ item.onTrackApplications }} | Quá hạn: {{ item.overdueApplications }}</p>
+          <p class="text-xs text-gray-600 mt-1">Tỷ lệ đúng hạn: {{ item.complianceRate | number:'1.0-1' }}% | Chỉ số chất lượng: {{ item.slaHealthScore | number:'1.0-1' }} | Quá hạn nặng: {{ item.severeOverdueApplications }}</p>
+          <p class="text-xs text-gray-500 mt-1">Quá hạn lớn nhất: {{ item.maxOverdueDays }} ngày | Trung bình quá hạn: {{ item.avgOverdueDays | number:'1.0-1' }} ngày</p>
+        </div>
+      </div>
+      <ng-template #noRecruiterSla>
+        <p class="text-sm text-gray-500">Chưa có dữ liệu theo người phụ trách.</p>
+      </ng-template>
+    </div>
+
+    <div>
+      <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Hồ sơ cần xử lý gấp</p>
+      <div class="space-y-2" *ngIf="slaDashboard.topStuckApplications.length > 0; else noStuckApps">
+        <div *ngFor="let app of slaDashboard.topStuckApplications.slice(0, 5)" class="rounded-lg border border-red-200 px-3 py-2 bg-red-50/50">
+          <p class="text-sm font-semibold text-slate-900 dark:text-white">{{ app.candidateName }} - {{ app.jobTitle }}</p>
+          <p class="text-xs text-red-700 mt-1">{{ getSlaStageDisplayName(app.stageName) }} | Quá hạn {{ app.overdueDays }} ngày</p>
+          <p class="text-xs text-gray-600">Phụ trách: {{ app.recruiterName }}</p>
+        </div>
+      </div>
+      <ng-template #noStuckApps>
+        <p class="text-sm text-gray-500">Không có hồ sơ quá hạn.</p>
+      </ng-template>
+    </div>
+  </div>
+
+  <div *ngIf="!isLoadingSla" class="mt-5">
+    <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Tình trạng theo giai đoạn</p>
+    <div *ngIf="slaDashboard.stages.length > 0; else noStageSla" class="overflow-x-auto rounded-lg border border-gray-200">
+      <table class="min-w-full text-xs">
+        <thead class="bg-gray-50 text-gray-600 uppercase tracking-wide">
+          <tr>
+            <th class="px-3 py-2 text-left">Giai đoạn</th>
+            <th class="px-3 py-2 text-right">Tổng hồ sơ</th>
+            <th class="px-3 py-2 text-right">Đúng hạn</th>
+            <th class="px-3 py-2 text-right">Cảnh báo</th>
+            <th class="px-3 py-2 text-right">Quá hạn</th>
+            <th class="px-3 py-2 text-right">Quá hạn nghiêm trọng</th>
+            <th class="px-3 py-2 text-right">Tỷ lệ đúng hạn</th>
+            <th class="px-3 py-2 text-center">Mức rủi ro</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let stage of slaDashboard.stages.slice(0, 8)" class="border-t border-gray-100">
+            <td class="px-3 py-2 font-semibold text-slate-800">{{ getSlaStageDisplayName(stage.stageName) }}</td>
+            <td class="px-3 py-2 text-right">{{ stage.totalApplications }}</td>
+            <td class="px-3 py-2 text-right text-emerald-700">{{ stage.onTrackApplications }}</td>
+            <td class="px-3 py-2 text-right text-amber-700">{{ stage.warningApplications }}</td>
+            <td class="px-3 py-2 text-right text-red-700">{{ stage.overdueApplications }}</td>
+            <td class="px-3 py-2 text-right text-red-800 font-semibold">{{ stage.severeOverdueApplications }}</td>
+            <td class="px-3 py-2 text-right">{{ stage.complianceRate | number:'1.0-1' }}%</td>
+            <td class="px-3 py-2 text-center">
+              <span class="text-[11px] px-2 py-0.5 rounded-full border" [class]="getRiskClass(stage.riskLevel)">{{ getRiskLabel(stage.riskLevel) }}</span>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <ng-template #noStageSla>
+      <p class="text-sm text-gray-500">Chưa có dữ liệu theo giai đoạn.</p>
+    </ng-template>
+  </div>
+</div>
+
 <div
   class="mt-8 bg-white dark:bg-slate-950 rounded-xl border border-gray-200 dark:border-slate-800 shadow-sm overflow-hidden">
   <div

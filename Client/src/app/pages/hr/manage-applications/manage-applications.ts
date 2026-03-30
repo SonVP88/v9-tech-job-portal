@@ -108,8 +108,11 @@ export class ManageApplications implements OnInit, OnDestroy {
   searchQuery = '';
   showFilterPanel = false;
   filterStatus = '';
+  filterSlaStatus = '';
   filterScoreRange = '';
   filterDateRange = '';
+  onlyOverdue = false;
+  prioritizeSla = false;
   rejectEmailContent = '';
 
   // ==================== PAGINATION ====================
@@ -288,6 +291,7 @@ export class ManageApplications implements OnInit, OnDestroy {
       'SCREENING': 'Sàng lọc',
       'INTERVIEW': 'Phỏng vấn',
       'OFFER': 'Đề nghị',
+      'OFFER_ACCEPTED': 'Đã đồng ý Offer',
       'HIRED': 'Đã tuyển',
       'REJECTED': 'Từ chối',
       'Waitlist': 'Danh sách chờ'
@@ -307,6 +311,8 @@ export class ManageApplications implements OnInit, OnDestroy {
         return 'px-3 py-1 rounded-full bg-yellow-50 border border-yellow-200 text-yellow-700 text-xs font-semibold';
       case 'HIRED':
         return 'px-3 py-1 rounded-full bg-green-50 border border-green-200 text-green-700 text-xs font-semibold';
+      case 'OFFER_ACCEPTED':
+        return 'px-3 py-1 rounded-full bg-teal-50 border border-teal-200 text-teal-700 text-xs font-semibold';
       case 'REJECTED':
         return 'px-3 py-1 rounded-full bg-red-50 border border-red-200 text-red-700 text-xs font-semibold';
       case 'Waitlist':
@@ -318,6 +324,78 @@ export class ManageApplications implements OnInit, OnDestroy {
       default:
         return 'px-3 py-1 rounded-full bg-gray-50 border border-gray-200 text-gray-700 text-xs font-semibold';
     }
+  }
+
+  getSlaStatusLabel(app: ApplicationDto): string {
+    if (app.status === 'Waitlist') {
+      return 'Tạm dừng SLA';
+    }
+
+    if (app.status === 'HIRED' || app.status === 'OFFER_ACCEPTED' || app.status === 'REJECTED') {
+      return 'SLA kết thúc';
+    }
+
+    switch (app.slaStatus) {
+      case 'OVERDUE':
+        return `Quá hạn ${app.slaOverdueDays ?? 0} ngày`;
+      case 'WARNING':
+        return 'Sắp quá hạn';
+      case 'ON_TRACK':
+        return 'Đúng hạn';
+      default:
+        return 'Không theo SLA';
+    }
+  }
+
+  getSlaBadgeClass(app: ApplicationDto): string {
+    if (app.status === 'Waitlist') {
+      return 'inline-flex items-center px-2.5 py-1 rounded-full border border-indigo-200 bg-indigo-50 text-indigo-700 text-xs font-semibold';
+    }
+
+    if (app.status === 'HIRED' || app.status === 'OFFER_ACCEPTED' || app.status === 'REJECTED') {
+      return 'inline-flex items-center px-2.5 py-1 rounded-full border border-slate-200 bg-slate-50 text-slate-700 text-xs font-semibold';
+    }
+
+    switch (app.slaStatus) {
+      case 'OVERDUE':
+        return 'inline-flex items-center px-2.5 py-1 rounded-full border border-red-200 bg-red-50 text-red-700 text-xs font-semibold';
+      case 'WARNING':
+        return 'inline-flex items-center px-2.5 py-1 rounded-full border border-yellow-200 bg-yellow-50 text-yellow-700 text-xs font-semibold';
+      case 'ON_TRACK':
+        return 'inline-flex items-center px-2.5 py-1 rounded-full border border-green-200 bg-green-50 text-green-700 text-xs font-semibold';
+      default:
+        return 'inline-flex items-center px-2.5 py-1 rounded-full border border-gray-200 bg-gray-50 text-gray-600 text-xs font-semibold';
+    }
+  }
+
+  getSlaRowClass(app: ApplicationDto): string {
+    if (app.slaStatus === 'OVERDUE') {
+      return 'bg-red-50/60 hover:bg-red-100/50';
+    }
+
+    if (app.slaStatus === 'WARNING') {
+      return 'bg-yellow-50/40 hover:bg-yellow-100/50';
+    }
+
+    return 'hover:bg-gray-50';
+  }
+
+  getSlaTooltip(app: ApplicationDto): string {
+    if (app.status === 'Waitlist') {
+      return 'Hồ sơ tạm dừng SLA vì job đã đủ chỉ tiêu và đang ở danh sách chờ.';
+    }
+
+    if (app.status === 'HIRED' || app.status === 'OFFER_ACCEPTED' || app.status === 'REJECTED') {
+      return 'Hồ sơ đã kết thúc quy trình tuyển dụng, SLA tuyển dụng không còn tính tiếp.';
+    }
+
+    if (!app.slaDueAt || app.slaStatus === 'DISABLED') {
+      return 'Stage này chưa bật SLA';
+    }
+
+    const due = this.formatDate(app.slaDueAt);
+    const stage = app.currentStageName || app.currentStageCode || 'Unknown stage';
+    return `Stage: ${stage} | Hạn SLA: ${due}`;
   }
 
   /**
@@ -1265,6 +1343,16 @@ Phòng Nhân sự`;
       filtered = filtered.filter(app => app.status === this.filterStatus);
     }
 
+    // Apply SLA status filter
+    if (this.filterSlaStatus) {
+      filtered = filtered.filter(app => app.slaStatus === this.filterSlaStatus);
+    }
+
+    // Quick filter: only overdue applications
+    if (this.onlyOverdue) {
+      filtered = filtered.filter(app => app.slaStatus === 'OVERDUE');
+    }
+
     // Apply AI score filter
     if (this.filterScoreRange) {
       const [min, max] = this.filterScoreRange.split('-').map(Number);
@@ -1295,6 +1383,22 @@ Phòng Nhân sự`;
           return appDate >= monthAgo;
         }
         return true;
+      });
+    }
+
+    if (this.prioritizeSla) {
+      filtered.sort((a, b) => {
+        const severityDiff = this.getSlaSeverity(b.slaStatus) - this.getSlaSeverity(a.slaStatus);
+        if (severityDiff !== 0) {
+          return severityDiff;
+        }
+
+        const overdueDiff = (b.slaOverdueDays ?? 0) - (a.slaOverdueDays ?? 0);
+        if (overdueDiff !== 0) {
+          return overdueDiff;
+        }
+
+        return new Date(b.appliedAt).getTime() - new Date(a.appliedAt).getTime();
       });
     }
 
@@ -1331,8 +1435,11 @@ Phòng Nhân sự`;
   clearFilters(): void {
     this.searchQuery = '';
     this.filterStatus = '';
+    this.filterSlaStatus = '';
     this.filterScoreRange = '';
     this.filterDateRange = '';
+    this.onlyOverdue = false;
+    this.prioritizeSla = false;
     this.currentPage = 1;
     this.cdr.detectChanges();
   }
@@ -1343,8 +1450,11 @@ Phòng Nhân sự`;
   getActiveFiltersCount(): number {
     let count = 0;
     if (this.filterStatus) count++;
+    if (this.filterSlaStatus) count++;
     if (this.filterScoreRange) count++;
     if (this.filterDateRange) count++;
+    if (this.onlyOverdue) count++;
+    if (this.prioritizeSla) count++;
     return count;
   }
 
@@ -1360,7 +1470,7 @@ Phòng Nhân sự`;
     }
 
     // Prepare CSV data
-    const headers = ['Tên ứng viên', 'Email', 'Số điện thoại', 'Ngày nộp', 'AI Match Score', 'Trạng thái', 'Vị trí'];
+    const headers = ['Tên ứng viên', 'Email', 'Số điện thoại', 'Ngày nộp', 'AI Match Score', 'Trạng thái', 'SLA', 'Quá hạn (ngày)', 'Vị trí'];
     const rows = filtered.map(app => [
       app.candidateName,
       `'${app.email}`, // Force text format with apostrophe
@@ -1368,6 +1478,8 @@ Phòng Nhân sự`;
       this.formatDate(app.appliedAt),
       app.matchScore ? `${app.matchScore}%` : 'N/A',
       this.getStatusLabel(app.status),
+      this.getSlaStatusLabel(app),
+      app.slaOverdueDays ?? 0,
       app.jobTitle || ''
     ]);
 
@@ -1470,5 +1582,18 @@ Phòng Nhân sự`;
     }
 
     return range;
+  }
+
+  private getSlaSeverity(status?: string): number {
+    switch (status) {
+      case 'OVERDUE':
+        return 3;
+      case 'WARNING':
+        return 2;
+      case 'ON_TRACK':
+        return 1;
+      default:
+        return 0;
+    }
   }
 }

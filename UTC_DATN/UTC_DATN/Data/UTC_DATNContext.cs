@@ -833,9 +833,11 @@ public partial class UTC_DATNContext : DbContext
                 .IsRequired()
                 .HasMaxLength(30);
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("(sysutcdatetime())");
+            entity.Property(e => e.IsSlaEnabled).HasDefaultValue(false);
             entity.Property(e => e.Name)
                 .IsRequired()
                 .HasMaxLength(100);
+            entity.Property(e => e.SlaWarnBeforeDays).HasDefaultValue(1);
         });
 
         modelBuilder.Entity<PreScreenAnswer>(entity =>

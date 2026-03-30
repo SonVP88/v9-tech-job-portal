@@ -6,6 +6,12 @@ import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { AccountService, UserProfileDto, CompanyInfoDto, NotificationSettingDto } from '../../../services/account.service';
 import { AuthService } from '../../../services/auth.service';
 import { ToastService } from '../../../services/toast.service';
+import {
+    ApplicationService,
+    SlaStageConfigDto,
+    UpdateSlaStageConfigRequest
+} from '../../../services/application.service';
+import { forkJoin } from 'rxjs';
 
 @Component({
     selector: 'app-settings',
@@ -14,7 +20,7 @@ import { ToastService } from '../../../services/toast.service';
     templateUrl: './settings.html',
 })
 export class SettingsComponent implements OnInit {
-    activeTab: 'account' | 'company' | 'notifications' = 'account';
+    activeTab: 'account' | 'company' | 'notifications' | 'sla' = 'account';
     isLoading = false;
     isUploadingAvatar = false;
     isUploadingLogo = false;
@@ -44,6 +50,9 @@ export class SettingsComponent implements OnInit {
         channelPush: true
     };
 
+    slaStageConfigs: SlaStageConfigDto[] = [];
+    isLoadingSla = false;
+
     constructor(
         private titleService: Title,
         private accountService: AccountService,
@@ -52,13 +61,15 @@ export class SettingsComponent implements OnInit {
         private ngZone: NgZone,
         private fb: FormBuilder,
         private cdr: ChangeDetectorRef,
-        private toast: ToastService
+        private toast: ToastService,
+        private applicationService: ApplicationService
     ) { }
 
     ngOnInit(): void {
         this.titleService.setTitle('Cài Đặt - Quản Trị Hệ Thống');
         this.initForms();
         this.loadData();
+        this.loadSlaConfigs();
     }
 
     initForms(): void {
@@ -260,7 +271,61 @@ export class SettingsComponent implements OnInit {
             this.saveCompanyInfo();
         } else if (this.activeTab === 'notifications') {
             this.saveNotificationSettings();
+        } else if (this.activeTab === 'sla') {
+            this.saveSlaSettings();
         }
+    }
+
+    canManageSla(): boolean {
+        const normalizedRole = (this.userRole || '').toUpperCase();
+        return normalizedRole === 'ADMIN' || normalizedRole === 'HR';
+    }
+
+    getSlaStageDisplayName(stage: SlaStageConfigDto): string {
+        const code = (stage.code || '').toUpperCase();
+        const nameMap: Record<string, string> = {
+            NEW_APPLIED: 'Mới nộp',
+            TEST_PASSED: 'Đã qua bài test',
+            INTERVIEW: 'Phỏng vấn',
+            OFFER: 'Đề nghị nhận việc',
+            REJECTED: 'Từ chối',
+            HIRED: 'Đã tuyển',
+        };
+
+        return nameMap[code] || stage.name;
+    }
+
+    getSlaStageCodeLabel(stage: SlaStageConfigDto): string {
+        const code = (stage.code || '').toUpperCase();
+        const codeMap: Record<string, string> = {
+            NEW_APPLIED: 'MỚI_NỘP',
+            TEST_PASSED: 'ĐÃ_QUA_TEST',
+            INTERVIEW: 'PHỎNG_VẤN',
+            OFFER: 'ĐỀ_NGHỊ',
+            REJECTED: 'TỪ_CHỐI',
+            HIRED: 'ĐÃ_TUYỂN',
+        };
+
+        return codeMap[code] || code;
+    }
+
+    onSlaEnabledChanged(stage: SlaStageConfigDto): void {
+        if (!stage.isSlaEnabled || stage.isTerminal) return;
+
+        if (!stage.slaMaxDays || stage.slaMaxDays < 1) {
+            stage.slaMaxDays = 5;
+        }
+
+        if (stage.slaWarnBeforeDays == null || stage.slaWarnBeforeDays < 0) {
+            stage.slaWarnBeforeDays = 1;
+        }
+
+        this.normalizeSlaValues(stage);
+    }
+
+    onSlaValueBlur(stage: SlaStageConfigDto): void {
+        if (!stage.isSlaEnabled || stage.isTerminal) return;
+        this.normalizeSlaValues(stage);
     }
 
     updateProfile(): void {
@@ -372,5 +437,83 @@ export class SettingsComponent implements OnInit {
                 this.isLoading = false;
             }
         });
+    }
+
+    private loadSlaConfigs(): void {
+        this.isLoadingSla = true;
+        this.applicationService.getSlaStageConfigs().subscribe({
+            next: (res) => {
+                this.slaStageConfigs = (res.data || []).sort((a, b) => a.sortOrder - b.sortOrder);
+                this.isLoadingSla = false;
+            },
+            error: () => {
+                this.slaStageConfigs = [];
+                this.isLoadingSla = false;
+            }
+        });
+    }
+
+    private saveSlaSettings(): void {
+        const editableStages = this.slaStageConfigs.filter(s => !s.isTerminal);
+
+        if (!editableStages.length) {
+            this.toast.warning('Không có dữ liệu', 'Không có stage nào để cấu hình SLA.');
+            this.isLoading = false;
+            return;
+        }
+
+        const invalidStage = editableStages.find(s =>
+            s.isSlaEnabled && (
+                !s.slaMaxDays ||
+                s.slaMaxDays < 1 ||
+                s.slaWarnBeforeDays == null ||
+                s.slaWarnBeforeDays < 0 ||
+                s.slaWarnBeforeDays > s.slaMaxDays
+            )
+        );
+
+        if (invalidStage) {
+            this.toast.warning(
+                'Cấu hình SLA chưa hợp lệ',
+                `Stage ${invalidStage.name}: Số ngày cảnh báo phải từ 0 đến ${invalidStage.slaMaxDays}.`
+            );
+            this.isLoading = false;
+            return;
+        }
+
+        const requests = editableStages.map(stage => {
+            const payload: UpdateSlaStageConfigRequest = {
+                isSlaEnabled: stage.isSlaEnabled,
+                slaMaxDays: stage.isSlaEnabled ? stage.slaMaxDays : undefined,
+                slaWarnBeforeDays: stage.isSlaEnabled ? stage.slaWarnBeforeDays : undefined,
+            };
+
+            return this.applicationService.updateSlaStageConfig(stage.stageId, payload);
+        });
+
+        forkJoin(requests).subscribe({
+            next: () => {
+                this.toast.success('Thành công', 'Đã lưu cấu hình SLA theo stage.');
+                this.isLoading = false;
+                this.loadSlaConfigs();
+            },
+            error: (err: any) => {
+                this.toast.error('Lưu thất bại', err?.error?.message || 'Không thể lưu cấu hình SLA.');
+                this.isLoading = false;
+            }
+        });
+    }
+
+    private normalizeSlaValues(stage: SlaStageConfigDto): void {
+        const maxDays = Number.isFinite(stage.slaMaxDays as number)
+            ? Math.floor(stage.slaMaxDays as number)
+            : 1;
+
+        const warnDays = Number.isFinite(stage.slaWarnBeforeDays as number)
+            ? Math.floor(stage.slaWarnBeforeDays as number)
+            : 0;
+
+        stage.slaMaxDays = Math.max(1, maxDays);
+        stage.slaWarnBeforeDays = Math.min(stage.slaMaxDays, Math.max(0, warnDays));
     }
 }

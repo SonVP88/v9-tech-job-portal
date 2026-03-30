@@ -19,6 +19,12 @@ public partial class PipelineStage
 
     public DateTime CreatedAt { get; set; }
 
+    public int? SlaMaxDays { get; set; }
+
+    public int? SlaWarnBeforeDays { get; set; }
+
+    public bool? IsSlaEnabled { get; set; }
+
     public virtual ICollection<ApplicationStageHistory> ApplicationStageHistoryFromStages { get; set; } = new List<ApplicationStageHistory>();
 
     public virtual ICollection<ApplicationStageHistory> ApplicationStageHistoryToStages { get; set; } = new List<ApplicationStageHistory>();

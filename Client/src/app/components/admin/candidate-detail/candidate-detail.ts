@@ -6,13 +6,14 @@ import { OfferModalComponent } from '../offer-modal/offer-modal';
 import { ApplicationService, CandidateProfileDto } from '../../../services/application.service';
 import { ToastService } from '../../../services/toast.service';
 
-// HR chỉ được advance đến Offer_Sent.
-// HIRED chỉ do ứng viên set khi chấp nhận offer (respond-offer API).
+// HR chỉ được advance đến Pending_Offer qua pipeline.
+// Ứng viên phản hồi Offer sẽ thành OFFER_ACCEPTED; HR xác nhận cuối cùng mới thành HIRED.
 const PIPELINE_STAGES = [
   { key: 'PENDING', label: 'Ứng tuyển', icon: 'description', hrCanAdvance: true },
   { key: 'INTERVIEW', label: 'Phỏng vấn', icon: 'calendar_month', hrCanAdvance: true },
   { key: 'Pending_Offer', label: 'Chờ Offer', icon: 'schedule', hrCanAdvance: true },
   { key: 'Offer_Sent', label: 'Đã gửi Offer', icon: 'send', hrCanAdvance: false },
+  { key: 'OFFER_ACCEPTED', label: 'Đã đồng ý Offer', icon: 'task_alt', hrCanAdvance: false },
   { key: 'HIRED', label: 'Đã tuyển', icon: 'verified', hrCanAdvance: false },
 ];
 

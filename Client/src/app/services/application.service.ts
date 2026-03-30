@@ -15,6 +15,59 @@ export interface ApplicationDto {
     matchScore?: number;
     aiExplanation?: string;
     jobTitle?: string;     // Thêm để hiển thị trong email
+    currentStageCode?: string;
+    currentStageName?: string;
+    slaDueAt?: string;
+    slaStatus?: 'ON_TRACK' | 'WARNING' | 'OVERDUE' | 'DISABLED';
+    slaOverdueDays?: number;
+    slaMaxDays?: number;
+    slaWarnBeforeDays?: number;
+}
+
+export interface SlaStageConfigDto {
+    stageId: string;
+    code: string;
+    name: string;
+    sortOrder: number;
+    isTerminal: boolean;
+    isSlaEnabled: boolean;
+    slaMaxDays?: number;
+    slaWarnBeforeDays?: number;
+}
+
+export interface UpdateSlaStageConfigRequest {
+    isSlaEnabled: boolean;
+    slaMaxDays?: number;
+    slaWarnBeforeDays?: number;
+}
+
+export interface SlaRecruiterBottleneckDto {
+    recruiterId?: string;
+    recruiterName: string;
+    totalApplications: number;
+    overdueApplications: number;
+    warningApplications: number;
+    maxOverdueDays: number;
+    avgOverdueDays: number;
+}
+
+export interface SlaStuckApplicationDto {
+    applicationId: string;
+    candidateName: string;
+    jobTitle: string;
+    stageName: string;
+    recruiterName: string;
+    enteredStageAt: string;
+    dueAt: string;
+    overdueDays: number;
+}
+
+export interface SlaDashboardDto {
+    totalTrackedApplications: number;
+    overdueApplications: number;
+    warningApplications: number;
+    recruiters: SlaRecruiterBottleneckDto[];
+    topStuckApplications: SlaStuckApplicationDto[];
 }
 
 export interface MyApplicationDto {
@@ -27,6 +80,17 @@ export interface MyApplicationDto {
     status: string;
     lastViewedAt?: string;
     cvUrl?: string;
+}
+
+export interface OfferDetailDto {
+    applicationId: string;
+    candidateName: string;
+    position: string;
+    salary: number;
+    startDate: string;
+    expiryDate: string;
+    contractType: string;
+    offerSentAt: string;
 }
 
 export interface ApiResponse<T> {
@@ -107,13 +171,36 @@ export class ApplicationService {
     }
 
     /**
-     * Ứng viên phản hồi Offer: true = Đồng ý (HIRED), false = Từ chối (REJECTED)
+     * Ứng viên phản hồi Offer: true = Đồng ý (OFFER_ACCEPTED), false = Từ chối (REJECTED)
      */
     respondToOffer(applicationId: string, accept: boolean): Observable<ApiResponse<any>> {
         return this.http.put<ApiResponse<any>>(
             `${this.apiUrl}/applications/${applicationId}/respond-offer?accept=${accept}`,
             {}
         );
+    }
+
+    /**
+     * Ứng viên xem lại chi tiết Offer đã gửi cho hồ sơ.
+     */
+    getOfferDetail(applicationId: string): Observable<ApiResponse<OfferDetailDto>> {
+        return this.http.get<ApiResponse<OfferDetailDto>>(`${this.apiUrl}/offer/application/${applicationId}/detail`);
+    }
+
+    getSlaStageConfigs(): Observable<ApiResponse<SlaStageConfigDto[]>> {
+        return this.http.get<ApiResponse<SlaStageConfigDto[]>>(`${this.apiUrl}/sla/stages`);
+    }
+
+    updateSlaStageConfig(stageId: string, request: UpdateSlaStageConfigRequest): Observable<ApiResponse<any>> {
+        return this.http.put<ApiResponse<any>>(`${this.apiUrl}/sla/stages/${stageId}`, request);
+    }
+
+    getSlaDashboard(onlyMy = false): Observable<ApiResponse<SlaDashboardDto>> {
+        return this.http.get<ApiResponse<SlaDashboardDto>>(`${this.apiUrl}/sla/dashboard`, {
+            params: {
+                onlyMy: String(onlyMy)
+            }
+        });
     }
 
     /**

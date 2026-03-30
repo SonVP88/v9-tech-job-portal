@@ -23,6 +23,7 @@ namespace UTC_DATN.Services.Implements
         {
             return await _context.Notifications
                 .Where(n => n.UserId == userId)
+                .Where(n => n.Type == null || !n.Type.StartsWith("SLA_"))
                 .OrderByDescending(n => n.CreatedAt)
                 .Take(50)
                 .Select(n => new NotificationDto
@@ -42,7 +43,7 @@ namespace UTC_DATN.Services.Implements
         public async Task<int> GetUnreadCountAsync(Guid userId)
         {
             return await _context.Notifications
-                .CountAsync(n => n.UserId == userId && !n.IsRead);
+                .CountAsync(n => n.UserId == userId && !n.IsRead && (n.Type == null || !n.Type.StartsWith("SLA_")));
         }
 
         public async Task MarkAsReadAsync(Guid notificationId)
@@ -59,6 +60,7 @@ namespace UTC_DATN.Services.Implements
         {
             var unreadNotifications = await _context.Notifications
                 .Where(n => n.UserId == userId && !n.IsRead)
+                .Where(n => n.Type == null || !n.Type.StartsWith("SLA_"))
                 .ToListAsync();
 
             foreach (var n in unreadNotifications)

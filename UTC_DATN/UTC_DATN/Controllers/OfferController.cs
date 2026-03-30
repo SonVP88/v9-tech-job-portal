@@ -2,6 +2,11 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
 using UTC_DATN.Services.Interfaces;
 using System.Text;
+using System.Security.Claims;
+using System.Text.Json;
+using Microsoft.EntityFrameworkCore;
+using UTC_DATN.Data;
+using UTC_DATN.Entities;
 
 namespace UTC_DATN.Controllers
 {
@@ -13,17 +18,21 @@ namespace UTC_DATN.Controllers
         private readonly IEmailService _emailService;
         private readonly IInterviewService _interviewService;
         private readonly IApplicationService _applicationService;
+        private readonly UTC_DATNContext _context;
         private readonly ILogger<OfferController> _logger;
+        private const string OfferSnapshotPrefix = "[OFFER_SNAPSHOT]";
 
         public OfferController(
             IEmailService emailService,
             IInterviewService interviewService,
             IApplicationService applicationService,
+            UTC_DATNContext context,
             ILogger<OfferController> logger)
         {
             _emailService = emailService;
             _interviewService = interviewService;
             _applicationService = applicationService;
+            _context = context;
             _logger = logger;
         }
 
@@ -111,6 +120,7 @@ namespace UTC_DATN.Controllers
                     if (!string.IsNullOrEmpty(dto.ApplicationId) && Guid.TryParse(dto.ApplicationId, out Guid applicationId))
                     {
                         await _applicationService.UpdateStatusAsync(applicationId, "Offer_Sent");
+                        await SaveOfferSnapshotAsync(applicationId, dto);
                         _logger.LogInformation("✅ Updated application status to Offer_Sent for {ApplicationId}", applicationId);
                     }
                 }
@@ -137,6 +147,130 @@ namespace UTC_DATN.Controllers
                     message = "Có lỗi xảy ra khi gửi email Offer"
                 });
             }
+        }
+
+        /// <summary>
+        /// Candidate xem lại chi tiết Offer đã gửi cho hồ sơ của chính mình
+        /// </summary>
+        [HttpGet("application/{applicationId:guid}/detail")]
+        public async Task<IActionResult> GetOfferDetail(Guid applicationId)
+        {
+            try
+            {
+                var userId = GetUserId();
+                if (userId == Guid.Empty)
+                {
+                    return Unauthorized();
+                }
+
+                var app = await _context.Applications
+                    .AsNoTracking()
+                    .Include(a => a.Candidate)
+                    .Include(a => a.Job)
+                    .FirstOrDefaultAsync(a => a.ApplicationId == applicationId);
+
+                if (app == null)
+                {
+                    return NotFound(new { success = false, message = "Không tìm thấy hồ sơ ứng tuyển." });
+                }
+
+                // Chỉ candidate sở hữu hồ sơ hoặc HR/Admin mới được xem.
+                var role = User.FindFirst(ClaimTypes.Role)?.Value ?? string.Empty;
+                var isPrivileged = role == "HR" || role == "ADMIN";
+                if (!isPrivileged)
+                {
+                    var candidateUserId = await _context.Candidates
+                        .AsNoTracking()
+                        .Where(c => c.CandidateId == app.CandidateId)
+                        .Select(c => c.UserId)
+                        .FirstOrDefaultAsync();
+
+                    if (!candidateUserId.HasValue || candidateUserId.Value != userId)
+                    {
+                        return Forbid();
+                    }
+                }
+
+                var note = await _context.ApplicationNotes
+                    .AsNoTracking()
+                    .Where(n => n.ApplicationId == applicationId && n.Note.StartsWith(OfferSnapshotPrefix))
+                    .OrderByDescending(n => n.CreatedAt)
+                    .FirstOrDefaultAsync();
+
+                if (note == null)
+                {
+                    return NotFound(new { success = false, message = "Chưa có chi tiết Offer cho hồ sơ này." });
+                }
+
+                var json = note.Note.Substring(OfferSnapshotPrefix.Length);
+                var snapshot = JsonSerializer.Deserialize<OfferSnapshotDto>(json);
+                if (snapshot == null)
+                {
+                    return NotFound(new { success = false, message = "Không đọc được dữ liệu Offer." });
+                }
+
+                return Ok(new
+                {
+                    success = true,
+                    data = new
+                    {
+                        applicationId,
+                        candidateName = app.Candidate?.FullName ?? snapshot.CandidateName,
+                        position = snapshot.Position,
+                        salary = snapshot.Salary,
+                        startDate = snapshot.StartDate,
+                        expiryDate = snapshot.ExpiryDate,
+                        contractType = snapshot.ContractType,
+                        offerSentAt = note.CreatedAt
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ Error getting offer detail for application {ApplicationId}", applicationId);
+                return StatusCode(500, new { success = false, message = "Lỗi tải chi tiết Offer." });
+            }
+        }
+
+        private async Task SaveOfferSnapshotAsync(Guid applicationId, SendOfferLetterDto dto)
+        {
+            var snapshot = new OfferSnapshotDto
+            {
+                CandidateName = dto.CandidateName,
+                CandidateEmail = dto.CandidateEmail,
+                Position = dto.Position,
+                Salary = dto.Salary,
+                StartDate = dto.StartDate,
+                ExpiryDate = dto.ExpiryDate,
+                ContractType = dto.ContractType,
+                CcInterviewer = dto.CcInterviewer,
+                AdditionalCcEmails = dto.AdditionalCcEmails
+            };
+
+            var createdBy = GetUserId();
+            var note = new ApplicationNote
+            {
+                ApplicationId = applicationId,
+                Note = OfferSnapshotPrefix + JsonSerializer.Serialize(snapshot),
+                CreatedBy = createdBy == Guid.Empty ? null : createdBy,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            _context.ApplicationNotes.Add(note);
+            await _context.SaveChangesAsync();
+        }
+
+        private Guid GetUserId()
+        {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)
+                ?? User.FindFirst(System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Sub);
+
+            if (userIdClaim != null && Guid.TryParse(userIdClaim.Value, out var userId))
+            {
+                return userId;
+            }
+
+            return Guid.Empty;
         }
 
         /// <summary>
@@ -224,6 +358,19 @@ namespace UTC_DATN.Controllers
     public class SendOfferLetterDto
     {
         public string ApplicationId { get; set; } = string.Empty; // Renamed from CandidateId - this is the Application ID
+        public string CandidateName { get; set; } = string.Empty;
+        public string CandidateEmail { get; set; } = string.Empty;
+        public string Position { get; set; } = string.Empty;
+        public decimal Salary { get; set; }
+        public string StartDate { get; set; } = string.Empty;
+        public string ExpiryDate { get; set; } = string.Empty;
+        public string ContractType { get; set; } = string.Empty;
+        public bool CcInterviewer { get; set; }
+        public string AdditionalCcEmails { get; set; } = string.Empty;
+    }
+
+    public class OfferSnapshotDto
+    {
         public string CandidateName { get; set; } = string.Empty;
         public string CandidateEmail { get; set; } = string.Empty;
         public string Position { get; set; } = string.Empty;

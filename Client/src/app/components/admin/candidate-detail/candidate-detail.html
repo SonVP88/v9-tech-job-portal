@@ -47,6 +47,7 @@
                 'bg-blue-100 text-blue-800':    currentStatus === 'INTERVIEW',
                 'bg-orange-100 text-orange-800':currentStatus === 'Pending_Offer',
                 'bg-purple-100 text-purple-800':currentStatus === 'Offer_Sent',
+                'bg-teal-100 text-teal-800':    currentStatus === 'OFFER_ACCEPTED',
                 'bg-green-100 text-green-800':  currentStatus === 'HIRED',
                 'bg-red-100 text-red-800':      currentStatus === 'REJECTED'
               }" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold">
@@ -128,6 +129,7 @@
           bị từ chối.</p>
         <p *ngIf="currentStatus === 'Offer_Sent'" class="text-center text-purple-600 text-sm mt-3">⏳ Đã gửi Offer - Đang
           chờ ứng viên phản hồi...</p>
+        <p *ngIf="currentStatus === 'OFFER_ACCEPTED'" class="text-center text-teal-600 text-sm mt-3">📝 Ứng viên đã đồng ý Offer - Chờ HR xác nhận tuyển chính thức.</p>
       </div>
     </div>
 

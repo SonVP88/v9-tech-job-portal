@@ -20,7 +20,7 @@ public interface IApplicationService
     /// <summary>
     /// Cập nhật trạng thái hồ sơ ứng tuyển (Dành cho HR/Admin)
     /// </summary>
-    Task<UpdateApplicationStatusResponse?> UpdateStatusAsync(Guid applicationId, string newStatus, bool isHrAction = true);
+    Task<UpdateApplicationStatusResponse?> UpdateStatusAsync(Guid applicationId, string newStatus, bool isHrAction = true, Guid? actorUserId = null);
 
 
     /// <summary>
@@ -37,4 +37,19 @@ public interface IApplicationService
     /// Lấy toàn bộ danh sách hồ sơ ứng tuyển (Dành cho HR/Admin)
     /// </summary>
     Task<List<ApplicationDto>> GetAllApplicationsAsync();
+
+    /// <summary>
+    /// Lấy cấu hình SLA của các pipeline stage
+    /// </summary>
+    Task<List<SlaStageConfigDto>> GetSlaStageConfigsAsync();
+
+    /// <summary>
+    /// Cập nhật SLA cho 1 stage
+    /// </summary>
+    Task<bool> UpdateSlaStageConfigAsync(Guid stageId, UpdateSlaStageConfigRequest request);
+
+    /// <summary>
+    /// Dashboard bottleneck SLA theo recruiter
+    /// </summary>
+    Task<SlaDashboardDto> GetSlaDashboardAsync(Guid? recruiterUserId = null);
 }

@@ -164,7 +164,14 @@ public class ApplicationController : ControllerBase
                 return BadRequest(new { success = false, message = "Trạng thái không được để trống" });
             }
 
-            var result = await _applicationService.UpdateStatusAsync(id, status);
+            Guid? actorUserId = null;
+            var actorClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            if (!string.IsNullOrEmpty(actorClaim) && Guid.TryParse(actorClaim, out var parsedActor))
+            {
+                actorUserId = parsedActor;
+            }
+
+            var result = await _applicationService.UpdateStatusAsync(id, status, actorUserId: actorUserId);
 
             if (result != null && result.Success)
             {
@@ -188,7 +195,7 @@ public class ApplicationController : ControllerBase
 
     /// <summary>
     /// API cho ứng viên phản hồi Offer (Đồng ý / Từ chối)
-    /// Chỉ CANDIDATE mới được gọi. Chỉ cho phép đổi Offer_Sent → HIRED hoặc REJECTED.
+    /// Chỉ CANDIDATE mới được gọi. Chỉ cho phép đổi Offer_Sent → OFFER_ACCEPTED hoặc REJECTED.
     /// </summary>
     [HttpPut("{id}/respond-offer")]
     [Authorize]
@@ -200,9 +207,15 @@ public class ApplicationController : ControllerBase
             if (!bool.TryParse(accept, out var isAccepted))
                 return BadRequest(new { success = false, message = "Tham số 'accept' phải là true hoặc false." });
 
-            var newStatus = isAccepted ? "HIRED" : "REJECTED";
+            var newStatus = isAccepted ? "OFFER_ACCEPTED" : "REJECTED";
+            Guid? actorUserId = null;
+            var actorClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            if (!string.IsNullOrEmpty(actorClaim) && Guid.TryParse(actorClaim, out var parsedActor))
+            {
+                actorUserId = parsedActor;
+            }
             // isHrAction = false -> candidate tự phản hồi -> trigger notification đúng
-            var result = await _applicationService.UpdateStatusAsync(id, newStatus, isHrAction: false);
+            var result = await _applicationService.UpdateStatusAsync(id, newStatus, isHrAction: false, actorUserId: actorUserId);
 
 
             if (result != null && result.Success)
@@ -210,7 +223,7 @@ public class ApplicationController : ControllerBase
                 return Ok(new
                 {
                     success = true,
-                    message = isAccepted ? "Bạn đã chấp nhận Offer. Chúc mừng!" : "Bạn đã từ chối Offer.",
+                    message = isAccepted ? "Bạn đã chấp nhận Offer. HR sẽ xác nhận bước nhận việc tiếp theo." : "Bạn đã từ chối Offer.",
                     data = result
                 });
             }

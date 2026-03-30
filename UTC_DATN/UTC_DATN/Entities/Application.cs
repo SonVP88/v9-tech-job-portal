@@ -26,6 +26,11 @@ public partial class Application
     public string Status { get; set; }
 
     /// <summary>
+    /// Snapshot họ tên liên lạc tại thời điểm nộp hồ sơ (Historical Data Integrity)
+    /// </summary>
+    public string? ContactName { get; set; }
+
+    /// <summary>
     /// Snapshot email liên lạc tại thời điểm nộp hồ sơ (Historical Data Integrity)
     /// </summary>
     public string? ContactEmail { get; set; }

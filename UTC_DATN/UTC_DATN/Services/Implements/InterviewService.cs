@@ -109,7 +109,9 @@ public class InterviewService : IInterviewService
                 var candidateEmail = !string.IsNullOrEmpty(application.ContactEmail)
                     ? application.ContactEmail
                     : application.Candidate?.Email;
-                var candidateName = application.Candidate?.FullName ?? "Ứng viên";
+                var candidateName = !string.IsNullOrWhiteSpace(application.ContactName)
+                    ? application.ContactName
+                    : application.Candidate?.FullName ?? "Ứng viên";
                 var jobTitle = application.Job?.Title ?? "Vị trí tuyển dụng";
 
                 // Tạo HTML template chuyên nghiệp
@@ -172,7 +174,7 @@ public class InterviewService : IInterviewService
                 await _notificationService.CreateNotificationAsync(
                     dto.InterviewerId,
                     "Lịch phỏng vấn mới được phân công",
-                    $"Bạn được phân công phỏng vấn ứng viên {application.Candidate?.FullName ?? "N/A"} cho vị trí {application.Job?.Title ?? "N/A"} vào lúc {dto.ScheduledStart:HH:mm dd/MM/yyyy}",
+                    $"Bạn được phân công phỏng vấn ứng viên {(!string.IsNullOrWhiteSpace(application.ContactName) ? application.ContactName : application.Candidate?.FullName ?? "N/A")} cho vị trí {application.Job?.Title ?? "N/A"} vào lúc {dto.ScheduledStart:HH:mm dd/MM/yyyy}",
                     "INTERVIEW_ASSIGNED",
                     interview.InterviewId.ToString()
                 );

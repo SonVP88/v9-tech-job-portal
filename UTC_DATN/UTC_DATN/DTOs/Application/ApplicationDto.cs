@@ -16,5 +16,14 @@ public class ApplicationDto
     // Thông tin AI Scoring
     public int? MatchScore { get; set; }
     public string? AiExplanation { get; set; }
+
+    // SLA theo stage hiện tại
+    public string? CurrentStageCode { get; set; }
+    public string? CurrentStageName { get; set; }
+    public DateTime? SlaDueAt { get; set; }
+    public string? SlaStatus { get; set; }
+    public int? SlaOverdueDays { get; set; }
+    public int? SlaMaxDays { get; set; }
+    public int? SlaWarnBeforeDays { get; set; }
 }
 

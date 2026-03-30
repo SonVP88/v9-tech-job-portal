@@ -41,6 +41,64 @@ export interface WeeklyActivityDto {
     hiresData: number[];
 }
 
+export interface SlaRecruiterBottleneckDto {
+    recruiterId?: string;
+    recruiterName: string;
+    totalApplications: number;
+    onTrackApplications: number;
+    overdueApplications: number;
+    warningApplications: number;
+    severeOverdueApplications: number;
+    complianceRate: number;
+    slaHealthScore: number;
+    riskLevel: 'LOW' | 'MEDIUM' | 'HIGH' | string;
+    maxOverdueDays: number;
+    avgOverdueDays: number;
+}
+
+export interface SlaStageBottleneckDto {
+    stageName: string;
+    totalApplications: number;
+    onTrackApplications: number;
+    overdueApplications: number;
+    warningApplications: number;
+    severeOverdueApplications: number;
+    complianceRate: number;
+    riskLevel: 'LOW' | 'MEDIUM' | 'HIGH' | string;
+    maxOverdueDays: number;
+    avgOverdueDays: number;
+}
+
+export interface SlaStuckApplicationDto {
+    applicationId: string;
+    candidateName: string;
+    jobTitle: string;
+    stageName: string;
+    recruiterName: string;
+    enteredStageAt: string;
+    dueAt: string;
+    overdueDays: number;
+}
+
+export interface SlaDashboardDto {
+    totalTrackedApplications: number;
+    onTrackApplications: number;
+    overdueApplications: number;
+    warningApplications: number;
+    severeOverdueApplications: number;
+    complianceRate: number;
+    slaHealthScore: number;
+    recruiters: SlaRecruiterBottleneckDto[];
+    stages: SlaStageBottleneckDto[];
+    topStuckApplications: SlaStuckApplicationDto[];
+}
+
+export interface ApiResponse<T> {
+    success: boolean;
+    data: T;
+    message?: string;
+}
+
 @Injectable({
     providedIn: 'root'
 })
@@ -103,5 +161,20 @@ export class DashboardService {
      */
     getCandidateUnreadCount(): Observable<{ unreadCount: number }> {
         return this.http.get<{ unreadCount: number }>(`${this.apiUrl}/candidate-unread-count`);
+    }
+
+    getSlaDashboard(onlyMy = false): Observable<ApiResponse<SlaDashboardDto>> {
+        return this.http.get<ApiResponse<SlaDashboardDto>>('/api/sla/dashboard', {
+            params: {
+                onlyMy: String(onlyMy)
+            }
+        });
+    }
+
+    /**
+     * Lấy SLA alerts/notifications từ API
+     */
+    getSlaAlerts(): Observable<DashboardActivityDto[]> {
+        return this.http.get<DashboardActivityDto[]>(`${this.apiUrl}/sla-alerts`);
     }
 }

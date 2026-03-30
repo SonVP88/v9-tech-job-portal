@@ -393,6 +393,7 @@ public class DashboardController : ControllerBase
             "INTERVIEW" => "Phỏng vấn",
             "Pending_Offer" => "Chờ Offer",
             "Offer_Sent" => "Offer đã gửi",
+            "OFFER_ACCEPTED" => "Đã đồng ý Offer",
             "HIRED" => "Đã tuyển",
             "REJECTED" => "Từ chối",
             _ => status
@@ -407,8 +408,79 @@ public class DashboardController : ControllerBase
             "INTERVIEW" => "blue",
             "Pending_Offer" => "yellow",
             "Offer_Sent" => "orange",
+            "OFFER_ACCEPTED" => "indigo",
             "HIRED" => "green",
             "REJECTED" => "red",
+            _ => "gray"
+        };
+    }
+
+    /// <summary>
+    /// GET /api/dashboard/sla-alerts - Lấy SLA alerts/notifications không đọc cho HR
+    /// </summary>
+    [HttpGet("sla-alerts")]
+    [Authorize(Roles = "HR,ADMIN")]
+    public async Task<ActionResult<List<DashboardActivityDto>>> GetSlaAlerts()
+    {
+        try
+        {
+            var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userId) || !Guid.TryParse(userId, out var userIdGuid))
+            {
+                return Unauthorized();
+            }
+
+            // Lấy unread notifications của user, filter chỉ SLA types
+            var slaNotifications = await _context.Notifications
+                .AsNoTracking()
+                .Where(n => n.UserId == userIdGuid && !n.IsRead)
+                .Where(n => n.Type.StartsWith("SLA_"))
+                .OrderByDescending(n => n.CreatedAt)
+                .Take(20)
+                .Select(n => new DashboardActivityDto
+                {
+                    Type = n.Type,
+                    Title = n.Title,
+                    Description = n.Message,
+                    Timestamp = n.CreatedAt,
+                    Icon = GetSlaAlertIcon(n.Type),
+                    IconColor = GetSlaAlertColor(n.Type)
+                })
+                .ToListAsync();
+
+            return Ok(slaNotifications);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError($"Lỗi lấy SLA alerts: {ex.Message}");
+            return StatusCode(500, new { message = "Lỗi lấy dữ liệu SLA alerts" });
+        }
+    }
+
+    /// <summary>
+    /// Helper: xác định icon cho SLA alert
+    /// </summary>
+    private string GetSlaAlertIcon(string notificationType)
+    {
+        return notificationType switch
+        {
+            "SLA_WARNING" => "warning",
+            "SLA_OVERDUE" => "error",
+            "SLA_SEVERE_OVERDUE" => "crisis_alert",
+            _ => "notifications"
+        };
+    }
+
+    /// <summary>
+    /// Helper: xác định màu cho SLA alert
+    /// </summary>
+    private string GetSlaAlertColor(string notificationType)
+    {
+        return notificationType switch
+        {
+            "SLA_WARNING" => "orange",
+            "SLA_OVERDUE" => "red",
+            "SLA_SEVERE_OVERDUE" => "red",
             _ => "gray"
         };
     }

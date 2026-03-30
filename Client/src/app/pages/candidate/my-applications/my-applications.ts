@@ -1,7 +1,7 @@
 
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { ChangeDetectorRef, Component, OnInit, PLATFORM_ID, inject } from '@angular/core';
-import { ApplicationService, MyApplicationDto } from '../../../services/application.service';
+import { ApplicationService, MyApplicationDto, OfferDetailDto } from '../../../services/application.service';
 import { Router, RouterModule } from '@angular/router';
 import { CandidateHeaderComponent } from '../../../components/shared/candidate-header/candidate-header';
 import { AuthService } from '../../../services/auth.service';
@@ -27,6 +27,10 @@ export class MyApplications implements OnInit {
   isEmpty = false;
   currentTab = 'ALL';
   respondingId: string | null = null; // track nút đang loading
+  isOfferModalOpen = false;
+  isOfferLoading = false;
+  selectedOfferDetail: OfferDetailDto | null = null;
+  offerErrorMessage = '';
 
   // Auth properties for navbar
   isLoggedIn = false;
@@ -114,6 +118,8 @@ export class MyApplications implements OnInit {
     switch (status) {
       case 'HIRED':
         return 'px-3 py-1.5 rounded-full bg-indigo-100 border border-indigo-300 text-indigo-700 text-xs font-bold uppercase tracking-wide flex items-center gap-1 shadow-sm';
+      case 'OFFER_ACCEPTED':
+        return 'px-3 py-1 rounded-full bg-teal-50 border border-teal-200 text-teal-700 text-xs font-bold uppercase tracking-wide flex items-center gap-1';
       case 'INTERVIEW':
       case 'Pending_Offer':
       case 'Waitlist':
@@ -137,6 +143,8 @@ export class MyApplications implements OnInit {
     switch (status) {
       case 'HIRED':
         return 'Đã Trúng Tuyển';
+      case 'OFFER_ACCEPTED':
+        return 'Đã đồng ý Offer';
       case 'INTERVIEW':
       case 'Pending_Offer':
       case 'Waitlist':
@@ -199,7 +207,7 @@ export class MyApplications implements OnInit {
       this.filteredApplications = this.myApplications.filter(app => app.status === 'INTERVIEW' || app.status === 'Pending_Offer' || app.status === 'Waitlist');
     } else if (this.currentTab === 'FINISHED') {
       this.filteredApplications = this.myApplications.filter(app =>
-        app.status === 'REJECTED' || app.status === 'HIRED' || app.status === 'Offer_Sent'
+        app.status === 'REJECTED' || app.status === 'HIRED' || app.status === 'Offer_Sent' || app.status === 'OFFER_ACCEPTED'
       );
     }
 
@@ -217,6 +225,8 @@ export class MyApplications implements OnInit {
     switch (status) {
       case 'HIRED':
         return ' Chúc mừng bạn đã trúng tuyển! Nhà tuyển dụng sẽ liên hệ sớm.';
+      case 'OFFER_ACCEPTED':
+        return 'Bạn đã đồng ý Offer. HR sẽ xác nhận bước nhận việc chính thức.';
       case 'INTERVIEW':
       case 'Pending_Offer':
       case 'Waitlist':
@@ -241,16 +251,39 @@ export class MyApplications implements OnInit {
   }
 
   /**
-   * Ứng viên phản hồi Offer: Đồng ý (HIRED) hoặc Từ chối (REJECTED)
+   * Ứng viên phản hồi Offer: Đồng ý (OFFER_ACCEPTED) hoặc Từ chối (REJECTED)
    */
-  respondToOffer(app: MyApplicationDto, response: 'HIRED' | 'REJECTED'): void {
-    const confirmMsg = response === 'HIRED'
-      ? `Bạn chắc chắn muốn ĐỒNG Ý nhận việc tại "${app.jobTitle}"?`
-      : `Bạn chắc chắn muốn TỪ CHỐI Offer tại "${app.jobTitle}"?`;
-    if (!confirm(confirmMsg)) return;
+  acceptOffer(app: MyApplicationDto): void {
+    const confirmAccept = confirm(`Bạn chắc chắn muốn ĐỒNG Ý nhận việc tại "${app.jobTitle}"?`);
+    if (!confirmAccept) return;
+
+    this.submitOfferResponse(app, 'OFFER_ACCEPTED');
+  }
+
+  rejectOffer(app: MyApplicationDto): void {
+    const confirmReject = confirm(
+      `Bạn chắc chắn muốn TỪ CHỐI Offer tại "${app.jobTitle}"?\n\nHành động này có thể khiến hồ sơ chuyển sang trạng thái từ chối.`
+    );
+    if (!confirmReject) return;
+
+    this.submitOfferResponse(app, 'REJECTED');
+  }
+
+  // Backward-compatible wrapper: hỗ trợ template cũ vẫn gọi respondToOffer(...)
+  respondToOffer(app: MyApplicationDto, response: 'OFFER_ACCEPTED' | 'REJECTED'): void {
+    if (response === 'REJECTED') {
+      this.rejectOffer(app);
+      return;
+    }
+
+    // Mặc định đi nhánh đồng ý để tránh template cũ thiếu tham số rơi nhầm vào từ chối.
+    this.acceptOffer(app);
+  }
+
+  private submitOfferResponse(app: MyApplicationDto, response: 'OFFER_ACCEPTED' | 'REJECTED'): void {
 
     this.respondingId = app.applicationId; // bắt đầu loading
-    const accept = response === 'HIRED';
+    const accept = response === 'OFFER_ACCEPTED';
     this.applicationService.respondToOffer(app.applicationId, accept).subscribe({
       next: (res: any) => {
         this.respondingId = null; // kết thúc loading
@@ -267,6 +300,57 @@ export class MyApplications implements OnInit {
     });
   }
 
+  openOfferDetail(app: MyApplicationDto): void {
+    this.isOfferModalOpen = true;
+    this.isOfferLoading = true;
+    this.offerErrorMessage = '';
+    this.selectedOfferDetail = null;
+
+    this.applicationService.getOfferDetail(app.applicationId).subscribe({
+      next: (res: any) => {
+        this.isOfferLoading = false;
+        if (res?.success && res?.data) {
+          this.selectedOfferDetail = res.data;
+        } else {
+          this.offerErrorMessage = 'Không tìm thấy chi tiết Offer cho hồ sơ này.';
+        }
+        this.cdr.detectChanges();
+      },
+      error: (err) => {
+        console.error('getOfferDetail error:', err);
+        this.isOfferLoading = false;
+        this.offerErrorMessage = err?.error?.message || 'Không thể tải chi tiết Offer. Vui lòng thử lại.';
+        this.cdr.detectChanges();
+      }
+    });
+  }
+
+  closeOfferDetail(): void {
+    this.isOfferModalOpen = false;
+    this.isOfferLoading = false;
+    this.selectedOfferDetail = null;
+    this.offerErrorMessage = '';
+  }
+
+  formatCurrency(value: number | undefined): string {
+    if (value === null || value === undefined) return '-';
+    return new Intl.NumberFormat('vi-VN').format(value) + ' VND';
+  }
+
+  /**
+   * Dịch loại hợp đồng sang tiếng Việt
+   */
+  translateContractType(type: string | undefined): string {
+    if (!type) return '-';
+    const contractTypes: { [key: string]: string } = {
+      'PROBATION': 'Thử việc 2 tháng',
+      'OFFICIAL_1Y': 'Chính thức 1 năm',
+      'OFFICIAL_3Y': 'Chính thức 3 năm',
+      'FREELANCE': 'Cộng tác viên (Freelance)'
+    };
+    return contractTypes[type] || type;
+  }
+
   /**
    * Chuyển hướng đến trang tìm việc
    */
@@ -278,6 +362,7 @@ export class MyApplications implements OnInit {
    * Format ngày tháng
    */
   formatDate(dateString: string): string {
+    if (!dateString) return '-';
     const date = new Date(dateString);
     return date.toLocaleDateString('vi-VN', {
       day: '2-digit',
@@ -287,18 +372,22 @@ export class MyApplications implements OnInit {
   }
 
   /**
-   * Format ngày giờ đầy đủ
+   * Format ngày giờ đầy đủ với timezone Vietnam (UTC+7)
    */
   formatDateTime(dateString: string | undefined): string {
     if (!dateString) return '';
     const date = new Date(dateString);
-    return date.toLocaleString('vi-VN', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+    
+    // Thêm 7 giờ offset cho Vietnam timezone (UTC+7)
+    const vietnamDate = new Date(date.getTime() + 7 * 60 * 60 * 1000);
+    
+    const day = String(vietnamDate.getUTCDate()).padStart(2, '0');
+    const month = String(vietnamDate.getUTCMonth() + 1).padStart(2, '0');
+    const year = vietnamDate.getUTCFullYear();
+    const hour = String(vietnamDate.getUTCHours()).padStart(2, '0');
+    const minute = String(vietnamDate.getUTCMinutes()).padStart(2, '0');
+    
+    return `${day}/${month}/${year} ${hour}:${minute}`;
   }
 
   /**

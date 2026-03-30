@@ -21,9 +21,11 @@ builder.Services.AddScoped<ICandidateProfileService, CandidateProfileService>();
 builder.Services.AddScoped<INotificationSettingsService, NotificationSettingsService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<IRecommendationService, RecommendationService>();
+builder.Services.AddScoped<ISlaAlertService, SlaAlertService>();
 
 // Background Services
 builder.Services.AddHostedService<JobExpirationService>();
+builder.Services.AddHostedService<SlaAlertBackgroundService>();
 
 // Đăng ký HttpClientFactory cho các service cần gọi external API
 builder.Services.AddHttpClient<IAiMatchingService, AiMatchingService>();
