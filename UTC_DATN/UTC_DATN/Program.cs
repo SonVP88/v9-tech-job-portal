@@ -99,7 +99,7 @@ var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider.GetRequiredService<UTC_DATNContext>();
-    await DbInitializer.InitializeAsync(context);
+    //await DbInitializer.InitializeAsync(context);
 }
 
 // Configure the HTTP request pipeline.
