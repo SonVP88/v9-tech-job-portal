@@ -104,6 +104,11 @@ public partial class UTC_DATNContext : DbContext
     public virtual DbSet<CoverLetter> CoverLetters { get; set; }
     public virtual DbSet<ApplicationView> ApplicationViews { get; set; }
 
+    // Module 11 - AI Code Assessment
+    public virtual DbSet<CodeChallenge> CodeChallenges { get; set; }
+    public virtual DbSet<CandidateCodeSubmission> CandidateCodeSubmissions { get; set; }
+    public virtual DbSet<AiCodeReviewReport> AiCodeReviewReports { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<CoverLetter>(entity =>

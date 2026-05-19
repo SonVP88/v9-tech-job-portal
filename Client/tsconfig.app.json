@@ -5,6 +5,7 @@
   "compilerOptions": {
     "rootDir": "./src",
     "outDir": "./out-tsc/app",
+    "moduleResolution": "bundler",
     "types": [
       "node"
     ]

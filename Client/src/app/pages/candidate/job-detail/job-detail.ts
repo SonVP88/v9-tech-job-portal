@@ -28,6 +28,20 @@ export interface JobDetailDto {
   numberOfPositions: number | null;
 }
 
+export interface AssessmentDto {
+  assessmentId: string;
+  title: string;
+  description: string | null;
+  duration: number; // in minutes
+}
+
+export interface CodeChallengeDto {
+  challengeId: string;
+  title: string;
+  difficulty: string;
+  description: string | null;
+}
+
 @Component({
   selector: 'app-job-detail',
   standalone: true,
@@ -39,6 +53,12 @@ export class JobDetail implements OnInit {
   job: JobDetailDto | null = null;
   loading = true;
   error: string | null = null;
+  
+  // Assessment and Code Challenge properties
+  assessments: AssessmentDto[] = [];
+  codeChallenges: CodeChallengeDto[] = [];
+  loadingAssessments = false;
+  loadingChallenges = false;
 
   applyForm!: FormGroup;
   selectedFile: File | null = null;
@@ -102,6 +122,9 @@ export class JobDetail implements OnInit {
           this.loading = false;
 
           this.checkIfSaved(job.jobId);
+          // Fetch assessments and code challenges for this job
+          this.loadAssessmentsForJob(job.jobId);
+          this.loadCodeChallengesForJob(job.jobId);
 
           this.cdr.detectChanges();
           console.log('Loaded job detail:', job);
@@ -114,6 +137,52 @@ export class JobDetail implements OnInit {
             this.error = 'Failed to load job details';
           }
           this.loading = false;
+          this.cdr.detectChanges();
+        }
+      });
+  }
+
+  /**
+   * Load assessments for the job
+   */
+  private loadAssessmentsForJob(jobId: string): void {
+    this.loadingAssessments = true;
+    
+    this.http.get<any>(`${this.apiUrl}/assessments/jobs/${jobId}/assessments`)
+      .subscribe({
+        next: (response) => {
+          this.assessments = response.data || [];
+          this.loadingAssessments = false;
+          this.cdr.detectChanges();
+          console.log('Loaded assessments:', this.assessments);
+        },
+        error: (err) => {
+          console.error('Error loading assessments:', err);
+          this.assessments = [];
+          this.loadingAssessments = false;
+          this.cdr.detectChanges();
+        }
+      });
+  }
+
+  /**
+   * Load code challenges for the job
+   */
+  private loadCodeChallengesForJob(jobId: string): void {
+    this.loadingChallenges = true;
+    
+    this.http.get<any>(`${this.apiUrl}/v2/aicode-assessment/jobs/${jobId}/challenges`)
+      .subscribe({
+        next: (response) => {
+          this.codeChallenges = response.data || [];
+          this.loadingChallenges = false;
+          this.cdr.detectChanges();
+          console.log('Loaded code challenges:', this.codeChallenges);
+        },
+        error: (err) => {
+          console.error('Error loading code challenges:', err);
+          this.codeChallenges = [];
+          this.loadingChallenges = false;
           this.cdr.detectChanges();
         }
       });
@@ -485,5 +554,33 @@ export class JobDetail implements OnInit {
       this.selectedFileName = '';
       this.submitError = null;
     }
+  }
+
+  /**
+   * Navigate to assessment
+   */
+  startAssessment(assessmentId: string): void {
+    const token = localStorage.getItem('authToken');
+    if (!token) {
+      this.toast.warning('Yêu cầu đăng nhập', 'Bạn cần đăng nhập để làm bài kiểm tra!');
+      this.router.navigate(['/login'], { queryParams: { returnUrl: this.router.url } });
+      return;
+    }
+
+    this.router.navigate(['/candidate/assessment', assessmentId]);
+  }
+
+  /**
+   * Navigate to code interview
+   */
+  startCodeChallenge(challengeId: string): void {
+    const token = localStorage.getItem('authToken');
+    if (!token) {
+      this.toast.warning('Yêu cầu đăng nhập', 'Bạn cần đăng nhập để làm bài code!');
+      this.router.navigate(['/login'], { queryParams: { returnUrl: this.router.url } });
+      return;
+    }
+
+    this.router.navigate(['/candidate/code-interview', challengeId]);
   }
 }

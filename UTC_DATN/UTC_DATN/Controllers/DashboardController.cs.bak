@@ -1,8 +1,11 @@
-using Microsoft.AspNetCore.Mvc;
+using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.EntityFrameworkCore;
-using UTC_DATN.DTOs;
-using UTC_DATN.Data;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
+using UTC_DATN.DTOs.Dashboard;
+using UTC_DATN.Services.Interfaces;
 
 namespace UTC_DATN.Controllers;
 

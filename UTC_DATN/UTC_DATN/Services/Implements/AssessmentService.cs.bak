@@ -1,0 +1,1490 @@
+namespace UTC_DATN.Services.Implements;
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text.Json;
+using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+using UTC_DATN.Data;
+using UTC_DATN.DTOs.Assessment;
+using UTC_DATN.Entities;
+using UTC_DATN.Services.Interfaces;
+
+/// <summary>
+/// Assessment & Pre-screening service implementation
+/// Handles all assessment operations including creation, sessions, scoring, and analytics
+/// </summary>
+public class AssessmentService : IAssessmentService
+{
+    private readonly UTC_DATNContext _context;
+    private readonly ILogger<AssessmentService> _logger;
+    private readonly IEmailService _emailService;
+    private readonly INotificationService _notificationService;
+
+    public AssessmentService(
+        UTC_DATNContext context,
+        ILogger<AssessmentService> logger,
+        IEmailService emailService,
+        INotificationService notificationService)
+    {
+        _context = context;
+        _logger = logger;
+        _emailService = emailService;
+        _notificationService = notificationService;
+    }
+
+    // ========================================================================
+    // ASSESSMENT TYPE MANAGEMENT
+    // ========================================================================
+    public async Task<List<AssessmentTypeDto>> GetAllAssessmentTypesAsync()
+    {
+        return await _context.AssessmentTypes
+            .Where(x => x.IsActive)
+            .Select(x => new AssessmentTypeDto
+            {
+                AssessmentTypeId = x.AssessmentTypeId,
+                TypeCode = x.TypeCode,
+                TypeName = x.TypeName,
+                Description = x.Description,
+                ScoringMethod = x.ScoringMethod,
+                IsActive = x.IsActive,
+                CreatedAt = x.CreatedAt
+            })
+            .ToListAsync();
+    }
+
+    public async Task<AssessmentTypeDto> GetAssessmentTypeAsync(Guid assessmentTypeId)
+    {
+        var type = await _context.AssessmentTypes.FindAsync(assessmentTypeId);
+        if (type == null) throw new KeyNotFoundException($"Assessment type not found: {assessmentTypeId}");
+
+        return new AssessmentTypeDto
+        {
+            AssessmentTypeId = type.AssessmentTypeId,
+            TypeCode = type.TypeCode,
+            TypeName = type.TypeName,
+            Description = type.Description,
+            ScoringMethod = type.ScoringMethod,
+            IsActive = type.IsActive,
+            CreatedAt = type.CreatedAt
+        };
+    }
+
+    public async Task<AssessmentTypeDto> GetAssessmentTypeByCodeAsync(string typeCode)
+    {
+        var type = await _context.AssessmentTypes.FirstOrDefaultAsync(x => x.TypeCode == typeCode);
+        if (type == null) throw new KeyNotFoundException($"Assessment type not found: {typeCode}");
+
+        return new AssessmentTypeDto
+        {
+            AssessmentTypeId = type.AssessmentTypeId,
+            TypeCode = type.TypeCode,
+            TypeName = type.TypeName,
+            Description = type.Description,
+            ScoringMethod = type.ScoringMethod,
+            IsActive = type.IsActive,
+            CreatedAt = type.CreatedAt
+        };
+    }
+
+    // ========================================================================
+    // ASSESSMENT MANAGEMENT
+    // ========================================================================
+    public async Task<AssessmentDto> CreateAssessmentAsync(AssessmentCreateDto dto)
+    {
+        var assessment = new Assessment
+        {
+            AssessmentId = Guid.NewGuid(),
+            AssessmentTypeId = dto.AssessmentTypeId,
+            Title = dto.Title,
+            Description = dto.Description,
+            DurationMinutes = dto.DurationMinutes,
+            PassingScore = dto.PassingScore,
+            IsRandomizeQuestions = dto.IsRandomizeQuestions,
+            ShowResultsToCandidate = dto.ShowResultsToCandidate,
+            RequiredForJob = dto.RequiredForJob,
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        _context.Assessments.Add(assessment);
+        await _context.SaveChangesAsync();
+
+        _logger.LogInformation($"Assessment created: {assessment.AssessmentId} - {assessment.Title}");
+
+        return await GetAssessmentDtoAsync(assessment);
+    }
+
+    public async Task<AssessmentDto> UpdateAssessmentAsync(Guid assessmentId, AssessmentUpdateDto dto)
+    {
+        var assessment = await _context.Assessments.FindAsync(assessmentId);
+        if (assessment == null) throw new KeyNotFoundException($"Assessment not found: {assessmentId}");
+
+        assessment.Title = dto.Title;
+        assessment.Description = dto.Description;
+        assessment.DurationMinutes = dto.DurationMinutes;
+        assessment.PassingScore = dto.PassingScore;
+        assessment.IsRandomizeQuestions = dto.IsRandomizeQuestions;
+        assessment.ShowResultsToCandidate = dto.ShowResultsToCandidate;
+        assessment.RequiredForJob = dto.RequiredForJob;
+        assessment.IsActive = dto.IsActive;
+        assessment.UpdatedAt = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync();
+
+        _logger.LogInformation($"Assessment updated: {assessmentId}");
+
+        return await GetAssessmentDtoAsync(assessment);
+    }
+
+    public async Task<AssessmentDetailDto> GetAssessmentDetailAsync(Guid assessmentId)
+    {
+        var assessment = await _context.Assessments
+            .Include(x => x.AssessmentType)
+            .Include(x => x.Sections).ThenInclude(s => s.Questions)
+            .FirstOrDefaultAsync(x => x.AssessmentId == assessmentId);
+
+        if (assessment == null) throw new KeyNotFoundException($"Assessment not found: {assessmentId}");
+
+        var sections = assessment.Sections.Select(s => new AssessmentSectionDto
+        {
+            SectionId = s.SectionId,
+            AssessmentId = s.AssessmentId,
+            SectionTitle = s.SectionTitle,
+            SectionDescription = s.SectionDescription,
+            SectionOrder = s.SectionOrder,
+            DurationMinutes = s.DurationMinutes,
+            QuestionCount = s.Questions.Count,
+            TotalPoints = s.Questions.Sum(q => q.PointsPerQuestion)
+        }).ToList();
+
+        var totalPoints = sections.Sum(s => s.TotalPoints);
+        var totalQuestions = sections.Sum(s => s.QuestionCount);
+
+        var allQuestions = assessment.Sections.SelectMany(s => s.Questions).Select(q => new QuestionFullDto
+        {
+            QuestionId = q.QuestionId,
+            SectionId = q.SectionId,
+            QuestionType = q.QuestionType,
+            QuestionText = q.QuestionText,
+            QuestionOrder = q.QuestionOrder,
+            PointsPerQuestion = q.PointsPerQuestion,
+            IsRequired = q.IsRequired,
+            DifficultyLevel = q.DifficultyLevel,
+            Tags = JsonSerializer.Deserialize<List<string>>(q.Tags ?? "[]"),
+            Hints = JsonSerializer.Deserialize<List<string>>(q.Hints ?? "[]"),
+            AnswerExplanation = q.AnswerExplanation,
+            CreatedAt = q.CreatedAt
+        }).ToList();
+
+        var assignedJobsCount = await _context.JobAssessments
+            .CountAsync(ja => ja.AssessmentId == assessmentId);
+
+        var completedCount = await _context.AssessmentScores
+            .CountAsync(s => s.AssessmentId == assessmentId && s.IsPassed);
+
+        var avgScore = await _context.AssessmentScores
+            .Where(s => s.AssessmentId == assessmentId)
+            .AverageAsync(s => (decimal?)s.PercentageScore) ?? 0;
+
+        return new AssessmentDetailDto
+        {
+            AssessmentId = assessment.AssessmentId,
+            AssessmentTypeId = assessment.AssessmentTypeId,
+            TypeCode = assessment.AssessmentType.TypeCode,
+            Title = assessment.Title,
+            Description = assessment.Description,
+            DurationMinutes = assessment.DurationMinutes,
+            PassingScore = assessment.PassingScore,
+            IsRandomizeQuestions = assessment.IsRandomizeQuestions,
+            ShowResultsToCandidate = assessment.ShowResultsToCandidate,
+            RequiredForJob = assessment.RequiredForJob,
+            IsActive = assessment.IsActive,
+            TotalQuestions = totalQuestions,
+            TotalPoints = totalPoints,
+            CreatedAt = assessment.CreatedAt,
+            Sections = sections,
+            AllQuestions = allQuestions,
+            AssignedToJobsCount = assignedJobsCount,
+            CompletedByCount = completedCount,
+            AverageScore = avgScore
+        };
+    }
+
+    public async Task<List<AssessmentDto>> GetAllAssessmentsAsync(bool onlyActive = true)
+    {
+        var assessments = await _context.Assessments
+            .Include(x => x.Sections).ThenInclude(s => s.Questions)
+            .Where(x => !onlyActive || x.IsActive)
+            .ToListAsync();
+
+        var dtos = new List<AssessmentDto>();
+        foreach (var a in assessments)
+        {
+            dtos.Add(await GetAssessmentDtoAsync(a));
+        }
+
+        return dtos;
+    }
+
+    public async Task<bool> DeleteAssessmentAsync(Guid assessmentId)
+    {
+        var assessment = await _context.Assessments.FindAsync(assessmentId);
+        if (assessment == null) throw new KeyNotFoundException($"Assessment not found: {assessmentId}");
+
+        _context.Assessments.Remove(assessment);
+        await _context.SaveChangesAsync();
+
+        _logger.LogInformation($"Assessment deleted: {assessmentId}");
+
+        return true;
+    }
+
+    public async Task<AssessmentDto> CloneAssessmentAsync(Guid sourceAssessmentId, string newTitle)
+    {
+        var source = await _context.Assessments
+            .Include(x => x.Sections).ThenInclude(s => s.Questions).ThenInclude(q => q.Choices)
+            .FirstOrDefaultAsync(x => x.AssessmentId == sourceAssessmentId);
+
+        if (source == null) throw new KeyNotFoundException($"Source assessment not found: {sourceAssessmentId}");
+
+        var newAssessment = new Assessment
+        {
+            AssessmentId = Guid.NewGuid(),
+            AssessmentTypeId = source.AssessmentTypeId,
+            Title = newTitle,
+            Description = source.Description,
+            DurationMinutes = source.DurationMinutes,
+            PassingScore = source.PassingScore,
+            IsRandomizeQuestions = source.IsRandomizeQuestions,
+            ShowResultsToCandidate = source.ShowResultsToCandidate,
+            RequiredForJob = source.RequiredForJob,
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        foreach (var section in source.Sections)
+        {
+            var newSection = new AssessmentSection
+            {
+                SectionId = Guid.NewGuid(),
+                AssessmentId = newAssessment.AssessmentId,
+                SectionTitle = section.SectionTitle,
+                SectionDescription = section.SectionDescription,
+                SectionOrder = section.SectionOrder,
+                DurationMinutes = section.DurationMinutes,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            foreach (var question in section.Questions)
+            {
+                var newQuestion = new AssessmentQuestion
+                {
+                    QuestionId = Guid.NewGuid(),
+                    SectionId = newSection.SectionId,
+                    QuestionType = question.QuestionType,
+                    QuestionText = question.QuestionText,
+                    QuestionOrder = question.QuestionOrder,
+                    PointsPerQuestion = question.PointsPerQuestion,
+                    IsRequired = question.IsRequired,
+                    CorrectAnswer = question.CorrectAnswer,
+                    AnswerExplanation = question.AnswerExplanation,
+                    DifficultyLevel = question.DifficultyLevel,
+                    Tags = question.Tags,
+                    Hints = question.Hints,
+                    CreatedAt = DateTime.UtcNow
+                };
+
+                foreach (var choice in question.Choices)
+                {
+                    newQuestion.Choices.Add(new QuestionChoice
+                    {
+                        ChoiceId = Guid.NewGuid(),
+                        ChoiceOrder = choice.ChoiceOrder,
+                        ChoiceText = choice.ChoiceText,
+                        IsCorrect = choice.IsCorrect
+                    });
+                }
+
+                newSection.Questions.Add(newQuestion);
+            }
+
+            newAssessment.Sections.Add(newSection);
+        }
+
+        _context.Assessments.Add(newAssessment);
+        await _context.SaveChangesAsync();
+
+        _logger.LogInformation($"Assessment cloned: {sourceAssessmentId} -> {newAssessment.AssessmentId}");
+
+        return await GetAssessmentDtoAsync(newAssessment);
+    }
+
+    // ========================================================================
+    // ASSESSMENT SECTION MANAGEMENT
+    // ========================================================================
+    public async Task<AssessmentSectionDto> CreateSectionAsync(Guid assessmentId, AssessmentSectionCreateDto dto)
+    {
+        var assessment = await _context.Assessments.FindAsync(assessmentId);
+        if (assessment == null) throw new KeyNotFoundException($"Assessment not found: {assessmentId}");
+
+        var section = new AssessmentSection
+        {
+            SectionId = Guid.NewGuid(),
+            AssessmentId = assessmentId,
+            SectionTitle = dto.SectionTitle,
+            SectionDescription = dto.SectionDescription,
+            SectionOrder = dto.SectionOrder,
+            DurationMinutes = dto.DurationMinutes,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        _context.AssessmentSections.Add(section);
+        await _context.SaveChangesAsync();
+
+        return new AssessmentSectionDto
+        {
+            SectionId = section.SectionId,
+            AssessmentId = section.AssessmentId,
+            SectionTitle = section.SectionTitle,
+            SectionDescription = section.SectionDescription,
+            SectionOrder = section.SectionOrder,
+            DurationMinutes = section.DurationMinutes,
+            QuestionCount = 0,
+            TotalPoints = 0
+        };
+    }
+
+    public async Task<bool> DeleteSectionAsync(Guid sectionId)
+    {
+        var section = await _context.AssessmentSections.FindAsync(sectionId);
+        if (section == null) throw new KeyNotFoundException($"Section not found: {sectionId}");
+
+        _context.AssessmentSections.Remove(section);
+        await _context.SaveChangesAsync();
+
+        return true;
+    }
+
+    public async Task<List<AssessmentSectionDto>> GetSectionsAsync(Guid assessmentId)
+    {
+        return await _context.AssessmentSections
+            .Where(x => x.AssessmentId == assessmentId)
+            .OrderBy(x => x.SectionOrder)
+            .Select(s => new AssessmentSectionDto
+            {
+                SectionId = s.SectionId,
+                AssessmentId = s.AssessmentId,
+                SectionTitle = s.SectionTitle,
+                SectionDescription = s.SectionDescription,
+                SectionOrder = s.SectionOrder,
+                DurationMinutes = s.DurationMinutes,
+                QuestionCount = s.Questions.Count,
+                TotalPoints = s.Questions.Sum(q => q.PointsPerQuestion)
+            })
+            .ToListAsync();
+    }
+
+    // ========================================================================
+    // QUESTION MANAGEMENT
+    // ========================================================================
+    public async Task<QuestionFullDto> CreateQuestionAsync(Guid sectionId, QuestionCreateDto dto)
+    {
+        var section = await _context.AssessmentSections.FindAsync(sectionId);
+        if (section == null) throw new KeyNotFoundException($"Section not found: {sectionId}");
+
+        var question = new AssessmentQuestion
+        {
+            QuestionId = Guid.NewGuid(),
+            SectionId = sectionId,
+            QuestionType = dto.QuestionType,
+            QuestionText = dto.QuestionText,
+            QuestionOrder = (await _context.AssessmentQuestions.CountAsync(q => q.SectionId == sectionId)) + 1,
+            PointsPerQuestion = dto.PointsPerQuestion,
+            IsRequired = dto.IsRequired,
+            CorrectAnswer = dto.CorrectAnswer,
+            AnswerExplanation = dto.AnswerExplanation,
+            DifficultyLevel = dto.DifficultyLevel,
+            Tags = JsonSerializer.Serialize(dto.Tags ?? new List<string>()),
+            Hints = JsonSerializer.Serialize(dto.Hints ?? new List<string>()),
+            CreatedAt = DateTime.UtcNow
+        };
+
+        foreach (var choice in dto.Choices ?? new List<QuestionChoiceCreateDto>())
+        {
+            question.Choices.Add(new QuestionChoice
+            {
+                ChoiceId = Guid.NewGuid(),
+                ChoiceOrder = choice.ChoiceOrder,
+                ChoiceText = choice.ChoiceText,
+                IsCorrect = choice.IsCorrect
+            });
+        }
+
+        _context.AssessmentQuestions.Add(question);
+        await _context.SaveChangesAsync();
+
+        _logger.LogInformation($"Question created: {question.QuestionId} in section {sectionId}");
+
+        return MapQuestionToFullDto(question);
+    }
+
+    public async Task<QuestionFullDto> UpdateQuestionAsync(Guid questionId, QuestionUpdateDto dto)
+    {
+        var question = await _context.AssessmentQuestions
+            .Include(q => q.Choices)
+            .FirstOrDefaultAsync(q => q.QuestionId == questionId);
+
+        if (question == null) throw new KeyNotFoundException($"Question not found: {questionId}");
+
+        question.QuestionText = dto.QuestionText;
+        question.PointsPerQuestion = dto.PointsPerQuestion;
+        question.CorrectAnswer = dto.CorrectAnswer;
+        question.AnswerExplanation = dto.AnswerExplanation;
+        question.DifficultyLevel = dto.DifficultyLevel;
+        question.Tags = JsonSerializer.Serialize(dto.Tags ?? new List<string>());
+        question.Hints = JsonSerializer.Serialize(dto.Hints ?? new List<string>());
+        question.UpdatedAt = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync();
+
+        return MapQuestionToFullDto(question);
+    }
+
+    public async Task<QuestionFullDto> GetQuestionAsync(Guid questionId)
+    {
+        var question = await _context.AssessmentQuestions
+            .Include(q => q.Choices)
+            .FirstOrDefaultAsync(q => q.QuestionId == questionId);
+
+        if (question == null) throw new KeyNotFoundException($"Question not found: {questionId}");
+
+        return MapQuestionToFullDto(question);
+    }
+
+    public async Task<bool> DeleteQuestionAsync(Guid questionId)
+    {
+        var question = await _context.AssessmentQuestions.FindAsync(questionId);
+        if (question == null) throw new KeyNotFoundException($"Question not found: {questionId}");
+
+        _context.AssessmentQuestions.Remove(question);
+        await _context.SaveChangesAsync();
+
+        return true;
+    }
+
+    public async Task<List<QuestionFullDto>> GetSectionQuestionsAsync(Guid sectionId)
+    {
+        var questions = await _context.AssessmentQuestions
+            .Include(q => q.Choices)
+            .Where(q => q.SectionId == sectionId)
+            .OrderBy(q => q.QuestionOrder)
+            .ToListAsync();
+
+        return questions.Select(MapQuestionToFullDto).ToList();
+    }
+
+    public async Task<bool> RandomizeQuestionsAsync(Guid sectionId)
+    {
+        var questions = await _context.AssessmentQuestions
+            .Where(q => q.SectionId == sectionId)
+            .ToListAsync();
+
+        var random = new Random();
+        var randomized = questions.OrderBy(_ => random.Next()).ToList();
+
+        for (int i = 0; i < randomized.Count; i++)
+        {
+            randomized[i].QuestionOrder = i + 1;
+        }
+
+        await _context.SaveChangesAsync();
+
+        _logger.LogInformation($"Questions randomized for section: {sectionId}");
+
+        return true;
+    }
+
+    public async Task<CodeExecutionEnvironmentDto> SetCodeEnvironmentAsync(Guid questionId, CodeExecutionEnvironmentDto dto)
+    {
+        var question = await _context.AssessmentQuestions.FindAsync(questionId);
+        if (question == null) throw new KeyNotFoundException($"Question not found: {questionId}");
+
+        var existing = await _context.CodeExecutionEnvironments
+            .FirstOrDefaultAsync(ce => ce.QuestionId == questionId);
+
+        if (existing != null)
+        {
+            _context.CodeExecutionEnvironments.Remove(existing);
+        }
+
+        var environment = new CodeExecutionEnvironment
+        {
+            EnvironmentId = Guid.NewGuid(),
+            QuestionId = questionId,
+            ProgrammingLanguage = dto.ProgrammingLanguage,
+            StarterCode = dto.StarterCode,
+            TimeoutSeconds = dto.TimeoutSeconds,
+            MemoryLimitMb = dto.MemoryLimitMb,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        _context.CodeExecutionEnvironments.Add(environment);
+        await _context.SaveChangesAsync();
+
+        return dto;
+    }
+
+    // ========================================================================
+    // JOB ASSESSMENT MAPPING
+    // ========================================================================
+    public async Task<JobAssessmentMappingDto> AssignAssessmentToJobAsync(Guid jobId, JobAssessmentMapCreateDto dto)
+    {
+        var job = await _context.Jobs.FindAsync(jobId);
+        if (job == null) throw new KeyNotFoundException($"Job not found: {jobId}");
+
+        var assessment = await _context.Assessments.FindAsync(dto.AssessmentId);
+        if (assessment == null) throw new KeyNotFoundException($"Assessment not found: {dto.AssessmentId}");
+
+        var mapping = new JobAssessment
+        {
+            JobAssessmentId = Guid.NewGuid(),
+            JobId = jobId,
+            AssessmentId = dto.AssessmentId,
+            IsMandatory = dto.IsMandatory,
+            SequenceOrder = dto.SequenceOrder,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        _context.JobAssessments.Add(mapping);
+        await _context.SaveChangesAsync();
+
+        _logger.LogInformation($"Assessment {dto.AssessmentId} assigned to job {jobId}");
+
+        return new JobAssessmentMappingDto
+        {
+            JobAssessmentId = mapping.JobAssessmentId,
+            JobId = mapping.JobId,
+            AssessmentId = mapping.AssessmentId,
+            AssessmentTitle = assessment.Title,
+            IsMandatory = mapping.IsMandatory,
+            SequenceOrder = mapping.SequenceOrder
+        };
+    }
+
+    public async Task<List<JobAssessmentMappingDto>> GetJobAssessmentsAsync(Guid jobId)
+    {
+        return await _context.JobAssessments
+            .Where(ja => ja.JobId == jobId)
+            .OrderBy(ja => ja.SequenceOrder)
+            .Select(ja => new JobAssessmentMappingDto
+            {
+                JobAssessmentId = ja.JobAssessmentId,
+                JobId = ja.JobId,
+                AssessmentId = ja.AssessmentId,
+                AssessmentTitle = ja.Assessment.Title,
+                IsMandatory = ja.IsMandatory,
+                SequenceOrder = ja.SequenceOrder
+            })
+            .ToListAsync();
+    }
+
+    public async Task<bool> RemoveAssessmentFromJobAsync(Guid jobAssessmentId)
+    {
+        var mapping = await _context.JobAssessments.FindAsync(jobAssessmentId);
+        if (mapping == null) throw new KeyNotFoundException($"Job assessment mapping not found: {jobAssessmentId}");
+
+        _context.JobAssessments.Remove(mapping);
+        await _context.SaveChangesAsync();
+
+        return true;
+    }
+
+    // ========================================================================
+    // ASSESSMENT SESSION MANAGEMENT
+    // ========================================================================
+    public async Task<AssessmentSessionDto> StartAssessmentSessionAsync(Guid applicationId, Guid assessmentId)
+    {
+        var application = await _context.Applications.FindAsync(applicationId);
+        if (application == null) throw new KeyNotFoundException($"Application not found: {applicationId}");
+
+        var assessment = await _context.Assessments
+            .Include(a => a.Sections).ThenInclude(s => s.Questions).ThenInclude(q => q.Choices)
+            .FirstOrDefaultAsync(a => a.AssessmentId == assessmentId);
+
+        if (assessment == null) throw new KeyNotFoundException($"Assessment not found: {assessmentId}");
+
+        // Check for existing session
+        var existingSession = await _context.CandidateAssessmentSessions
+            .FirstOrDefaultAsync(s => s.ApplicationId == applicationId && 
+                                       s.AssessmentId == assessmentId && 
+                                       s.SessionStatus != "COMPLETED" &&
+                                       s.SessionStatus != "EXPIRED");
+
+        if (existingSession != null && existingSession.SessionStatus == "SUBMITTED")
+        {
+            // Session already submitted, can't restart
+            throw new InvalidOperationException("Assessment already submitted");
+        }
+
+        var session = new CandidateAssessmentSession
+        {
+            SessionId = Guid.NewGuid(),
+            ApplicationId = applicationId,
+            AssessmentId = assessmentId,
+            CandidateId = application.CandidateId,
+            SessionStatus = "IN_PROGRESS",
+            StartedAt = DateTime.UtcNow,
+            ExpiresAt = DateTime.UtcNow.AddMinutes(assessment.DurationMinutes),
+            DurationMinutes = assessment.DurationMinutes,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        _context.CandidateAssessmentSessions.Add(session);
+        await _context.SaveChangesAsync();
+
+        _logger.LogInformation($"Assessment session started: {session.SessionId} for application {applicationId}");
+
+        return new AssessmentSessionDto
+        {
+            SessionId = session.SessionId,
+            ApplicationId = session.ApplicationId,
+            AssessmentId = session.AssessmentId,
+            CandidateId = session.CandidateId,
+            SessionStatus = session.SessionStatus,
+            StartedAt = session.StartedAt,
+            SubmittedAt = session.SubmittedAt,
+            ExpiresAt = session.ExpiresAt,
+            DurationMinutes = session.DurationMinutes,
+            ResumCount = session.ResumCount,
+            Assessment = await GetAssessmentDtoAsync(assessment),
+            Questions = assessment.Sections
+                .SelectMany(s => s.Questions)
+                .OrderBy(q => q.QuestionOrder)
+                .Select(MapQuestionDto)
+                .ToList()
+        };
+    }
+
+    public async Task<AssessmentSessionRespondingDto> ResumeAssessmentSessionAsync(Guid sessionId)
+    {
+        var session = await _context.CandidateAssessmentSessions
+            .Include(s => s.Assessment).ThenInclude(a => a.Sections).ThenInclude(s => s.Questions).ThenInclude(q => q.Choices)
+            .Include(s => s.Answers)
+            .FirstOrDefaultAsync(s => s.SessionId == sessionId);
+
+        if (session == null) throw new KeyNotFoundException($"Session not found: {sessionId}");
+
+        if (session.SessionStatus == "EXPIRED" || session.SessionStatus == "COMPLETED")
+        {
+            throw new InvalidOperationException($"Session cannot be resumed - status: {session.SessionStatus}");
+        }
+
+        if (session.ExpiresAt < DateTime.UtcNow)
+        {
+            session.SessionStatus = "EXPIRED";
+            await _context.SaveChangesAsync();
+            throw new InvalidOperationException("Assessment time has expired");
+        }
+
+        session.ResumCount++;
+        session.IsResume = true;
+        await _context.SaveChangesAsync();
+
+        var remainingSeconds = (int)((session.ExpiresAt.Value - DateTime.UtcNow).TotalSeconds);
+
+        var questions = session.Assessment.Sections
+            .SelectMany(s => s.Questions)
+            .OrderBy(q => q.QuestionOrder)
+            .Select((q, index) => new QuestionForCandidateDto
+            {
+                QuestionId = q.QuestionId,
+                QuestionType = q.QuestionType,
+                QuestionText = q.QuestionText,
+                PointsPerQuestion = q.PointsPerQuestion,
+                IsRequired = q.IsRequired,
+                DifficultyLevel = q.DifficultyLevel,
+                Hints = JsonSerializer.Deserialize<List<string>>(q.Hints ?? "[]"),
+                Choices = q.Choices.Select(c => new QuestionChoiceDto
+                {
+                    ChoiceId = c.ChoiceId,
+                    QuestionId = c.QuestionId,
+                    ChoiceOrder = c.ChoiceOrder,
+                    ChoiceText = c.ChoiceText
+                }).ToList(),
+                IsAnswered = session.Answers.Any(a => a.QuestionId == q.QuestionId)
+            })
+            .ToList();
+
+        return new AssessmentSessionRespondingDto
+        {
+            SessionId = session.SessionId,
+            AssessmentId = session.AssessmentId,
+            Title = session.Assessment.Title,
+            DurationMinutes = session.DurationMinutes.Value,
+            ExpiresAt = session.ExpiresAt,
+            StartedAt = session.StartedAt,
+            RemainingSeconds = remainingSeconds,
+            Questions = questions,
+            CurrentQuestionIndex = 0,
+            TotalQuestions = questions.Count
+        };
+    }
+
+    public async Task<AssessmentSessionRespondingDto> GetAssessmentSessionAsync(Guid sessionId)
+    {
+        return await ResumeAssessmentSessionAsync(sessionId);
+    }
+
+    public async Task<CandidateAnswerDto> SubmitAnswerAsync(Guid sessionId, CandidateAnswerSubmitDto dto)
+    {
+        var session = await _context.CandidateAssessmentSessions.FindAsync(sessionId);
+        if (session == null) throw new KeyNotFoundException($"Session not found: {sessionId}");
+
+        if (session.SessionStatus != "IN_PROGRESS")
+        {
+            throw new InvalidOperationException($"Cannot submit answers - session status: {session.SessionStatus}");
+        }
+
+        if (session.ExpiresAt < DateTime.UtcNow)
+        {
+            session.SessionStatus = "EXPIRED";
+            await _context.SaveChangesAsync();
+            throw new InvalidOperationException("Assessment time has expired");
+        }
+
+        var question = await _context.AssessmentQuestions.FindAsync(dto.QuestionId);
+        if (question == null) throw new KeyNotFoundException($"Question not found: {dto.QuestionId}");
+
+        // Remove existing answer if any
+        var existingAnswer = await _context.CandidateAnswers
+            .FirstOrDefaultAsync(a => a.SessionId == sessionId && a.QuestionId == dto.QuestionId);
+
+        if (existingAnswer != null)
+        {
+            _context.CandidateAnswers.Remove(existingAnswer);
+        }
+
+        var answer = new CandidateAnswer
+        {
+            AnswerId = Guid.NewGuid(),
+            SessionId = sessionId,
+            QuestionId = dto.QuestionId,
+            ChoiceId = dto.ChoiceId,
+            TextAnswer = dto.TextAnswer,
+            CodeLanguage = dto.CodeLanguage,
+            SubmittedAt = DateTime.UtcNow
+        };
+
+        // Auto-score if multiple choice
+        if (question.QuestionType == "MULTIPLE_CHOICE" && dto.ChoiceId.HasValue)
+        {
+            var choice = await _context.QuestionChoices.FindAsync(dto.ChoiceId);
+            answer.IsCorrect = choice?.IsCorrect ?? false;
+            answer.PointsEarned = answer.IsCorrect.Value ? question.PointsPerQuestion : 0;
+        }
+
+        _context.CandidateAnswers.Add(answer);
+        await _context.SaveChangesAsync();
+
+        return new CandidateAnswerDto
+        {
+            AnswerId = answer.AnswerId,
+            SessionId = answer.SessionId,
+            QuestionId = answer.QuestionId,
+            ChoiceId = answer.ChoiceId,
+            TextAnswer = answer.TextAnswer,
+            CodeLanguage = answer.CodeLanguage,
+            IsCorrect = answer.IsCorrect,
+            PointsEarned = answer.PointsEarned,
+            SubmittedAt = answer.SubmittedAt
+        };
+    }
+
+    public async Task<bool> SubmitAllAnswersAsync(Guid sessionId, SessionAnswersSubmitDto dto)
+    {
+        var session = await _context.CandidateAssessmentSessions.FindAsync(sessionId);
+        if (session == null) throw new KeyNotFoundException($"Session not found: {sessionId}");
+
+        foreach (var answer in dto.Answers)
+        {
+            await SubmitAnswerAsync(sessionId, answer);
+        }
+
+        session.SessionStatus = "SUBMITTED";
+        session.SubmittedAt = DateTime.UtcNow;
+        await _context.SaveChangesAsync();
+
+        _logger.LogInformation($"Assessment session submitted: {sessionId}");
+
+        // Auto-calculate score
+        await CalculateScoreAsync(sessionId);
+
+        return true;
+    }
+
+    public async Task<bool> AutoSubmitExpiredSessionAsync(Guid sessionId)
+    {
+        var session = await _context.CandidateAssessmentSessions.FindAsync(sessionId);
+        if (session == null) throw new KeyNotFoundException($"Session not found: {sessionId}");
+
+        if (session.ExpiresAt >= DateTime.UtcNow)
+        {
+            throw new InvalidOperationException("Session has not expired");
+        }
+
+        session.SessionStatus = "SUBMITTED";
+        session.SubmittedAt = DateTime.UtcNow;
+        await _context.SaveChangesAsync();
+
+        await CalculateScoreAsync(sessionId);
+
+        _logger.LogInformation($"Assessment session auto-submitted due to expiry: {sessionId}");
+
+        return true;
+    }
+
+    public async Task<PendingAssessmentsDto> GetCandidatePendingAssessmentsAsync(Guid candidateId)
+    {
+        var sessions = await _context.CandidateAssessmentSessions
+            .Include(s => s.Assessment)
+            .Where(s => s.CandidateId == candidateId)
+            .ToListAsync();
+
+        var pending = sessions
+            .Where(s => s.SessionStatus == "PENDING" || s.SessionStatus == "IN_PROGRESS")
+            .Select(s => new CandidateAssessmentStatusDto
+            {
+                ApplicationId = s.ApplicationId,
+                AssessmentId = s.AssessmentId,
+                AssessmentTitle = s.Assessment.Title,
+                SessionStatus = s.SessionStatus,
+                ExpiresAt = s.ExpiresAt,
+                StartedAt = s.StartedAt,
+                ScorePercentage = null,
+                IsPassed = null,
+                IsOverdue = s.ExpiresAt < DateTime.UtcNow
+            })
+            .ToList();
+
+        var completed = await _context.AssessmentScores
+            .Include(s => s.Assessment)
+            .Where(s => s.CandidateId == candidateId)
+            .Select(s => new CandidateAssessmentStatusDto
+            {
+                ApplicationId = s.ApplicationId,
+                AssessmentId = s.AssessmentId,
+                AssessmentTitle = s.Assessment.Title,
+                SessionStatus = "COMPLETED",
+                ExpiresAt = null,
+                StartedAt = null,
+                ScorePercentage = s.PercentageScore,
+                IsPassed = s.IsPassed,
+                IsOverdue = false
+            })
+            .ToListAsync();
+
+        return new PendingAssessmentsDto
+        {
+            CandidateId = candidateId,
+            PendingAssessments = pending,
+            CompletedAssessments = completed,
+            TotalPendingCount = pending.Count,
+            TotalCompletedCount = completed.Count
+        };
+    }
+
+    // ========================================================================
+    // SCORING & EVALUATION
+    // ========================================================================
+    public async Task<AssessmentScoreDto> CalculateScoreAsync(Guid sessionId)
+    {
+        var session = await _context.CandidateAssessmentSessions
+            .Include(s => s.Assessment)
+            .Include(s => s.Answers).ThenInclude(a => a.Question)
+            .FirstOrDefaultAsync(s => s.SessionId == sessionId);
+
+        if (session == null) throw new KeyNotFoundException($"Session not found: {sessionId}");
+
+        var questions = await _context.AssessmentQuestions
+            .Include(q => q.Choices)
+            .Where(q => q.Section.Assessment.AssessmentId == session.AssessmentId)
+            .ToListAsync();
+
+        decimal totalPoints = 0;
+        decimal maxPoints = 0;
+        int correctCount = 0;
+
+        // Calculate points
+        foreach (var question in questions)
+        {
+            maxPoints += question.PointsPerQuestion;
+
+            var answer = session.Answers.FirstOrDefault(a => a.QuestionId == question.QuestionId);
+
+            if (answer == null) continue;
+
+            if (question.QuestionType == "MULTIPLE_CHOICE")
+            {
+                if (answer.IsCorrect.HasValue && answer.IsCorrect.Value)
+                {
+                    totalPoints += question.PointsPerQuestion;
+                    correctCount++;
+                }
+            }
+            else if (question.QuestionType == "SHORT_TEXT" || question.QuestionType == "LONG_TEXT")
+            {
+                // Manual scoring needed - don't award points
+                answer.IsCorrect = null;
+            }
+        }
+
+        var percentageScore = maxPoints > 0 ? (totalPoints / maxPoints) * 100 : 0;
+        var isPassed = percentageScore >= session.Assessment.PassingScore;
+        var timeSpent = session.SubmittedAt.HasValue 
+            ? (int)(session.SubmittedAt.Value - (session.StartedAt ?? DateTime.UtcNow)).TotalSeconds
+            : null;
+
+        var existingScore = await _context.AssessmentScores
+            .FirstOrDefaultAsync(s => s.SessionId == sessionId);
+
+        if (existingScore != null)
+        {
+            existingScore.TotalPoints = totalPoints;
+            existingScore.MaxPoints = maxPoints;
+            existingScore.PercentageScore = percentageScore;
+            existingScore.IsPassed = isPassed;
+            existingScore.CorrectAnswersCount = correctCount;
+            existingScore.TotalQuestionsCount = questions.Count;
+            existingScore.TimeSpentSeconds = timeSpent;
+            existingScore.UpdatedAt = DateTime.UtcNow;
+        }
+        else
+        {
+            var score = new AssessmentScore
+            {
+                ScoreId = Guid.NewGuid(),
+                SessionId = sessionId,
+                ApplicationId = session.ApplicationId,
+                AssessmentId = session.AssessmentId,
+                CandidateId = session.CandidateId,
+                TotalPoints = totalPoints,
+                MaxPoints = maxPoints,
+                PercentageScore = percentageScore,
+                PassingScore = session.Assessment.PassingScore,
+                IsPassed = isPassed,
+                CorrectAnswersCount = correctCount,
+                TotalQuestionsCount = questions.Count,
+                TimeSpentSeconds = timeSpent,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            _context.AssessmentScores.Add(score);
+        }
+
+        await _context.SaveChangesAsync();
+
+        // Recalculate rankings
+        await RecalculateRankingsAsync(session.AssessmentId);
+
+        _logger.LogInformation($"Assessment score calculated: {sessionId} - {percentageScore:F2}%");
+
+        return await GetScoreDtoAsync(sessionId);
+    }
+
+    public async Task<AssessmentResultDetailDto> GetAssessmentResultAsync(Guid scoreId, Guid candidateId)
+    {
+        var score = await _context.AssessmentScores
+            .Include(s => s.Session).ThenInclude(s => s.Answers)
+            .Include(s => s.Assessment).ThenInclude(a => a.Sections).ThenInclude(s => s.Questions)
+            .FirstOrDefaultAsync(s => s.ScoreId == scoreId);
+
+        if (score == null) throw new KeyNotFoundException($"Score not found: {scoreId}");
+
+        if (score.CandidateId != candidateId)
+        {
+            throw new UnauthorizedAccessException("Cannot access assessment result of another candidate");
+        }
+
+        var assessment = await GetAssessmentDetailAsync(score.AssessmentId);
+        var sectionScores = JsonSerializer.Deserialize<Dictionary<string, decimal>>(score.SectionScores ?? "{}");
+
+        var questionReviews = score.Session.Answers
+            .Join(
+                _context.AssessmentQuestions.Include(q => q.Section),
+                a => a.QuestionId,
+                q => q.QuestionId,
+                (a, q) => new { Answer = a, Question = q }
+            )
+            .Select(x => new QuestionReviewDto
+            {
+                QuestionId = x.Question.QuestionId,
+                QuestionText = x.Question.QuestionText,
+                QuestionType = x.Question.QuestionType,
+                MaxPoints = x.Question.PointsPerQuestion,
+                PointsEarned = x.Answer.PointsEarned ?? 0,
+                IsCorrect = x.Answer.IsCorrect ?? false,
+                CandidateAnswer = x.Answer.TextAnswer ?? (x.Answer.ChoiceId?.ToString() ?? ""),
+                CorrectAnswer = x.Question.CorrectAnswer,
+                AnswerExplanation = x.Question.AnswerExplanation
+            })
+            .ToList();
+
+        return new AssessmentResultDetailDto
+        {
+            ScoreId = score.ScoreId,
+            SessionId = score.SessionId,
+            Assessment = assessment,
+            PercentageScore = score.PercentageScore,
+            IsPassed = score.IsPassed,
+            CorrectAnswersCount = score.CorrectAnswersCount ?? 0,
+            TotalQuestionsCount = score.TotalQuestionsCount ?? 0,
+            TimeSpentMinutes = score.TimeSpentSeconds.HasValue ? score.TimeSpentSeconds.Value / 60m : 0,
+            Rank = score.Rank,
+            Percentile = score.Percentile,
+            SectionScores = sectionScores,
+            QuestionReviews = questionReviews
+        };
+    }
+
+    public async Task<AssessmentScoreDto> AdjustScoreAsync(Guid scoreId, decimal adjustment, string notes)
+    {
+        var score = await _context.AssessmentScores.FindAsync(scoreId);
+        if (score == null) throw new KeyNotFoundException($"Score not found: {scoreId}");
+
+        score.ManualAdjustment = adjustment;
+        score.ManualNotes = notes;
+        score.TotalPoints += adjustment;
+        score.PercentageScore = (score.TotalPoints / score.MaxPoints) * 100;
+        score.IsPassed = score.PercentageScore >= score.PassingScore;
+        score.UpdatedAt = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync();
+
+        // Recalculate rankings
+        await RecalculateRankingsAsync(score.AssessmentId);
+
+        _logger.LogInformation($"Assessment score adjusted: {scoreId}");
+
+        return await GetScoreDtoAsync(scoreId);
+    }
+
+    public async Task<AssessmentFeedbackDto> AddFeedbackAsync(Guid scoreId, AssessmentFeedbackCreateDto dto)
+    {
+        var score = await _context.AssessmentScores.FindAsync(scoreId);
+        if (score == null) throw new KeyNotFoundException($"Score not found: {scoreId}");
+
+        var feedback = new AssessmentFeedback
+        {
+            FeedbackId = Guid.NewGuid(),
+            ScoreId = scoreId,
+            StrengthNotes = dto.StrengthNotes,
+            WeaknessProfessionalAreas = dto.WeaknessProfessionalAreas,
+            RecommendedFor = dto.RecommendedFor,
+            FeedbackRating = dto.FeedbackRating,
+            ReviewedBy = Guid.NewGuid(), // Should be passed from context
+            ReviewedAt = DateTime.UtcNow
+        };
+
+        _context.AssessmentFeedbacks.Add(feedback);
+        await _context.SaveChangesAsync();
+
+        return new AssessmentFeedbackDto
+        {
+            FeedbackId = feedback.FeedbackId,
+            ScoreId = feedback.ScoreId,
+            StrengthNotes = feedback.StrengthNotes,
+            WeaknessProfessionalAreas = feedback.WeaknessProfessionalAreas,
+            RecommendedFor = feedback.RecommendedFor,
+            FeedbackRating = feedback.FeedbackRating,
+            ReviewedByName = "HR Manager", // From context
+            ReviewedAt = feedback.ReviewedAt
+        };
+    }
+
+    public async Task<AssessmentFeedbackDto> GetFeedbackAsync(Guid scoreId)
+    {
+        var feedback = await _context.AssessmentFeedbacks
+            .FirstOrDefaultAsync(f => f.ScoreId == scoreId);
+
+        if (feedback == null) throw new KeyNotFoundException($"Feedback not found for score: {scoreId}");
+
+        return new AssessmentFeedbackDto
+        {
+            FeedbackId = feedback.FeedbackId,
+            ScoreId = feedback.ScoreId,
+            StrengthNotes = feedback.StrengthNotes,
+            WeaknessProfessionalAreas = feedback.WeaknessProfessionalAreas,
+            RecommendedFor = feedback.RecommendedFor,
+            FeedbackRating = feedback.FeedbackRating,
+            ReviewedByName = "HR Manager",
+            ReviewedAt = feedback.ReviewedAt
+        };
+    }
+
+    // ========================================================================
+    // RANKING & ANALYTICS
+    // ========================================================================
+    public async Task<CandidateRankingDto> GetCandidateRankingAsync(Guid scoreId)
+    {
+        var score = await _context.AssessmentScores
+            .Include(s => s.Candidate)
+            .FirstOrDefaultAsync(s => s.ScoreId == scoreId);
+
+        if (score == null) throw new KeyNotFoundException($"Score not found: {scoreId}");
+
+        return new CandidateRankingDto
+        {
+            CandidateId = score.CandidateId,
+            CandidateName = $"{score.Candidate.FirstName} {score.Candidate.LastName}",
+            AssessmentId = score.AssessmentId,
+            AssessmentTitle = score.Assessment.Title,
+            PercentageScore = score.PercentageScore,
+            IsPassed = score.IsPassed,
+            Rank = score.Rank ?? 0,
+            Percentile = score.Percentile ?? 0,
+            CompletedAt = score.CreatedAt
+        };
+    }
+
+    public async Task<AssessmentLeaderboardDto> GetLeaderboardAsync(Guid assessmentId, int topCount = 100)
+    {
+        var assessment = await _context.Assessments.FindAsync(assessmentId);
+        if (assessment == null) throw new KeyNotFoundException($"Assessment not found: {assessmentId}");
+
+        var rankings = await _context.AssessmentScores
+            .Include(s => s.Candidate)
+            .Where(s => s.AssessmentId == assessmentId)
+            .OrderByDescending(s => s.PercentageScore)
+            .Take(topCount)
+            .Select(s => new CandidateRankingDto
+            {
+                CandidateId = s.CandidateId,
+                CandidateName = $"{s.Candidate.FirstName} {s.Candidate.LastName}",
+                AssessmentId = s.AssessmentId,
+                AssessmentTitle = s.Assessment.Title,
+                PercentageScore = s.PercentageScore,
+                IsPassed = s.IsPassed,
+                Rank = s.Rank ?? 0,
+                Percentile = s.Percentile ?? 0,
+                CompletedAt = s.CreatedAt
+            })
+            .ToListAsync();
+
+        return new AssessmentLeaderboardDto
+        {
+            AssessmentId = assessmentId,
+            AssessmentTitle = assessment.Title,
+            Rankings = rankings,
+            TotalCandidates = rankings.Count
+        };
+    }
+
+    public async Task<AssessmentAnalyticsDto> GetAssessmentAnalyticsAsync(Guid assessmentId)
+    {
+        var assessment = await _context.Assessments
+            .Include(a => a.Sections).ThenInclude(s => s.Questions)
+            .FirstOrDefaultAsync(a => a.AssessmentId == assessmentId);
+
+        if (assessment == null) throw new KeyNotFoundException($"Assessment not found: {assessmentId}");
+
+        var scores = await _context.AssessmentScores
+            .Where(s => s.AssessmentId == assessmentId)
+            .ToListAsync();
+
+        var passCount = scores.Count(s => s.IsPassed);
+        var avgScore = scores.Any() ? scores.Average(s => s.PercentageScore) : 0;
+        var avgTime = scores.Where(s => s.TimeSpentSeconds.HasValue).Any()
+            ? scores.Where(s => s.TimeSpentSeconds.HasValue).Average(s => s.TimeSpentSeconds.Value) / 60m
+            : 0;
+
+        var difficultyDist = assessment.Sections
+            .SelectMany(s => s.Questions)
+            .GroupBy(q => q.DifficultyLevel)
+            .ToDictionary(g => g.Key, g => g.Count());
+
+        return new AssessmentAnalyticsDto
+        {
+            AssessmentId = assessmentId,
+            Title = assessment.Title,
+            TotalCandidatesTaken = scores.Count,
+            TotalCandidatesPassed = passCount,
+            PassRate = scores.Any() ? (passCount * 100m / scores.Count) : 0,
+            AverageScore = avgScore,
+            AverageTimeMinutes = avgTime,
+            DifficultyDistribution = difficultyDist
+        };
+    }
+
+    public async Task<bool> RecalculateRankingsAsync(Guid assessmentId)
+    {
+        var scores = await _context.AssessmentScores
+            .Where(s => s.AssessmentId == assessmentId)
+            .OrderByDescending(s => s.PercentageScore)
+            .ToListAsync();
+
+        var totalScores = scores.Count;
+
+        for (int i = 0; i < scores.Count; i++)
+        {
+            scores[i].Rank = i + 1;
+            scores[i].Percentile = (int)Math.Round((decimal)(totalScores - i) / totalScores * 100);
+        }
+
+        await _context.SaveChangesAsync();
+
+        _logger.LogInformation($"Rankings recalculated for assessment: {assessmentId}");
+
+        return true;
+    }
+
+    // ========================================================================
+    // BULK OPERATIONS
+    // ========================================================================
+    public async Task<List<AssessmentSessionDto>> BulkSendAssessmentAsync(List<Guid> applicationIds, Guid assessmentId, int durationMinutes)
+    {
+        var assessment = await _context.Assessments.FindAsync(assessmentId);
+        if (assessment == null) throw new KeyNotFoundException($"Assessment not found: {assessmentId}");
+
+        var sessions = new List<AssessmentSessionDto>();
+
+        foreach (var appId in applicationIds)
+        {
+            try
+            {
+                var session = await StartAssessmentSessionAsync(appId, assessmentId);
+                sessions.Add(session);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"Error sending assessment to application {appId}: {ex.Message}");
+            }
+        }
+
+        return sessions;
+    }
+
+    public async Task<int> AutoSubmitExpiredSessionsBulkAsync(Guid assessmentId)
+    {
+        var expiredSessions = await _context.CandidateAssessmentSessions
+            .Where(s => s.AssessmentId == assessmentId &&
+                       s.SessionStatus == "IN_PROGRESS" &&
+                       s.ExpiresAt < DateTime.UtcNow)
+            .ToListAsync();
+
+        int count = 0;
+        foreach (var session in expiredSessions)
+        {
+            try
+            {
+                await AutoSubmitExpiredSessionAsync(session.SessionId);
+                count++;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"Error auto-submitting session {session.SessionId}: {ex.Message}");
+            }
+        }
+
+        _logger.LogInformation($"Auto-submitted {count} expired sessions for assessment {assessmentId}");
+
+        return count;
+    }
+
+    // ========================================================================
+    // ADMIN OPERATIONS
+    // ========================================================================
+    public async Task<List<AssessmentSessionDto>> GetAllSessionsAsync(Guid assessmentId, string statusFilter = null)
+    {
+        var query = _context.CandidateAssessmentSessions
+            .Where(s => s.AssessmentId == assessmentId);
+
+        if (!string.IsNullOrEmpty(statusFilter))
+        {
+            query = query.Where(s => s.SessionStatus == statusFilter);
+        }
+
+        var sessions = await query.ToListAsync();
+
+        return sessions.Select(s => new AssessmentSessionDto
+        {
+            SessionId = s.SessionId,
+            ApplicationId = s.ApplicationId,
+            AssessmentId = s.AssessmentId,
+            CandidateId = s.CandidateId,
+            SessionStatus = s.SessionStatus,
+            StartedAt = s.StartedAt,
+            SubmittedAt = s.SubmittedAt,
+            ExpiresAt = s.ExpiresAt,
+            DurationMinutes = s.DurationMinutes,
+            ResumCount = s.ResumCount
+        }).ToList();
+    }
+
+    public async Task<bool> DeleteAllSessionsAsync(Guid assessmentId)
+    {
+        var sessions = await _context.CandidateAssessmentSessions
+            .Where(s => s.AssessmentId == assessmentId)
+            .ToListAsync();
+
+        _context.CandidateAssessmentSessions.RemoveRange(sessions);
+        await _context.SaveChangesAsync();
+
+        _logger.LogWarning($"All sessions deleted for assessment: {assessmentId}");
+
+        return true;
+    }
+
+    public async Task<byte[]> ExportResultsAsync(Guid assessmentId)
+    {
+        // Placeholder for CSV export
+        return Array.Empty<byte>();
+    }
+
+    public async Task<int> ImportQuestionsAsync(Guid assessmentId, Guid sectionId, byte[] fileContent, string fileExtension)
+    {
+        // Placeholder for CSV/JSON import
+        return 0;
+    }
+
+    // ========================================================================
+    // CANDIDATE VIEW ASSESSMENTS
+    // ========================================================================
+    public async Task<List<CandidateAssessmentStatusDto>> GetCandidateAssessmentStatusAsync(Guid candidateId)
+    {
+        var result = await GetCandidatePendingAssessmentsAsync(candidateId);
+        return result.PendingAssessments.Concat(result.CompletedAssessments).ToList();
+    }
+
+    public async Task<(bool CanStart, string Reason)> CanStartAssessmentAsync(Guid applicationId, Guid assessmentId)
+    {
+        var application = await _context.Applications.FindAsync(applicationId);
+        if (application == null) return (false, "Application not found");
+
+        var assessment = await _context.Assessments.FindAsync(assessmentId);
+        if (assessment == null) return (false, "Assessment not found");
+
+        var existingSession = await _context.CandidateAssessmentSessions
+            .FirstOrDefaultAsync(s => s.ApplicationId == applicationId &&
+                                       s.AssessmentId == assessmentId &&
+                                       (s.SessionStatus == "SUBMITTED" || s.SessionStatus == "COMPLETED"));
+
+        if (existingSession != null) return (false, "Assessment already completed");
+
+        return (true, "");
+    }
+
+    // ========================================================================
+    // HELPER METHODS
+    // ========================================================================
+    private async Task<AssessmentDto> GetAssessmentDtoAsync(Assessment assessment)
+    {
+        var sections = await _context.AssessmentSections
+            .Include(s => s.Questions)
+            .Where(s => s.AssessmentId == assessment.AssessmentId)
+            .ToListAsync();
+
+        return new AssessmentDto
+        {
+            AssessmentId = assessment.AssessmentId,
+            AssessmentTypeId = assessment.AssessmentTypeId,
+            TypeCode = assessment.AssessmentType?.TypeCode ?? "",
+            Title = assessment.Title,
+            Description = assessment.Description,
+            DurationMinutes = assessment.DurationMinutes,
+            PassingScore = assessment.PassingScore,
+            IsRandomizeQuestions = assessment.IsRandomizeQuestions,
+            ShowResultsToCandidate = assessment.ShowResultsToCandidate,
+            RequiredForJob = assessment.RequiredForJob,
+            IsActive = assessment.IsActive,
+            TotalQuestions = sections.SelectMany(s => s.Questions).Count(),
+            TotalPoints = sections.SelectMany(s => s.Questions).Sum(q => q.PointsPerQuestion),
+            CreatedAt = assessment.CreatedAt,
+            Sections = sections.Select(s => new AssessmentSectionDto
+            {
+                SectionId = s.SectionId,
+                AssessmentId = s.AssessmentId,
+                SectionTitle = s.SectionTitle,
+                SectionDescription = s.SectionDescription,
+                SectionOrder = s.SectionOrder,
+                DurationMinutes = s.DurationMinutes,
+                QuestionCount = s.Questions.Count,
+                TotalPoints = s.Questions.Sum(q => q.PointsPerQuestion)
+            }).ToList()
+        };
+    }
+
+    private QuestionFullDto MapQuestionToFullDto(AssessmentQuestion question)
+    {
+        return new QuestionFullDto
+        {
+            QuestionId = question.QuestionId,
+            SectionId = question.SectionId,
+            QuestionType = question.QuestionType,
+            QuestionText = question.QuestionText,
+            QuestionOrder = question.QuestionOrder,
+            PointsPerQuestion = question.PointsPerQuestion,
+            IsRequired = question.IsRequired,
+            DifficultyLevel = question.DifficultyLevel,
+            Tags = JsonSerializer.Deserialize<List<string>>(question.Tags ?? "[]"),
+            Hints = JsonSerializer.Deserialize<List<string>>(question.Hints ?? "[]"),
+            AnswerExplanation = question.AnswerExplanation,
+            Choices = question.Choices.Select(c => new QuestionChoiceDto
+            {
+                ChoiceId = c.ChoiceId,
+                QuestionId = c.QuestionId,
+                ChoiceOrder = c.ChoiceOrder,
+                ChoiceText = c.ChoiceText
+            }).ToList(),
+            CreatedAt = question.CreatedAt
+        };
+    }
+
+    private QuestionDto MapQuestionDto(AssessmentQuestion question)
+    {
+        return new QuestionDto
+        {
+            QuestionId = question.QuestionId,
+            SectionId = question.SectionId,
+            QuestionType = question.QuestionType,
+            QuestionText = question.QuestionText,
+            QuestionOrder = question.QuestionOrder,
+            PointsPerQuestion = question.PointsPerQuestion,
+            IsRequired = question.IsRequired,
+            DifficultyLevel = question.DifficultyLevel,
+            Tags = JsonSerializer.Deserialize<List<string>>(question.Tags ?? "[]"),
+            Hints = JsonSerializer.Deserialize<List<string>>(question.Hints ?? "[]"),
+            CreatedAt = question.CreatedAt
+        };
+    }
+
+    private async Task<AssessmentScoreDto> GetScoreDtoAsync(Guid sessionId)
+    {
+        var score = await _context.AssessmentScores
+            .FirstOrDefaultAsync(s => s.SessionId == sessionId);
+
+        if (score == null) throw new KeyNotFoundException($"Score not found for session: {sessionId}");
+
+        return new AssessmentScoreDto
+        {
+            ScoreId = score.ScoreId,
+            SessionId = score.SessionId,
+            ApplicationId = score.ApplicationId,
+            AssessmentId = score.AssessmentId,
+            TotalPoints = score.TotalPoints,
+            MaxPoints = score.MaxPoints,
+            PercentageScore = score.PercentageScore,
+            PassingScore = score.PassingScore,
+            IsPassed = score.IsPassed,
+            CorrectAnswersCount = score.CorrectAnswersCount,
+            TotalQuestionsCount = score.TotalQuestionsCount,
+            TimeSpentSeconds = score.TimeSpentSeconds,
+            Rank = score.Rank,
+            Percentile = score.Percentile,
+            EvaluatedAt = score.EvaluatedAt,
+            CreatedAt = score.CreatedAt
+        };
+    }
+}

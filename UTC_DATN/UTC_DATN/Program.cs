@@ -22,8 +22,10 @@ builder.Services.AddScoped<INotificationSettingsService, NotificationSettingsSer
 builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<IRecommendationService, RecommendationService>();
 builder.Services.AddScoped<ISlaAlertService, SlaAlertService>();
+builder.Services.AddScoped<IAiCodeAssessmentService, AiCodeAssessmentService>();
 
-// Background Services
+// Configure OpenAI Client
+builder.Services.AddHttpClient();
 builder.Services.AddHostedService<JobExpirationService>();
 builder.Services.AddHostedService<SlaAlertBackgroundService>();
 

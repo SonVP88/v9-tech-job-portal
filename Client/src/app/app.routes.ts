@@ -15,6 +15,10 @@ import { CandidateDetail } from './components/admin/candidate-detail/candidate-d
 import { jobResolver } from './resolvers/job-search.resolver';
 import { profileResolver } from './resolvers/profile.resolver';
 import { candidateLayoutGuard } from './guards/candidate-layout.guard';
+import { CodeInterviewComponent } from './pages/candidate/code-interview/code-interview.component';
+import { AssessmentAttemptComponent } from './pages/candidate/assessment-attempt/assessment-attempt.component';
+import { CodeChallengesComponent } from './pages/hr/code-challenges/code-challenges.component';
+import { AnalyticsDashboardComponent } from './pages/hr/analytics-dashboard/analytics-dashboard.component';
 
 export const routes: Routes = [
   { path: 'login', component: Login },
@@ -56,6 +60,16 @@ export const routes: Routes = [
       {
         path: 'settings',
         loadComponent: () => import('./pages/candidate/candidate-settings/candidate-settings').then(m => m.CandidateSettingsComponent),
+        canActivate: [authGuard]
+      },
+      {
+        path: 'assessment/:id',
+        component: AssessmentAttemptComponent,
+        canActivate: [authGuard]
+      },
+      {
+        path: 'code-interview/:id',
+        component: CodeInterviewComponent,
         canActivate: [authGuard]
       },
       { path: '', redirectTo: 'home', pathMatch: 'full' }
@@ -127,6 +141,18 @@ export const routes: Routes = [
       {
         path: 'candidates',
         loadComponent: () => import('./pages/admin/candidate-management/candidate-management').then(m => m.CandidateManagementComponent),
+        canActivate: [roleGuard],
+        data: { roles: ['ADMIN', 'HR'] }
+      },
+      {
+        path: 'code-challenges',
+        component: CodeChallengesComponent,
+        canActivate: [roleGuard],
+        data: { roles: ['ADMIN', 'HR'] }
+      },
+      {
+        path: 'analytics',
+        component: AnalyticsDashboardComponent,
         canActivate: [roleGuard],
         data: { roles: ['ADMIN', 'HR'] }
       },

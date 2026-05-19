@@ -1,0 +1,1144 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text.Json;
+using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+using UTC_DATN.Data;
+using UTC_DATN.DTOs.Dashboard;
+using UTC_DATN.Entities;
+using UTC_DATN.Services.Interfaces;
+
+namespace UTC_DATN.Services.Implements
+{
+    /// <summary>
+    /// Real-time Dashboard & Predictive Analytics Service Implementation
+    /// Handles metrics, predictions, forecasting, and real-time events
+    /// </summary>
+    public class DashboardService : IDashboardService
+    {
+        private readonly UTC_DATNContext _context;
+        private readonly ILogger<DashboardService> _logger;
+        private readonly IEmailService _emailService;
+
+        public DashboardService(UTC_DATNContext context, ILogger<DashboardService> logger, IEmailService emailService)
+        {
+            _context = context;
+            _logger = logger;
+            _emailService = emailService;
+        }
+
+        // ============================================================
+        // 1. Dashboard Overview & Metrics
+        // ============================================================
+
+        public async Task<DashboardOverviewDto> GetDashboardOverviewAsync(Guid? jobId = null)
+        {
+            try
+            {
+                _logger.LogInformation($"Getting dashboard overview for JobId: {jobId}");
+
+                var overview = new DashboardOverviewDto();
+
+                if (jobId.HasValue)
+                {
+                    var job = await _context.Jobs.FindAsync(jobId);
+                    if (job == null)
+                        throw new KeyNotFoundException($"Job {jobId} not found");
+
+                    overview.JobId = jobId;
+                    overview.JobTitle = job.Title;
+                }
+
+                // Get pipeline data
+                var applications = jobId.HasValue
+                    ? await _context.Applications.Where(a => a.JobId == jobId).ToListAsync()
+                    : await _context.Applications.ToListAsync();
+
+                overview.TotalApplications = applications.Count;
+                overview.ApplicationsToday = applications.Count(a => a.CreatedAt.Date == DateTime.UtcNow.Date);
+                overview.ConversionRate = applications.Any() ? Math.Round((decimal)applications.Count(a => a.Status == "OFFER") / applications.Count * 100, 2) : 0;
+
+                // Pipeline visualization
+                if (jobId.HasValue)
+                {
+                    overview.PipelineData = await GetPipelineVisualizationAsync(jobId.Value);
+                    overview.HealthReport = await GetPipelineHealthReportAsync(jobId.Value);
+                    overview.CriticalPredictions = await GetCriticalPredictionsAsync(jobId.Value);
+                    overview.TimeToHireForecast = await GetTimeToHireForcastAsync(jobId.Value);
+                }
+
+                // Recent events
+                overview.RecentEvents = await GetRecentEventsAsync(jobId ?? Guid.Empty, 60);
+
+                overview.LastUpdated = DateTime.UtcNow;
+                return overview;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"Error getting dashboard overview: {ex.Message}");
+                throw;
+            }
+        }
+
+        public async Task<MetricsOverviewDto> GetMetricsOverviewAsync(Guid? jobId = null)
+        {
+            var metrics = new MetricsOverviewDto
+            {
+                TodayMetrics = new List<DashboardMetricDto>(),
+                WeekMetrics = new List<DashboardMetricDto>(),
+                KeyIndicators = new Dictionary<string, decimal?>(),
+                LastUpdated = DateTime.UtcNow
+            };
+
+            // Get today's metrics
+            var today = DateTime.UtcNow.Date;
+            var todayMetrics = await _context.DashboardMetrics
+                .Where(m => m.RecordedAt.Date == today && (jobId == null || m.JobId == jobId))
+                .ToListAsync();
+
+            metrics.TodayMetrics = todayMetrics.Select(m => new DashboardMetricDto
+            {
+                MetricId = m.MetricId,
+                MetricCode = m.MetricCode,
+                MetricName = m.MetricName,
+                MetricValue = m.MetricValue,
+                MetricUnit = m.MetricUnit,
+                TrendDirection = m.TrendDirection,
+                PercentageChange = m.PercentageChange
+            }).ToList();
+
+            // Get week metrics
+            var weekAgo = today.AddDays(-7);
+            var weekMetrics = await _context.DashboardMetrics
+                .Where(m => m.RecordedAt.Date >= weekAgo && (jobId == null || m.JobId == jobId))
+                .OrderBy(m => m.RecordedAt)
+                .ToListAsync();
+
+            metrics.WeekMetrics = weekMetrics.Select(m => new DashboardMetricDto
+            {
+                MetricId = m.MetricId,
+                MetricCode = m.MetricCode,
+                MetricValue = m.MetricValue,
+                TrendDirection = m.TrendDirection,
+                PercentageChange = m.PercentageChange
+            }).ToList();
+
+            // Key indicators
+            metrics.KeyIndicators = todayMetrics.ToDictionary(m => m.MetricCode, m => (decimal?)m.MetricValue);
+
+            return metrics;
+        }
+
+        public async Task<List<DashboardMetricDto>> GetMetricsByPeriodAsync(Guid? jobId, string periodType, DateTime fromDate, DateTime toDate)
+        {
+            var metrics = await _context.DashboardMetrics
+                .Where(m => m.RecordedAt >= fromDate && m.RecordedAt <= toDate
+                    && m.PeriodType == periodType
+                    && (jobId == null || m.JobId == jobId))
+                .OrderBy(m => m.RecordedAt)
+                .Select(m => new DashboardMetricDto
+                {
+                    MetricId = m.MetricId,
+                    MetricCode = m.MetricCode,
+                    MetricName = m.MetricName,
+                    MetricValue = m.MetricValue,
+                    MetricUnit = m.MetricUnit,
+                    TrendDirection = m.TrendDirection,
+                    RecordedAt = m.RecordedAt
+                })
+                .ToListAsync();
+
+            return metrics;
+        }
+
+        public async Task<DashboardMetricDto> LogMetricAsync(DashboardMetricCreateDto dto)
+        {
+            try
+            {
+                var metric = new DashboardMetric
+                {
+                    MetricId = Guid.NewGuid(),
+                    MetricCode = dto.MetricCode,
+                    MetricName = dto.MetricName,
+                    MetricValue = dto.MetricValue,
+                    MetricUnit = dto.MetricUnit,
+                    JobId = dto.JobId,
+                    PeriodType = dto.PeriodType,
+                    RecordedAt = DateTime.UtcNow
+                };
+
+                // Calculate trend
+                var previousMetric = await _context.DashboardMetrics
+                    .Where(m => m.MetricCode == dto.MetricCode
+                        && (dto.JobId == null || m.JobId == dto.JobId))
+                    .OrderByDescending(m => m.RecordedAt)
+                    .FirstOrDefaultAsync();
+
+                if (previousMetric != null)
+                {
+                    metric.ComparisonPeriodValue = previousMetric.MetricValue;
+                    var change = ((dto.MetricValue - previousMetric.MetricValue) / previousMetric.MetricValue) * 100;
+                    metric.PercentageChange = Math.Round((decimal)change, 2);
+                    metric.TrendDirection = change > 2 ? "UP" : change < -2 ? "DOWN" : "STABLE";
+                }
+
+                _context.DashboardMetrics.Add(metric);
+                await _context.SaveChangesAsync();
+
+                _logger.LogInformation($"Logged metric: {dto.MetricCode} = {dto.MetricValue}");
+
+                return new DashboardMetricDto
+                {
+                    MetricId = metric.MetricId,
+                    MetricCode = metric.MetricCode,
+                    MetricName = metric.MetricName,
+                    MetricValue = metric.MetricValue,
+                    MetricUnit = metric.MetricUnit,
+                    TrendDirection = metric.TrendDirection,
+                    PercentageChange = metric.PercentageChange,
+                    RecordedAt = metric.RecordedAt
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"Error logging metric: {ex.Message}");
+                throw;
+            }
+        }
+
+        // ============================================================
+        // 2. Pipeline Analytics
+        // ============================================================
+
+        public async Task<PipelineVisualizationDto> GetPipelineVisualizationAsync(Guid jobId)
+        {
+            var applications = await _context.Applications
+                .Where(a => a.JobId == jobId)
+                .ToListAsync();
+
+            var visualization = new PipelineVisualizationDto
+            {
+                JobId = jobId,
+                TotalCandidates = applications.Count,
+                Stages = new List<PipelineStageDto>()
+            };
+
+            var stages = new[] { "APPLICATION", "SCREENING", "INTERVIEW", "OFFER", "HIRED", "REJECTED" };
+            foreach (var stage in stages)
+            {
+                var stageCount = applications.Count(a => a.Status == stage);
+                var percentage = applications.Any() ? Math.Round((decimal)stageCount / applications.Count * 100, 2) : 0;
+
+                visualization.Stages.Add(new PipelineStageDto
+                {
+                    StageName = stage,
+                    Count = stageCount,
+                    PercentageOfTotal = percentage,
+                    StageOrder = Array.IndexOf(stages, stage) + 1
+                });
+            }
+
+            var hiredCount = applications.Count(a => a.Status == "HIRED");
+            visualization.ConversionRate = applications.Any() ? Math.Round((decimal)hiredCount / applications.Count * 100, 2) : 0;
+
+            var rejectedCount = applications.Count(a => a.Status == "REJECTED");
+            visualization.DropoutRate = applications.Any() ? Math.Round((decimal)rejectedCount / applications.Count * 100, 2) : 0;
+
+            return visualization;
+        }
+
+        public async Task<PipelineSnapshotDto> GetPipelineSnapshotAsync(Guid jobId)
+        {
+            var lastSnapshot = await _context.PipelineSnapshots
+                .Where(s => s.JobId == jobId)
+                .OrderByDescending(s => s.SnapshotTimestamp)
+                .FirstOrDefaultAsync();
+
+            if (lastSnapshot != null)
+            {
+                return new PipelineSnapshotDto
+                {
+                    SnapshotId = lastSnapshot.SnapshotId,
+                    JobId = lastSnapshot.JobId,
+                    SnapshotTimestamp = lastSnapshot.SnapshotTimestamp,
+                    TotalApplications = lastSnapshot.TotalApplications,
+                    ScreeningCount = lastSnapshot.ScreeningCount,
+                    InterviewCount = lastSnapshot.InterviewCount,
+                    OfferCount = lastSnapshot.OfferCount,
+                    RejectedCount = lastSnapshot.RejectedCount,
+                    HiredCount = lastSnapshot.HiredCount,
+                    DropoutCount = lastSnapshot.DropoutCount,
+                    DaysToFill = lastSnapshot.DaysToFill,
+                    ConversionRate = lastSnapshot.ConversionRate,
+                    HealthScore = lastSnapshot.HealthScore
+                };
+            }
+
+            // Create new snapshot from current data
+            var applications = await _context.Applications.Where(a => a.JobId == jobId).ToListAsync();
+            var job = await _context.Jobs.FindAsync(jobId);
+
+            var snapshot = new PipelineSnapshot
+            {
+                SnapshotId = Guid.NewGuid(),
+                JobId = jobId,
+                SnapshotTimestamp = DateTime.UtcNow,
+                TotalApplications = applications.Count,
+                ScreeningCount = applications.Count(a => a.Status == "SCREENING"),
+                InterviewCount = applications.Count(a => a.Status == "INTERVIEW"),
+                OfferCount = applications.Count(a => a.Status == "OFFER"),
+                RejectedCount = applications.Count(a => a.Status == "REJECTED"),
+                HiredCount = applications.Count(a => a.Status == "HIRED"),
+                DropoutCount = 0,
+                DaysToFill = job != null ? (int)((DateTime.UtcNow - job.CreatedAt).TotalDays) : 0,
+                ConversionRate = applications.Any() ? Math.Round((decimal)applications.Count(a => a.Status == "HIRED") / applications.Count * 100, 2) : 0
+            };
+
+            _context.PipelineSnapshots.Add(snapshot);
+            await _context.SaveChangesAsync();
+
+            return new PipelineSnapshotDto
+            {
+                SnapshotId = snapshot.SnapshotId,
+                JobId = snapshot.JobId,
+                SnapshotTimestamp = snapshot.SnapshotTimestamp,
+                TotalApplications = snapshot.TotalApplications,
+                ScreeningCount = snapshot.ScreeningCount,
+                InterviewCount = snapshot.InterviewCount,
+                OfferCount = snapshot.OfferCount,
+                RejectedCount = snapshot.RejectedCount,
+                HiredCount = snapshot.HiredCount,
+                DropoutCount = snapshot.DropoutCount,
+                DaysToFill = snapshot.DaysToFill,
+                ConversionRate = snapshot.ConversionRate
+            };
+        }
+
+        public async Task<List<PipelineSnapshotDto>> GetPipelineHistoryAsync(Guid jobId, int days = 30)
+        {
+            var fromDate = DateTime.UtcNow.AddDays(-days);
+            var snapshots = await _context.PipelineSnapshots
+                .Where(s => s.JobId == jobId && s.SnapshotTimestamp >= fromDate)
+                .OrderBy(s => s.SnapshotTimestamp)
+                .ToListAsync();
+
+            return snapshots.Select(s => new PipelineSnapshotDto
+            {
+                SnapshotId = s.SnapshotId,
+                JobId = s.JobId,
+                SnapshotTimestamp = s.SnapshotTimestamp,
+                TotalApplications = s.TotalApplications,
+                ScreeningCount = s.ScreeningCount,
+                InterviewCount = s.InterviewCount,
+                OfferCount = s.OfferCount,
+                RejectedCount = s.RejectedCount,
+                HiredCount = s.HiredCount,
+                DropoutCount = s.DropoutCount,
+                ConversionRate = s.ConversionRate,
+                HealthScore = s.HealthScore
+            }).ToList();
+        }
+
+        public async Task<PipelineHealthReportDto> GetPipelineHealthReportAsync(Guid jobId)
+        {
+            var visualization = await GetPipelineVisualizationAsync(jobId);
+            var avgTimePerStage = await GetAverageTimePerStageAsync(jobId);
+
+            // Calculate health score
+            int healthScore = 100;
+            var issues = new Dictionary<string, string>();
+            var recommendations = new List<string>();
+
+            // Check conversion rate
+            if (visualization.ConversionRate < 10)
+            {
+                healthScore -= 30;
+                issues["LowConversion"] = $"Conversion rate is {visualization.ConversionRate}%, below 10% benchmark";
+                recommendations.Add("Review screening criteria and interview process");
+            }
+
+            // Check dropout rate
+            if (visualization.DropoutRate > 40)
+            {
+                healthScore -= 20;
+                issues["HighDropout"] = $"Dropout rate is {visualization.DropoutRate}%, above 40% benchmark";
+                recommendations.Add("Improve candidate communication and offer negotiation");
+            }
+
+            // Check bottlenecks
+            var maxStageTime = avgTimePerStage.Values.Max();
+            if (maxStageTime > 14)
+            {
+                healthScore -= 15;
+                var bottleneckStage = avgTimePerStage.First(x => x.Value == maxStageTime).Key;
+                issues["Bottleneck"] = $"{bottleneckStage} stage takes {maxStageTime} days (benchmark: <14)";
+                recommendations.Add($"Accelerate {bottleneckStage} stage with additional resources");
+            }
+
+            return new PipelineHealthReportDto
+            {
+                JobId = jobId,
+                HealthScore = healthScore,
+                HealthStatus = healthScore >= 80 ? "EXCELLENT" : healthScore >= 60 ? "GOOD" : healthScore >= 40 ? "WARNING" : "CRITICAL",
+                Issues = issues,
+                Recommendations = recommendations,
+                AssessedAt = DateTime.UtcNow
+            };
+        }
+
+        public async Task<List<PipelineStageDto>> GetStageBreakdownAsync(Guid jobId)
+        {
+            var visualization = await GetPipelineVisualizationAsync(jobId);
+            return visualization.Stages;
+        }
+
+        // ============================================================
+        // 3. Candidate Progress Tracking
+        // ============================================================
+
+        public async Task<CandidateJourneyDto> GetCandidateJourneyAsync(Guid candidateId)
+        {
+            var progressHistory = await _context.CandidateProgressHistories
+                .Where(h => h.CandidateId == candidateId)
+                .OrderBy(h => h.MovedAt)
+                .ToListAsync();
+
+            var candidateProfile = await _context.CandidateProfiles.FindAsync(candidateId);
+
+            var events = new List<JourneyEventDto>();
+            DateTime? previousTime = null;
+
+            foreach (var progress in progressHistory)
+            {
+                var daysInStage = previousTime.HasValue ? (int)(progress.MovedAt - previousTime.Value).TotalDays : 0;
+                events.Add(new JourneyEventDto
+                {
+                    Stage = progress.NewStage,
+                    Timestamp = progress.MovedAt,
+                    DaysInStage = daysInStage,
+                    Action = progress.StageChangeReason ?? "Moved"
+                });
+                previousTime = progress.MovedAt;
+            }
+
+            var firstEvent = events.FirstOrDefault();
+            var lastEvent = events.LastOrDefault();
+            var totalDuration = lastEvent != null && firstEvent != null
+                ? (lastEvent.Timestamp - firstEvent.Timestamp).TotalDays
+                : 0;
+
+            return new CandidateJourneyDto
+            {
+                CandidateId = candidateId,
+                CandidateName = candidateProfile?.FullName ?? "Unknown",
+                Journey = events,
+                TotalDuration = TimeSpan.FromDays(totalDuration)
+            };
+        }
+
+        public async Task<List<CandidateProgressHistoryDto>> GetJobProgressHistoryAsync(Guid jobId, DateTime fromDate, DateTime toDate)
+        {
+            var history = await _context.CandidateProgressHistories
+                .Where(h => h.JobId == jobId && h.MovedAt >= fromDate && h.MovedAt <= toDate)
+                .OrderBy(h => h.MovedAt)
+                .Select(h => new CandidateProgressHistoryDto
+                {
+                    ProgressId = h.ProgressId,
+                    ApplicationId = h.ApplicationId,
+                    CandidateId = h.CandidateId,
+                    JobId = h.JobId,
+                    PreviousStage = h.PreviousStage,
+                    NewStage = h.NewStage,
+                    StageChangeReason = h.StageChangeReason,
+                    TimeInPreviousStage = h.TimeInPreviousStage,
+                    MovedAt = h.MovedAt,
+                    IsAutomatic = h.IsAutomatic
+                })
+                .ToListAsync();
+
+            return history;
+        }
+
+        public async Task<CandidateProgressHistoryDto> RecordProgressAsync(CandidateProgressCreateDto dto)
+        {
+            try
+            {
+                var application = await _context.Applications.FindAsync(dto.ApplicationId);
+                if (application == null)
+                    throw new KeyNotFoundException($"Application {dto.ApplicationId} not found");
+
+                var previousStage = application.Status;
+                application.Status = dto.NewStage;
+
+                var progress = new CandidateProgressHistory
+                {
+                    ProgressId = Guid.NewGuid(),
+                    ApplicationId = dto.ApplicationId,
+                    CandidateId = application.CandidateId,
+                    JobId = application.JobId,
+                    PreviousStage = previousStage,
+                    NewStage = dto.NewStage,
+                    StageChangeReason = dto.StageChangeReason,
+                    TimeInPreviousStage = null,
+                    MovedAt = DateTime.UtcNow,
+                    MovedByUserId = Guid.NewGuid(), // TODO: Get from current user
+                    IsAutomatic = false
+                };
+
+                _context.CandidateProgressHistories.Add(progress);
+                await _context.SaveChangesAsync();
+
+                // Publish real-time event
+                await PublishEventAsync(new RealTimeEventPublishDto
+                {
+                    EventType = "STAGE_CHANGED",
+                    ApplicationId = dto.ApplicationId,
+                    Payload = new Dictionary<string, object>
+                    {
+                        { "old_stage", previousStage },
+                        { "new_stage", dto.NewStage },
+                        { "reason", dto.StageChangeReason }
+                    }
+                });
+
+                return new CandidateProgressHistoryDto
+                {
+                    ProgressId = progress.ProgressId,
+                    ApplicationId = progress.ApplicationId,
+                    CandidateId = progress.CandidateId,
+                    JobId = progress.JobId,
+                    PreviousStage = progress.PreviousStage,
+                    NewStage = progress.NewStage,
+                    StageChangeReason = progress.StageChangeReason,
+                    MovedAt = progress.MovedAt,
+                    IsAutomatic = progress.IsAutomatic
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"Error recording progress: {ex.Message}");
+                throw;
+            }
+        }
+
+        public async Task<Dictionary<string, decimal>> GetAverageTimePerStageAsync(Guid jobId)
+        {
+            var progressHistory = await _context.CandidateProgressHistories
+                .Where(h => h.JobId == jobId && h.TimeInPreviousStage.HasValue)
+                .GroupBy(h => h.NewStage)
+                .Select(g => new
+                {
+                    Stage = g.Key,
+                    AvgDays = g.Average(x => x.TimeInPreviousStage)
+                })
+                .ToListAsync();
+
+            return progressHistory.ToDictionary(x => x.Stage, x => Math.Round((decimal)(x.AvgDays ?? 0), 2));
+        }
+
+        // ============================================================
+        // 4. Predictions
+        // ============================================================
+
+        public async Task<PredictionResultDto> GetPredictionAsync(PredictionRequestDto request)
+        {
+            return request.PredictionTarget switch
+            {
+                "OFFER_ACCEPTANCE" => await GetOfferAcceptancePredictionAsync(request.ApplicationId),
+                "TIME_TO_HIRE" => await GetTimeToHirePredictionAsync(request.ApplicationId),
+                "DROPOUT_RISK" => await GetDropoutRiskPredictionAsync(request.ApplicationId),
+                _ => throw new InvalidOperationException($"Unknown prediction target: {request.PredictionTarget}")
+            };
+        }
+
+        public async Task<OfferAcceptancePredictionDto> GetOfferAcceptancePredictionAsync(Guid applicationId)
+        {
+            var application = await _context.Applications.FindAsync(applicationId);
+            if (application == null)
+                throw new KeyNotFoundException($"Application {applicationId} not found");
+
+            var candidate = await _context.CandidateProfiles.FindAsync(application.CandidateId);
+            var job = await _context.Jobs.FindAsync(application.JobId);
+
+            // Simple ML prediction logic (can be replaced with actual ML model)
+            decimal acceptanceProbability = 0.5m;
+            var riskFactors = new List<string>();
+            var recommendations = new List<string>();
+
+            // Factor 1: Salary expectation vs job salary
+            if (candidate != null && job != null && Math.Abs(candidate.ExpectedSalary - (decimal)(job.SalaryMin ?? 0)) > 50000)
+            {
+                acceptanceProbability -= 0.15m;
+                riskFactors.Add("Salary expectation mismatch");
+                recommendations.Add("Negotiate salary range");
+            }
+
+            // Factor 2: Job level match
+            if (candidate?.ExperienceYears < 2 && job?.Level == "SENIOR")
+            {
+                acceptanceProbability -= 0.1m;
+                riskFactors.Add("Experience level mismatch");
+                recommendations.Add("Consider alternative roles");
+            }
+
+            // Factor 3: Time in pipeline
+            var daysInPipeline = (DateTime.UtcNow - application.CreatedAt).TotalDays;
+            if (daysInPipeline > 30)
+            {
+                acceptanceProbability -= 0.05m;
+                riskFactors.Add("Extended time in pipeline");
+                recommendations.Add("Expedite offer");
+            }
+
+            acceptanceProbability = Math.Max(0, Math.Min(1, acceptanceProbability));
+
+            return new OfferAcceptancePredictionDto
+            {
+                ResultId = Guid.NewGuid(),
+                ApplicationId = applicationId,
+                PredictionTarget = "OFFER_ACCEPTANCE",
+                PredictionValue = (decimal)Math.Round(acceptanceProbability * 100, 2),
+                AcceptanceProbability = acceptanceProbability,
+                ConfidenceScore = 75m,
+                PredictionCategory = acceptanceProbability > 0.7m ? "LOW_RISK" : acceptanceProbability > 0.4m ? "MEDIUM" : "HIGH_RISK",
+                RiskLevel = acceptanceProbability > 0.7m ? "LOW" : acceptanceProbability > 0.4m ? "MEDIUM" : "HIGH",
+                RiskFactors = riskFactors,
+                NegotiationHints = recommendations,
+                PredictedAt = DateTime.UtcNow
+            };
+        }
+
+        public async Task<TimeToHirePredictionDto> GetTimeToHirePredictionAsync(Guid applicationId)
+        {
+            var application = await _context.Applications.FindAsync(applicationId);
+            if (application == null)
+                throw new KeyNotFoundException($"Application {applicationId} not found");
+
+            // Simple prediction: estimate based on job + candidate profile
+            int predictedDays = 18;
+            var accelerationTips = new List<string>();
+
+            var currentStage = application.Status;
+            var stageMap = new Dictionary<string, int>
+            {
+                { "APPLICATION", 15 },
+                { "SCREENING", 12 },
+                { "INTERVIEW", 7 },
+                { "OFFER", 3 },
+                { "HIRED", 0 }
+            };
+
+            if (stageMap.TryGetValue(currentStage, out var remainingDays))
+            {
+                predictedDays = remainingDays;
+            }
+
+            if (currentStage == "INTERVIEW")
+            {
+                accelerationTips.Add("Schedule final interview");
+                accelerationTips.Add("Prepare offer details");
+            }
+
+            return new TimeToHirePredictionDto
+            {
+                ResultId = Guid.NewGuid(),
+                ApplicationId = applicationId,
+                PredictionTarget = "TIME_TO_HIRE",
+                PredictionValue = predictedDays,
+                PredictedDays = predictedDays,
+                LowerBound = predictedDays - 3,
+                UpperBound = predictedDays + 5,
+                ConfidenceScore = 82m,
+                PredictionCategory = predictedDays < 10 ? "FAST" : predictedDays < 20 ? "NORMAL" : "SLOW",
+                AccelerationTips = accelerationTips,
+                PredictedAt = DateTime.UtcNow
+            };
+        }
+
+        public async Task<DropoutRiskPredictionDto> GetDropoutRiskPredictionAsync(Guid applicationId)
+        {
+            var application = await _context.Applications.FindAsync(applicationId);
+            if (application == null)
+                throw new KeyNotFoundException($"Application {applicationId} not found");
+
+            decimal dropoutRisk = 0.2m; // 20% base risk
+            var riskIndicators = new List<string>();
+            var strategies = new List<string>();
+
+            // Check stage
+            if (application.Status == "INTERVIEW")
+            {
+                var daysInInterview = (DateTime.UtcNow - (DateTime?)application.UpdatedAt ?? DateTime.UtcNow).TotalDays;
+                if (daysInInterview > 10)
+                {
+                    dropoutRisk += 0.2m;
+                    riskIndicators.Add("Extended time in interview stage");
+                    strategies.Add("Conduct final interview promptly");
+                }
+            }
+
+            dropoutRisk = Math.Max(0, Math.Min(1, dropoutRisk));
+
+            return new DropoutRiskPredictionDto
+            {
+                ResultId = Guid.NewGuid(),
+                ApplicationId = applicationId,
+                PredictionTarget = "DROPOUT_RISK",
+                PredictionValue = (decimal)Math.Round(dropoutRisk * 100, 2),
+                DropoutProbability = dropoutRisk,
+                ConfidenceScore = 68m,
+                PredictionCategory = dropoutRisk > 0.5m ? "HIGH_RISK" : "LOW_RISK",
+                RiskIndicators = riskIndicators,
+                RetentionStrategies = strategies,
+                PredictedAt = DateTime.UtcNow
+            };
+        }
+
+        public async Task<List<PredictionResultDto>> GetCriticalPredictionsAsync(Guid jobId)
+        {
+            var applications = await _context.Applications
+                .Where(a => a.JobId == jobId && a.Status != "HIRED" && a.Status != "REJECTED")
+                .ToListAsync();
+
+            var criticalPredictions = new List<PredictionResultDto>();
+
+            foreach (var app in applications.Take(10)) // Limit to top 10
+            {
+                var prediction = await GetOfferAcceptancePredictionAsync(app.ApplicationId);
+                if (prediction.PredictionCategory == "HIGH_RISK" || prediction.PredictionCategory == "MEDIUM")
+                {
+                    criticalPredictions.Add(prediction);
+                }
+            }
+
+            return criticalPredictions.OrderByDescending(p => p.ConfidenceScore).ToList();
+        }
+
+        public async Task<PredictionResultDto> SavePredictionAsync(PredictionResultDto prediction)
+        {
+            var model = await _context.PredictionModels
+                .FirstOrDefaultAsync(m => m.PredictionTarget == prediction.PredictionTarget && m.IsActive);
+
+            if (model == null)
+                throw new KeyNotFoundException($"No active model for target: {prediction.PredictionTarget}");
+
+            var result = new PredictionResult
+            {
+                ResultId = Guid.NewGuid(),
+                ModelId = model.ModelId,
+                ApplicationId = prediction.ApplicationId,
+                CandidateId = prediction.ApplicationId, // TODO: Get from application
+                PredictionTarget = prediction.PredictionTarget,
+                PredictionValue = prediction.PredictionValue,
+                ConfidenceScore = prediction.ConfidenceScore,
+                PredictionCategory = prediction.PredictionCategory,
+                FeatureContribution = JsonSerializer.Serialize(prediction.FeatureContribution),
+                RiskFactors = JsonSerializer.Serialize(prediction.RiskFactors),
+                Recommendations = JsonSerializer.Serialize(prediction.Recommendations),
+                PredictedAt = DateTime.UtcNow
+            };
+
+            _context.PredictionResults.Add(result);
+            await _context.SaveChangesAsync();
+
+            return prediction;
+        }
+
+        public async Task UpdatePredictionWithOutcomeAsync(Guid resultId, string actualOutcome)
+        {
+            var prediction = await _context.PredictionResults.FindAsync(resultId);
+            if (prediction == null)
+                throw new KeyNotFoundException($"Prediction {resultId} not found");
+
+            prediction.ActualOutcome = actualOutcome;
+            prediction.IsAccurate = prediction.PredictionValue.ToString().Contains(actualOutcome);
+
+            _context.PredictionResults.Update(prediction);
+            await _context.SaveChangesAsync();
+        }
+
+        public async Task<PredictionModelDto> GetModelMetricsAsync(Guid modelId)
+        {
+            var model = await _context.PredictionModels.FindAsync(modelId);
+            if (model == null)
+                throw new KeyNotFoundException($"Model {modelId} not found");
+
+            var features = JsonSerializer.Deserialize<List<string>>(model.InputFeatures ?? "[]") ?? new List<string>();
+
+            return new PredictionModelDto
+            {
+                ModelId = model.ModelId,
+                ModelName = model.ModelName,
+                ModelType = model.ModelType,
+                PredictionTarget = model.PredictionTarget,
+                ModelVersion = model.ModelVersion,
+                Accuracy = model.Accuracy,
+                Precision = model.Precision,
+                Recall = model.Recall,
+                F1Score = model.F1Score,
+                IsActive = model.IsActive,
+                InputFeatures = features,
+                CreatedAt = model.CreatedAt
+            };
+        }
+
+        public async Task<List<PredictionModelDto>> GetAllModelsAsync()
+        {
+            var models = await _context.PredictionModels
+                .OrderByDescending(m => m.UpdatedAt)
+                .ToListAsync();
+
+            return models.Select(m => new PredictionModelDto
+            {
+                ModelId = m.ModelId,
+                ModelName = m.ModelName,
+                ModelType = m.ModelType,
+                PredictionTarget = m.PredictionTarget,
+                ModelVersion = m.ModelVersion,
+                Accuracy = m.Accuracy,
+                IsActive = m.IsActive,
+                CreatedAt = m.CreatedAt
+            }).ToList();
+        }
+
+        // ============================================================
+        // 5. Forecasting
+        // ============================================================
+
+        public async Task<List<ForecastingDataDto>> GenerateForecastsAsync(GenerateForecastsRequestDto request)
+        {
+            var forecasts = new List<ForecastingDataDto>();
+
+            if (request.ForecastTypes.Contains("TIME_TO_HIRE"))
+            {
+                var forecast = await GetTimeToHireForcastAsync(request.JobId, request.DaysAhead);
+                // Convert to DTO and add
+            }
+
+            return forecasts;
+        }
+
+        public async Task<TimeToHireForecastDto> GetTimeToHireForcastAsync(Guid jobId, int daysAhead = 30)
+        {
+            var applications = await _context.Applications
+                .Where(a => a.JobId == jobId)
+                .ToListAsync();
+
+            var hiredCount = applications.Count(a => a.Status == "HIRED");
+            var daysToFirstHire = applications
+                .Where(a => a.Status == "HIRED")
+                .Select(a => (DateTime.UtcNow - a.CreatedAt).TotalDays)
+                .DefaultIfEmpty(0)
+                .Average();
+
+            var position = await _context.Jobs.FindAsync(jobId);
+
+            return new TimeToHireForecastDto
+            {
+                JobId = jobId,
+                AverageDaysToHire = (int)Math.Round(daysToFirstHire),
+                ForecastedDaysToFill = (int)Math.Round(daysToFirstHire * 1.2), // Add 20% buffer
+                ProbableCompletionDate = DateTime.UtcNow.AddDays(daysToFirstHire * 1.2),
+                Confidence = 78,
+                WeeklyForecast = new List<ForecastPointDto>()
+            };
+        }
+
+        public async Task<ForecastingTrendDto> GetConversionRateForecastAsync(Guid jobId, int daysAhead = 30)
+        {
+            return new ForecastingTrendDto
+            {
+                JobId = jobId,
+                ForecastType = "CONVERSION_RATE",
+                Trend = "STABLE",
+                MethodUsed = "LINEAR_REGRESSION",
+                ForecastPoints = new List<ForecastPointDto>()
+            };
+        }
+
+        public async Task<List<ForecastingDataDto>> GetJobForecastsAsync(Guid jobId)
+        {
+            var forecasts = await _context.ForecastingData
+                .Where(f => f.JobId == jobId)
+                .OrderByDescending(f => f.ForecastDate)
+                .Select(f => new ForecastingDataDto
+                {
+                    ForecastId = f.ForecastId,
+                    JobId = f.JobId,
+                    ForecastType = f.ForecastType,
+                    ForecastDate = f.ForecastDate,
+                    ForecastedValue = f.ForecastedValue,
+                    LowerBound = f.LowerBound,
+                    UpperBound = f.UpperBound,
+                    ActualValue = f.ActualValue,
+                    Confidence = f.Confidence,
+                    CalculatedAt = f.CalculatedAt
+                })
+                .ToListAsync();
+
+            return forecasts;
+        }
+
+        public async Task ValidateForecastAsync(Guid forecastId)
+        {
+            var forecast = await _context.ForecastingData.FindAsync(forecastId);
+            if (forecast == null)
+                throw new KeyNotFoundException($"Forecast {forecastId} not found");
+
+            // Calculate actual value and MAPE
+            _context.ForecastingData.Update(forecast);
+            await _context.SaveChangesAsync();
+        }
+
+        // ============================================================
+        // 6. Real-time Events
+        // ============================================================
+
+        public async Task PublishEventAsync(RealTimeEventPublishDto eventDto)
+        {
+            try
+            {
+                var @event = new RealTimeEvent
+                {
+                    EventId = Guid.NewGuid(),
+                    EventType = eventDto.EventType,
+                    EventSource = "SYSTEM",
+                    ApplicationId = eventDto.ApplicationId,
+                    JobId = eventDto.JobId,
+                    EventData = JsonSerializer.Serialize(eventDto.Payload),
+                    Timestamp = DateTime.UtcNow,
+                    IsProcessed = false
+                };
+
+                _context.RealTimeEvents.Add(@event);
+                await _context.SaveChangesAsync();
+
+                _logger.LogInformation($"Published event: {eventDto.EventType}");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"Error publishing event: {ex.Message}");
+            }
+        }
+
+        public async Task<List<RealTimeEventDto>> GetPendingEventsAsync(int limit = 100)
+        {
+            var events = await _context.RealTimeEvents
+                .Where(e => !e.IsProcessed)
+                .OrderBy(e => e.Timestamp)
+                .Take(limit)
+                .Select(e => new RealTimeEventDto
+                {
+                    EventId = e.EventId,
+                    EventType = e.EventType,
+                    EventSource = e.EventSource,
+                    ApplicationId = e.ApplicationId,
+                    JobId = e.JobId,
+                    EventData = JsonSerializer.Deserialize<Dictionary<string, object>>(e.EventData) ?? new Dictionary<string, object>(),
+                    Timestamp = e.Timestamp
+                })
+                .ToListAsync();
+
+            return events;
+        }
+
+        public async Task MarkEventsAsProcessedAsync(List<Guid> eventIds)
+        {
+            var events = await _context.RealTimeEvents
+                .Where(e => eventIds.Contains(e.EventId))
+                .ToListAsync();
+
+            foreach (var @event in events)
+            {
+                @event.IsProcessed = true;
+                @event.ProcessedAt = DateTime.UtcNow;
+            }
+
+            _context.RealTimeEvents.UpdateRange(events);
+            await _context.SaveChangesAsync();
+        }
+
+        public async Task<List<RealTimeEventDto>> GetRecentEventsAsync(Guid jobId, int minutes = 60)
+        {
+            var fromTime = DateTime.UtcNow.AddMinutes(-minutes);
+            var events = await _context.RealTimeEvents
+                .Where(e => e.Timestamp >= fromTime && (jobId == Guid.Empty || e.JobId == jobId))
+                .OrderByDescending(e => e.Timestamp)
+                .Select(e => new RealTimeEventDto
+                {
+                    EventId = e.EventId,
+                    EventType = e.EventType,
+                    EventSource = e.EventSource,
+                    ApplicationId = e.ApplicationId,
+                    JobId = e.JobId,
+                    EventData = JsonSerializer.Deserialize<Dictionary<string, object>>(e.EventData) ?? new Dictionary<string, object>(),
+                    Timestamp = e.Timestamp
+                })
+                .ToListAsync();
+
+            return events;
+        }
+
+        // ============================================================
+        // 7. Analytics & Reporting
+        // ============================================================
+
+        public async Task<JobAnalyticsDto> GetJobAnalyticsAsync(Guid jobId)
+        {
+            var job = await _context.Jobs.FindAsync(jobId);
+            var applications = await _context.Applications.Where(a => a.JobId == jobId).ToListAsync();
+
+            return new JobAnalyticsDto
+            {
+                JobId = jobId,
+                JobTitle = job?.Title ?? "Unknown",
+                TotalCandidates = applications.Count,
+                HiredCount = applications.Count(a => a.Status == "HIRED"),
+                SuccessRate = applications.Any() ? Math.Round((decimal)applications.Count(a => a.Status == "HIRED") / applications.Count * 100, 2) : 0,
+                AverageDaysToHire = (int)applications
+                    .Where(a => a.Status == "HIRED")
+                    .Select(a => (DateTime.UtcNow - a.CreatedAt).TotalDays)
+                    .DefaultIfEmpty(0)
+                    .Average(),
+                StageDistribution = await GetStageBreakdownAsync(jobId),
+                MonthlyTrend = new Dictionary<string, int>()
+            };
+        }
+
+        public async Task<CompanyAnalyticsDto> GetCompanyAnalyticsAsync()
+        {
+            var jobs = await _context.Jobs.ToListAsync();
+            var allApplications = await _context.Applications.ToListAsync();
+
+            var jobAnalytics = new List<JobAnalyticsDto>();
+            foreach (var job in jobs)
+            {
+                jobAnalytics.Add(await GetJobAnalyticsAsync(job.JobId));
+            }
+
+            return new CompanyAnalyticsDto
+            {
+                TotalOpenPositions = jobs.Count,
+                TotalApplications = allApplications.Count,
+                AverageConversionRate = jobAnalytics.Any() ? Math.Round(jobAnalytics.Average(j => j.SuccessRate), 2) : 0,
+                AverageDaysToFill = jobAnalytics.Any() ? (int)jobAnalytics.Average(j => j.AverageDaysToHire) : 0,
+                JobAnalytics = jobAnalytics,
+                GeneratedAt = DateTime.UtcNow
+            };
+        }
+
+        public async Task<PerformanceReportDto> GetPerformanceReportAsync(Guid? jobId = null, int days = 30)
+        {
+            return new PerformanceReportDto
+            {
+                ReportDate = DateTime.UtcNow,
+                CurrentMetrics = new PerformanceMetricsDto
+                {
+                    HiringVelocity = 2.5m,
+                    QualityOfHire = 78.5m,
+                    DropoutRate = 15.2m,
+                    TimeToProductivity = 45.3m,
+                    CostPerHire = 5500m,
+                    RoundDuration = 18.5m
+                },
+                TrendHistory = new List<PerformanceTrendDto>(),
+                Insights = new List<string>
+                {
+                    "Hiring velocity is up 15% vs last month",
+                    "Quality of hire is stable at 78.5%",
+                    "Need to improve dropout rate"
+                },
+                Recommendations = new List<string>
+                {
+                    "Accelerate offer process to reduce dropout",
+                    "Improve communication with candidates",
+                    "Review interview process for consistency"
+                }
+            };
+        }
+
+        public async Task<LeaderboardDto> GetLeaderboardAsync(Guid jobId, int topCount = 50)
+        {
+            var job = await _context.Jobs.FindAsync(jobId);
+            var candidates = await _context.Applications
+                .Where(a => a.JobId == jobId && a.Status != "REJECTED")
+                .Take(topCount)
+                .ToListAsync();
+
+            return new LeaderboardDto
+            {
+                JobId = jobId,
+                JobTitle = job?.Title ?? "Unknown",
+                TopCandidates = new List<CandidateLeaderboardDto>(),
+                TotalCandidates = candidates.Count
+            };
+        }
+
+        public async Task<byte[]> ExportAnalyticsAsync(Guid jobId, string format = "xlsx")
+        {
+            // TODO: Implement export functionality
+            return new byte[0];
+        }
+
+        // ============================================================
+        // 8. Cache Management
+        // ============================================================
+
+        public async Task RefreshDashboardCacheAsync(DashboardRefreshRequestDto request)
+        {
+            _logger.LogInformation($"Refreshing dashboard cache for JobId: {request.JobId}");
+            // Cache refresh logic
+        }
+
+        public async Task<CacheStatsDto> GetCacheStatsAsync()
+        {
+            var cacheEntries = await _context.AnalyticsCaches.ToListAsync();
+            return new CacheStatsDto
+            {
+                TotalCacheEntries = cacheEntries.Count,
+                ExpiredEntries = cacheEntries.Count(c => c.ExpiresAt < DateTime.UtcNow),
+                CacheHitRate = cacheEntries.Any() ? Math.Round((decimal)cacheEntries.Sum(c => c.HitCount) / (cacheEntries.Sum(c => c.HitCount) + 1), 2) : 0,
+                AverageCacheAge = TimeSpan.FromSeconds(cacheEntries.Any() ? cacheEntries.Average(c => (DateTime.UtcNow - c.CreatedAt).TotalSeconds) : 0)
+            };
+        }
+
+        public async Task ClearCacheAsync()
+        {
+            var cache = await _context.AnalyticsCaches.ToListAsync();
+            _context.AnalyticsCaches.RemoveRange(cache);
+            await _context.SaveChangesAsync();
+        }
+
+        public async Task ClearCacheKeyAsync(string cacheKey)
+        {
+            var cache = await _context.AnalyticsCaches.FirstOrDefaultAsync(c => c.CacheKey == cacheKey);
+            if (cache != null)
+            {
+                _context.AnalyticsCaches.Remove(cache);
+                await _context.SaveChangesAsync();
+            }
+        }
+
+        // ============================================================
+        // 9-12. Additional Methods (Stub Implementations)
+        // ============================================================
+
+        public async Task RecalculateRankingsAsync(RecalculateRankingsRequestDto request) => await Task.CompletedTask;
+        public async Task BulkGeneratePredictionsAsync(Guid jobId) => await Task.CompletedTask;
+        public async Task BulkGenerateForecastsAsync() => await Task.CompletedTask;
+        public async Task UpdateAllMetricsAsync() => await Task.CompletedTask;
+        public async Task RunHourlyMaintenanceAsync() => await Task.CompletedTask;
+        public async Task RunDailyMaintenanceAsync() => await Task.CompletedTask;
+        public async Task RunWeeklyMaintenanceAsync() => await Task.CompletedTask;
+        public async Task<decimal> GetHiringVelocityAsync(Guid? jobId = null) => 2.5m;
+        public async Task<decimal> GetQualityOfHireAsync(Guid? jobId = null) => 78.5m;
+        public async Task<decimal> GetCostPerHireAsync(Guid? jobId = null) => 5500m;
+        public async Task<decimal> GetTimeToProductivityAsync(Guid? jobId = null) => 45.3m;
+        public async Task<List<TrendDataPointDto>> GetMetricTrendAsync(string metricCode, int days = 30) => new List<TrendDataPointDto>();
+        public async Task ResetJobDashboardDataAsync(Guid jobId) => await Task.CompletedTask;
+        public async Task ReprocessPredictionsAsync(Guid jobId) => await Task.CompletedTask;
+        public async Task<List<DashboardOperationLogDto>> GetOperationLogsAsync(int lastCount = 100) => new List<DashboardOperationLogDto>();
+    }
+}

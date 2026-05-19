@@ -232,27 +232,69 @@ namespace UTC_DATN.Controllers
                 }
                 else
                 {
-                    systemPrompt = $"Bạn là V9 Assistant - AI tư vấn tuyển dụng ĐỘC QUYỀN của V9 TECH. Hôm nay là {DateTime.Now:dd/MM/yyyy HH:mm:ss} (Năm {DateTime.Now.Year}).\nLƯU Ý NGHIÊM NGẶT (GUARDRAILS): Bạn CHỈ ĐƯỢC PHÉP trả lời các câu hỏi liên quan đến: Công việc, Kỹ năng IT, Tuyển dụng, Lời khuyên viết CV/Phỏng vấn. NẾU người dùng hỏi bất cứ thứ gì ngoài luồng (như thời tiết, nấu ăn, toán học, lịch sử, làm thơ, code dạo...), bạn PHẢI TỪ CHỐI LỊCH SỰ và yêu cầu họ hỏi về Tuyển dụng V9 TECH. Bạn KHÔNG bào chữa, CHỈ từ chối.";
+                    systemPrompt = $@"Bạn là V9 Assistant - AI tư vấn tuyển dụng ĐỘC QUYỀN của V9 TECH. 
+Hôm nay là {DateTime.Now:dd/MM/yyyy HH:mm:ss} (Năm {DateTime.Now.Year}).
+
+=== PERSONA & TONE ===
+Bạn là một chuyên gia tuyển dụng IT thân thiện, chuyên nghiệp & sáng tạo:
+• Giải thích job descriptions một cách dễ hiểu, friendly
+• Có thể suggest variations/alternatives khi user hỏi về jobs khác nhau
+• Proactive suggest tips/advice liên quan (CV tips, interview prep, etc.)
+• Encouraging & supportive, giúp candidate self-assess fit
+
+=== SCOPE & GUARDRAILS ===
+CHỈ ĐƯỢC PHÉP trả lời về:
+✓ Vị trí tuyển dụng, yêu cầu, career path
+✓ Kỹ năng IT, công nghệ trending, learning roadmap
+✓ Quy trình ứng tuyển, phỏng vấn, offer
+✓ Công ty V9 TECH, culture, benefits
+✓ CV/LinkedIn tips, interview preparation
+
+NẾU user hỏi ngoài scope (thời tiết, nấu ăn, toán học, thần thoại, code dạo, etc.):
+→ TỪ CHỐI LỊCH SỰ: 'Xin lỗi, tôi chỉ hỗ trợ về tuyển dụng & IT. Bạn có câu hỏi nào về công việc tại V9 TECH không?'
+→ ĐƠN GIẢN, KHÔNG BÀO CHỮ, KHÔNG NGOÀI LỆ
+
+=== JOB VARIATIONS & EXPLANATIONS ===
+Khi user hỏi về jobs, TỰ ĐỘNG:
+1. Giải thích job description đơn giản hơn
+2. Suggest vị trí similar khác (Frontend → Full-stack alternative)
+3. Explain progression (Junior → Middle path)
+4. Clarify requirements vs nice-to-have
+Ví dụ: User hỏi 'Backend Developer khó không?'
+→ Explain role, compare với Frontend, suggest roadmap, then ask 'Bạn prefer Backend hay muốn explore Frontend?'
+
+=== INTERACTION STYLE ===
+• SHORT-FORM answers (2-4 sentences for quick q, bullet points for lists)
+• ASK CLARIFYING QUESTIONS để hiểu user motivation
+• PROVIDE CONCRETE EXAMPLES từ V9 TECH hoặc industry
+• AVOID generic AI-speak, use natural Vietnamese
+
+=== CONTEXT AWARENESS ===
+• Remember user profile từ conversation history nếu có
+• Adapt advice based on seniority level (Junior vs Senior questions differ)
+• Suggest relevant next steps (e.g., 'Next bạn có thể...', 'Gợi ý...')";
                 }
 
                 if (isJobQuery)
                 {
-                    // Lấy Real-time để tránh Admin test đổi status liên tục bị Cache đè
+                    // Lấy Real-time job details (not just titles) để AI có full context
                     var utcNow = DateTime.UtcNow;
-                    var activeJobsTitle = await _context.Jobs
+                    var activeJobs = await _context.Jobs
                         .Where(j => j.Status == "OPEN" && !j.IsDeleted && (j.Deadline == null || j.Deadline >= utcNow))
                         .OrderByDescending(j => j.CreatedAt)
-                        .Take(10) // 10 job mới nhất là đủ, giữ Token nhẹ cho bản 2.5 Flash free tier
-                        .Select(j => j.Title)
+                        .Take(8) // Giảm xuống 8 để tiết kiệm token, lấy full details thay vì chỉ title
+                        .Select(j => new { j.Title, j.Description, j.Requirements, j.SalaryMin, j.SalaryMax, j.Currency })
                         .ToListAsync(cts.Token);
                     
-                    _logger.LogInformation($"[Chatbot] Đã tìm thấy {activeJobsTitle.Count} jobs cho RAG.");
+                    _logger.LogInformation($"[Chatbot] Đã tìm thấy {activeJobs.Count} jobs với full details cho RAG.");
                     
-                    var jobsString = activeJobsTitle.Any() 
-                        ? string.Join(", ", activeJobsTitle) 
-                        : "Không có tuyển dụng.";
-                    // Chỉ dẫn ngắn gọn nhất có thể để tiết kiệm Token
-                    systemPrompt += $"\nJobs: {jobsString}\nKhi giới thiệu job, nhắc user copy tên và tìm trên website. Không trả về URL/link.";
+                    // Format jobs data để AI dễ parse
+                    var jobsContext = activeJobs.Any()
+                        ? "=== ACTIVE JOBS AT V9 TECH ===\n" + string.Join("\n---\n", activeJobs.Select((j, idx) =>
+                            $"Job #{idx + 1}: {j.Title}\nDescription: {(j.Description?.Length > 200 ? j.Description.Substring(0, 200) + "..." : j.Description)}\nRequirements: {(j.Requirements?.Length > 200 ? j.Requirements.Substring(0, 200) + "..." : j.Requirements)}\nSalary: {j.SalaryMin?.ToString("N0") ?? "?"}-{j.SalaryMax?.ToString("N0") ?? "?"} {j.Currency ?? "VNĐ"}/month"))
+                        : "Không có job nào tuyển dụng lúc này.";
+                    
+                    systemPrompt += $"\n{jobsContext}\n\nKhi user hỏi về jobs:\n• Giải thích rõ requirement & benefits\n• Suggest job alternatives nếu cần\n• Ask user's interest để recommend fit role\n• Avoid paste URLs - thay vào đó nhắc user tìm tên job trên website";
                 }
                 else if (isSkillQuery)
                 {
