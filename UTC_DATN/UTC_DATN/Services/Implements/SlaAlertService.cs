@@ -34,6 +34,9 @@ namespace UTC_DATN.Services.Implements
         {
             try
             {
+                if (cancellationToken.IsCancellationRequested)
+                    return;
+
                 _logger.LogInformation("🔔 Bắt đầu kiểm tra SLA alerts...");
 
                 // Lấy toàn bộ applications với SLA enabled, chưa kết thúc

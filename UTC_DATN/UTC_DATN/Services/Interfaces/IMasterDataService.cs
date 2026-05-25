@@ -23,13 +23,13 @@ namespace UTC_DATN.Services.Interfaces
         /// Lấy danh sách tất cả Tỉnh/Thành phố từ API
         /// </summary>
         /// <returns>Danh sách Tỉnh/Thành phố</returns>
-        Task<List<Models.ProvinceDto>> GetProvincesAsync();
+        Task<List<UTC_DATN.Models.ProvinceDto>> GetProvincesAsync();
 
         /// <summary>
         /// Lấy danh sách Phường/Xã theo mã tỉnh (V2 API - bỏ cấp huyện)
         /// </summary>
         /// <param name="provinceCode">Mã tỉnh</param>
         /// <returns>Danh sách Phường/Xã</returns>
-        Task<List<Models.WardDto>> GetWardsAsync(int provinceCode);
+        Task<List<UTC_DATN.Models.WardDto>> GetWardsAsync(int provinceCode);
     }
 }

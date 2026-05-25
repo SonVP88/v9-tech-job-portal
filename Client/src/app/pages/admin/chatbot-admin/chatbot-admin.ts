@@ -1,8 +1,8 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { NgFor, NgIf } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { ChatbotAdminService, ChatbotFaqItem, UpsertChatbotFaqPayload } from '../../../services/chatbot-admin.service';
+import { ChatbotAdminService, ChatbotFaqItem, GeminiKeyStat, UpsertChatbotFaqPayload } from '../../../services/chatbot-admin.service';
 import { ToastService } from '../../../services/toast.service';
 import { PopupService } from '../../../services/popup.service';
 
@@ -13,7 +13,7 @@ import { PopupService } from '../../../services/popup.service';
     templateUrl: './chatbot-admin.html',
     styleUrl: './chatbot-admin.scss'
 })
-export class ChatbotAdminComponent implements OnInit {
+export class ChatbotAdminComponent implements OnInit, OnDestroy {
     faqs: ChatbotFaqItem[] = [];
     filteredFaqs: ChatbotFaqItem[] = [];
 
@@ -21,10 +21,13 @@ export class ChatbotAdminComponent implements OnInit {
     statusFilter: 'all' | 'active' | 'inactive' = 'all';
 
     isLoading = false;
+    keyStats: GeminiKeyStat[] = [];
+    isKeysLoading = false;
     isModalOpen = false;
     isSaving = false;
     modalMode: 'create' | 'edit' = 'create';
     editingFaqId: string | null = null;
+    private keyRefreshHandle: ReturnType<typeof setInterval> | null = null;
 
     form: UpsertChatbotFaqPayload = {
         question: '',
@@ -43,6 +46,39 @@ export class ChatbotAdminComponent implements OnInit {
 
     ngOnInit(): void {
         this.loadFaqs();
+        this.loadKeyStats();
+        this.startKeyAutoRefresh();
+    }
+
+    ngOnDestroy(): void {
+        if (this.keyRefreshHandle) {
+            clearInterval(this.keyRefreshHandle);
+            this.keyRefreshHandle = null;
+        }
+    }
+
+    loadKeyStats(): void {
+        this.isKeysLoading = true;
+        this.chatbotAdminService.getGeminiKeys().subscribe({
+            next: (items) => {
+                this.keyStats = items || [];
+                this.isKeysLoading = false;
+            },
+            error: (err) => {
+                this.isKeysLoading = false;
+                this.toast.error('Lỗi', err.error?.message || 'Không thể tải thống kê API keys.');
+            }
+        });
+    }
+
+    private startKeyAutoRefresh(): void {
+        if (this.keyRefreshHandle) {
+            clearInterval(this.keyRefreshHandle);
+        }
+
+        this.keyRefreshHandle = setInterval(() => {
+            this.loadKeyStats();
+        }, 15000);
     }
 
     loadFaqs(): void {
@@ -183,6 +219,67 @@ export class ChatbotAdminComponent implements OnInit {
             },
             error: (err) => {
                 this.toast.error('Lỗi', err.error?.message || 'Không thể xóa FAQ.');
+            }
+        });
+    }
+
+    get keySummary() {
+        return {
+            total: this.keyStats.length,
+            disabled: this.keyStats.filter(k => k.disabled).length,
+            failures: this.keyStats.reduce((sum, k) => sum + (k.failureCount || 0), 0),
+            success: this.keyStats.reduce((sum, k) => sum + (k.successCount || 0), 0)
+        };
+    }
+
+    trackByKeyPreview(_: number, item: GeminiKeyStat): string {
+        return item.keyPreview;
+    }
+
+    async disableKey(item: GeminiKeyStat): Promise<void> {
+        const confirmed = await this.popup.confirm({
+            title: 'Vô hiệu hóa key',
+            message: `Bạn muốn tắt key ${item.keyPreview} khỏi vòng xoay sử dụng?`,
+            confirmText: 'Vô hiệu hóa',
+            cancelText: 'Hủy',
+            tone: 'danger'
+        });
+
+        if (!confirmed) {
+            return;
+        }
+
+        this.chatbotAdminService.disableGeminiKey(item.keyIndex).subscribe({
+            next: (res) => {
+                this.toast.success('Thành công', res?.message || 'Đã vô hiệu hóa key.');
+                this.loadKeyStats();
+            },
+            error: (err) => {
+                this.toast.error('Lỗi', err.error?.message || 'Không thể vô hiệu hóa key.');
+            }
+        });
+    }
+
+    async enableKey(item: GeminiKeyStat): Promise<void> {
+        const confirmed = await this.popup.confirm({
+            title: 'Kích hoạt key',
+            message: `Bạn muốn bật lại key ${item.keyPreview} vào vòng xoay sử dụng?`,
+            confirmText: 'Kích hoạt',
+            cancelText: 'Hủy',
+            tone: 'primary'
+        });
+
+        if (!confirmed) {
+            return;
+        }
+
+        this.chatbotAdminService.enableGeminiKey(item.keyIndex).subscribe({
+            next: (res) => {
+                this.toast.success('Thành công', res?.message || 'Đã kích hoạt lại key.');
+                this.loadKeyStats();
+            },
+            error: (err) => {
+                this.toast.error('Lỗi', err.error?.message || 'Không thể kích hoạt key.');
             }
         });
     }

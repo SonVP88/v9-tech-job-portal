@@ -24,6 +24,14 @@ builder.Services.AddScoped<IRecommendationService, RecommendationService>();
 builder.Services.AddScoped<ISlaAlertService, SlaAlertService>();
 builder.Services.AddScoped<IAiCodeAssessmentService, AiCodeAssessmentService>();
 
+// Phase 1: Đăng ký Chatbot Infrastructure Services
+builder.Services.AddScoped<IntentClassifier>();
+builder.Services.AddScoped<EntityExtractor>();
+builder.Services.AddScoped<ChatAnalyticsService>();
+
+// Đăng ký GeminiApiKeyProvider để quản lý multiple API keys
+builder.Services.AddSingleton<IGeminiApiKeyProvider, GeminiApiKeyProvider>();
+
 // Configure OpenAI Client
 builder.Services.AddHttpClient();
 builder.Services.AddHostedService<JobExpirationService>();
@@ -43,6 +51,10 @@ builder.Services.AddHttpClient("GeminiClient", client => {
 
 // Đăng ký Memory Cache cho caching
 builder.Services.AddMemoryCache();
+
+// Phase 2: Background queue for non-blocking persistence and analytics
+builder.Services.AddSingleton<UTC_DATN.Services.Background.IBackgroundTaskQueue, UTC_DATN.Services.Background.BackgroundTaskQueue>();
+builder.Services.AddHostedService<UTC_DATN.Services.Background.BackgroundProcessingService>();
 
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
 var key = Encoding.UTF8.GetBytes(jwtSettings["Key"]!);

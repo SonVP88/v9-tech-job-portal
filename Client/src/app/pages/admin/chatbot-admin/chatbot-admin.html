@@ -1,14 +1,101 @@
 <div class="space-y-6">
-    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-            <h2 class="text-2xl font-bold text-slate-900 dark:text-white">Quản Trị FAQ Chatbot</h2>
-            <p class="text-slate-500 dark:text-slate-400 mt-1">Quản trị câu trả lời nhanh cho chatbot trước khi fallback sang AI.</p>
+    <div class="rounded-3xl bg-gradient-to-r from-slate-950 via-slate-900 to-blue-950 text-white p-6 md:p-8 shadow-xl border border-slate-800">
+        <div class="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6">
+            <div class="max-w-2xl">
+                <p class="text-blue-300 text-sm font-semibold uppercase tracking-[0.2em]">Chatbot Control Center</p>
+                <h2 class="mt-2 text-3xl md:text-4xl font-black tracking-tight">Quản trị FAQ và Gemini key health</h2>
+                <p class="mt-3 text-slate-300 text-sm md:text-base leading-relaxed">
+                    Cấu hình câu trả lời nhanh cho chatbot và theo dõi trạng thái runtime của từng Gemini API key để xử lý rate limit chủ động.
+                </p>
+            </div>
+            <button (click)="openCreateModal()"
+                class="inline-flex items-center gap-2 px-5 py-3 bg-white text-slate-950 rounded-xl font-bold hover:bg-blue-100 transition-colors shadow-lg self-start lg:self-auto">
+                <span class="material-symbols-outlined text-[20px]">add</span>
+                <span>Thêm FAQ</span>
+            </button>
         </div>
-        <button (click)="openCreateModal()"
-            class="px-4 py-2 bg-primary hover:bg-blue-700 text-white rounded-lg font-bold transition-colors flex items-center gap-2">
-            <span class="material-symbols-outlined text-[20px]">add</span>
-            <span>Thêm FAQ</span>
-        </button>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div class="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 shadow-sm">
+            <p class="text-xs uppercase tracking-[0.2em] text-slate-500">API keys</p>
+            <p class="mt-2 text-3xl font-black text-slate-900 dark:text-white">{{ keySummary.total }}</p>
+        </div>
+        <div class="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 shadow-sm">
+            <p class="text-xs uppercase tracking-[0.2em] text-slate-500">Disabled</p>
+            <p class="mt-2 text-3xl font-black text-rose-600">{{ keySummary.disabled }}</p>
+        </div>
+        <div class="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 shadow-sm">
+            <p class="text-xs uppercase tracking-[0.2em] text-slate-500">Success</p>
+            <p class="mt-2 text-3xl font-black text-emerald-600">{{ keySummary.success }}</p>
+        </div>
+        <div class="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 shadow-sm">
+            <p class="text-xs uppercase tracking-[0.2em] text-slate-500">Failures</p>
+            <p class="mt-2 text-3xl font-black text-amber-600">{{ keySummary.failures }}</p>
+        </div>
+    </div>
+
+    <div class="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-gray-200 dark:border-slate-800 p-6">
+        <div class="flex items-center justify-between mb-4 gap-4">
+            <div>
+                <h3 class="text-lg font-semibold text-slate-900 dark:text-white">Gemini API Keys</h3>
+                <p class="text-sm text-slate-500 dark:text-slate-400">Tình trạng runtime của các Gemini API keys (preview, failures, disabled)</p>
+            </div>
+            <button (click)="loadKeyStats()" class="px-3 py-2 bg-primary text-white rounded-lg font-medium hover:bg-blue-700 transition-colors">
+                Làm mới
+            </button>
+        </div>
+
+        <div *ngIf="isKeysLoading" class="py-8 text-sm text-slate-500">Đang tải...</div>
+        <div *ngIf="!isKeysLoading && keyStats.length === 0" class="py-8 text-center text-slate-500">
+            Chưa có dữ liệu key stats.
+        </div>
+        <div *ngIf="!isKeysLoading && keyStats.length > 0" class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead class="text-left text-xs text-gray-500 uppercase border-b border-gray-200 dark:border-slate-800">
+                    <tr>
+                        <th class="px-3 py-3">Key</th>
+                        <th class="px-3 py-3">Success</th>
+                        <th class="px-3 py-3">Failures</th>
+                        <th class="px-3 py-3">Status</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200 dark:divide-slate-800">
+                    <tr *ngFor="let k of keyStats; trackBy: trackByKeyPreview" class="hover:bg-slate-50 dark:hover:bg-slate-800/40">
+                        <td class="px-3 py-4 font-medium text-slate-900 dark:text-white">{{ k.keyPreview }}</td>
+                        <td class="px-3 py-4 text-emerald-600 font-semibold">{{ k.successCount }}</td>
+                        <td class="px-3 py-4 text-amber-600 font-semibold">{{ k.failureCount }}</td>
+                        <td class="px-3 py-4">
+                            <span class="inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold"
+                                [class.bg-rose-100]="k.disabled"
+                                [class.text-rose-700]="k.disabled"
+                                [class.dark:bg-rose-900/30]="k.disabled"
+                                [class.dark:text-rose-300]="k.disabled"
+                                [class.bg-emerald-100]="!k.disabled"
+                                [class.text-emerald-700]="!k.disabled"
+                                [class.dark:bg-emerald-900/30]="!k.disabled"
+                                [class.dark:text-emerald-300]="!k.disabled">
+                                {{ k.disabled ? 'Disabled' : 'Healthy' }}
+                            </span>
+                        </td>
+                        <td class="px-3 py-4 text-right">
+                            <button *ngIf="k.disabled"
+                                (click)="enableKey(k)"
+                                class="inline-flex items-center gap-1 px-3 py-2 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-900/20 dark:text-emerald-300 dark:hover:bg-emerald-900/30 font-medium transition-colors">
+                                <span class="material-symbols-outlined text-[18px]">play_arrow</span>
+                                Bật lại
+                            </button>
+                            <button *ngIf="!k.disabled"
+                                (click)="disableKey(k)"
+                                class="inline-flex items-center gap-1 px-3 py-2 rounded-lg bg-rose-50 text-rose-700 hover:bg-rose-100 dark:bg-rose-900/20 dark:text-rose-300 dark:hover:bg-rose-900/30 font-medium transition-colors">
+                                <span class="material-symbols-outlined text-[18px]">block</span>
+                                Vô hiệu hóa
+                            </button>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
     </div>
 
     <div class="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-gray-200 dark:border-slate-800 p-6">

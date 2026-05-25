@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using UTC_DATN.Data;
 
@@ -11,9 +12,11 @@ using UTC_DATN.Data;
 namespace UTC_DATN.Migrations
 {
     [DbContext(typeof(UTC_DATNContext))]
-    partial class UTC_DATNContextModelSnapshot : ModelSnapshot
+    [Migration("20260521082932_Phase1_ChatbotInfrastructure_Clean")]
+    partial class Phase1_ChatbotInfrastructure_Clean
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -946,7 +949,7 @@ namespace UTC_DATN.Migrations
                         .HasColumnType("uniqueidentifier")
                         .HasDefaultValueSql("(newid())");
 
-                    b.Property<Guid?>("ChatSessionId")
+                    b.Property<Guid>("ChatSessionId")
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<DateTime>("CreatedAt")
@@ -2627,6 +2630,7 @@ namespace UTC_DATN.Migrations
                     b.HasOne("UTC_DATN.Entities.ChatSession", "ChatSession")
                         .WithMany("ChatMessages")
                         .HasForeignKey("ChatSessionId")
+                        .IsRequired()
                         .HasConstraintName("FK_ChatMessages_Session");
 
                     b.Navigation("ChatSession");

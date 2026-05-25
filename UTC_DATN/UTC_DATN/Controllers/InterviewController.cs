@@ -25,6 +25,7 @@ public class InterviewController : ControllerBase
     private readonly IConfiguration _configuration;
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly UTC_DATNContext _context;
+    private readonly IGeminiApiKeyProvider _apiKeyProvider;
 
     public InterviewController(
         IAiMatchingService aiMatchingService,
@@ -33,7 +34,8 @@ public class InterviewController : ControllerBase
         IInterviewService interviewService,
         IConfiguration configuration,
         IHttpClientFactory httpClientFactory,
-        UTC_DATNContext context)
+        UTC_DATNContext context,
+        IGeminiApiKeyProvider apiKeyProvider)
     {
         _aiMatchingService = aiMatchingService;
         _emailService = emailService;
@@ -42,6 +44,7 @@ public class InterviewController : ControllerBase
         _configuration = configuration;
         _httpClientFactory = httpClientFactory;
         _context = context;
+        _apiKeyProvider = apiKeyProvider;
     }
 
     /// <summary>
@@ -169,7 +172,7 @@ public class InterviewController : ControllerBase
         if (string.IsNullOrWhiteSpace(request.JobDescription) && request.JobId == null)
             return BadRequest(new { message = "Cần cung cấp JobId hoặc JobDescription." });
 
-        var apiKey = _configuration["GeminiAI:ApiKey"];
+        var apiKey = _apiKeyProvider.GetApiKey("Interview");
         if (string.IsNullOrEmpty(apiKey))
             return StatusCode(503, new { message = "Chưa cấu hình Gemini API Key." });
 

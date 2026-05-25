@@ -13,17 +13,20 @@ public class AiMatchingService : IAiMatchingService
     private readonly IConfiguration _configuration;
     private readonly ILogger<AiMatchingService> _logger;
     private readonly UTC_DATN.Data.UTC_DATNContext _dbContext;
+    private readonly IGeminiApiKeyProvider _apiKeyProvider;
 
     public AiMatchingService(
         HttpClient httpClient,
         IConfiguration configuration,
         ILogger<AiMatchingService> logger,
-        UTC_DATN.Data.UTC_DATNContext dbContext)
+        UTC_DATN.Data.UTC_DATNContext dbContext,
+        IGeminiApiKeyProvider apiKeyProvider)
     {
         _httpClient = httpClient;
         _configuration = configuration;
         _logger = logger;
         _dbContext = dbContext;
+        _apiKeyProvider = apiKeyProvider;
     }
 
     /// <summary>
@@ -79,8 +82,8 @@ public class AiMatchingService : IAiMatchingService
                 throw new FileNotFoundException($"PDF file not found: {cvFilePath}");
             }
 
-            // Lấy API key từ configuration
-            var apiKey = _configuration["GeminiAI:ApiKey"];
+            // Lấy API key từ provider
+            var apiKey = _apiKeyProvider.GetApiKey("CV");
             if (string.IsNullOrEmpty(apiKey))
             {
                 throw new InvalidOperationException("Gemini API key not configured");
@@ -268,7 +271,7 @@ Lưu ý: Score phải là số nguyên 0-100. CHỈ TRẢ VỀ JSON THUẦN.";
         {
             _logger.LogInformation("📝 Generating email content for candidate: {CandidateName}, Status: {Status}", candidateName, status);
 
-            var apiKey = _configuration["GeminiAI:ApiKey"];
+            var apiKey = _apiKeyProvider.GetApiKey("Email");
             if (string.IsNullOrEmpty(apiKey))
             {
                 throw new InvalidOperationException("Gemini API key not configured");
@@ -451,7 +454,7 @@ Yêu cầu:
             var skills = candidate.CandidateSkills?.Select(cs => cs.Skill?.Name).Where(s => !string.IsNullOrEmpty(s)).ToList() ?? new List<string>();
             var experiences = candidate.CandidateExperiences?.Select(e => $"{e.Title} tại {e.Company}").ToList() ?? new List<string>();
 
-            var apiKey = _configuration["GeminiAI:ApiKey"];
+            var apiKey = _apiKeyProvider.GetApiKey("Email");
             if (string.IsNullOrEmpty(apiKey))
             {
                 throw new InvalidOperationException("Gemini API key chưa được cấu hình");
@@ -544,7 +547,7 @@ Chỉ trả về đoạn văn đó (2-3 câu), không viết tiêu đề hay k�
         {
             _logger.LogInformation("📝 Sinh email từ chối cho ứng viên: {CandidateName}, Vị trí: {JobTitle}", candidateName, jobTitle);
 
-            var apiKey = _configuration["GeminiAI:ApiKey"];
+            var apiKey = _apiKeyProvider.GetApiKey("Email");
             if (string.IsNullOrEmpty(apiKey))
             {
                 throw new InvalidOperationException("Gemini API key chưa được cấu hình");
@@ -643,7 +646,7 @@ KHÔNG thêm markdown code blocks.
         {
             _logger.LogInformation(" Đánh giá câu trả lời bằng AI cho câu hỏi: {Question}", question);
 
-            var apiKey = _configuration["GeminiAI:ApiKey"];
+            var apiKey = _apiKeyProvider.GetNextApiKey();
             if (string.IsNullOrEmpty(apiKey))
             {
                 throw new InvalidOperationException("Gemini API key chưa được cấu hình");

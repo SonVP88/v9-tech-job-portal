@@ -4,6 +4,7 @@ namespace UTC_DATN.Models
     {
         public string Message { get; set; } = string.Empty;
         public List<ChatMessageDto> History { get; set; } = new();
+        public Guid? SessionId { get; set; } // Optional: if null, server generates a new session
     }
 
     public class ChatMessageDto

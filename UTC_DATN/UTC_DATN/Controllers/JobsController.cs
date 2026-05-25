@@ -20,19 +20,22 @@ public class JobsController : ControllerBase
     private readonly ILogger<JobsController> _logger;
     private readonly IConfiguration _configuration;
     private readonly IHttpClientFactory _httpClientFactory;
+    private readonly IGeminiApiKeyProvider _apiKeyProvider;
 
     public JobsController(
         IJobService jobService,
         UTC_DATNContext context,
         ILogger<JobsController> logger,
         IConfiguration configuration,
-        IHttpClientFactory httpClientFactory)
+        IHttpClientFactory httpClientFactory,
+        IGeminiApiKeyProvider apiKeyProvider)
     {
         _jobService = jobService;
         _context = context;
         _logger = logger;
         _configuration = configuration;
         _httpClientFactory = httpClientFactory;
+        _apiKeyProvider = apiKeyProvider;
     }
 
     /// <summary>
@@ -296,7 +299,7 @@ public class JobsController : ControllerBase
         if (string.IsNullOrWhiteSpace(request.Title))
             return BadRequest(new { message = "Tiêu đề vị trí là bắt buộc." });
 
-        var apiKey = _configuration["GeminiAI:ApiKey"];
+        var apiKey = _apiKeyProvider.GetApiKey("JD");
         if (string.IsNullOrEmpty(apiKey))
             return StatusCode(503, new { message = "Chưa cấu hình Gemini API Key." });
 
@@ -341,14 +344,39 @@ CHỈ trả về JSON thuần (không markdown, không code block):
             var jsonContent = new StringContent(
                 JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
 
-            var apiUrl = $"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={apiKey}";
-            var response = await httpClient.PostAsync(apiUrl, jsonContent);
-
-            if (!response.IsSuccessStatusCode)
+            // Thử với 3 API keys (original + 2 fallback)
+            HttpResponseMessage response = null;
+            for (int attempt = 0; attempt < 3; attempt++)
             {
+                var currentKey = attempt == 0 ? apiKey : _apiKeyProvider.GetNextApiKey();
+                var apiUrl = $"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={currentKey}";
+                
+                _logger.LogInformation("[AI JD] Attempt {Attempt} with key", attempt + 1);
+                response = await httpClient.PostAsync(apiUrl, jsonContent);
+
+                // Thành công, thoát vòng lặp
+                if (response.IsSuccessStatusCode)
+                {
+                    _logger.LogInformation("[AI JD] Success with key on attempt {Attempt}", attempt + 1);
+                    break;
+                }
+
+                // 503 = rate limited, thử key khác
+                if (response.StatusCode == System.Net.HttpStatusCode.ServiceUnavailable && attempt < 2)
+                {
+                    _logger.LogWarning("[AI JD] Got 503, retrying with different key...");
+                    continue;
+                }
+
+                // Lỗi khác, báo cáo
                 var errBody = await response.Content.ReadAsStringAsync();
                 _logger.LogError("[AI JD] Gemini error {Status}: {Body}", response.StatusCode, errBody);
                 return StatusCode(502, new { message = "Gemini AI tạm thời không khả dụng. Vui lòng thử lại sau." });
+            }
+
+            if (!response.IsSuccessStatusCode)
+            {
+                return StatusCode(502, new { message = "Gemini AI tạm thời không khả dụng sau 3 lần thử." });
             }
 
             var responseText = await response.Content.ReadAsStringAsync();

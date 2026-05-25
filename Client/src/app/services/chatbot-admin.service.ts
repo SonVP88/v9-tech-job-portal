@@ -24,6 +24,14 @@ export interface UpsertChatbotFaqPayload {
     isActive: boolean;
 }
 
+export interface GeminiKeyStat {
+    keyIndex: number;
+    keyPreview: string;
+    successCount: number;
+    failureCount: number;
+    disabled: boolean;
+}
+
 @Injectable({
     providedIn: 'root'
 })
@@ -69,5 +77,17 @@ export class ChatbotAdminService {
 
     deleteFaq(faqId: string): Observable<any> {
         return this.http.delete(`${this.apiUrl}/${faqId}`, { headers: this.getHeaders() });
+    }
+
+    getGeminiKeys(): Observable<GeminiKeyStat[]> {
+        return this.http.get<GeminiKeyStat[]>(`${environment.apiUrl}/admin/gemini-keys`, { headers: this.getHeaders() });
+    }
+
+    disableGeminiKey(keyIndex: number): Observable<any> {
+        return this.http.post(`${environment.apiUrl}/admin/gemini-keys/${keyIndex}/disable`, {}, { headers: this.getHeaders() });
+    }
+
+    enableGeminiKey(keyIndex: number): Observable<any> {
+        return this.http.post(`${environment.apiUrl}/admin/gemini-keys/${keyIndex}/enable`, {}, { headers: this.getHeaders() });
     }
 }

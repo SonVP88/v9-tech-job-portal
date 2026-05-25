@@ -9,8 +9,11 @@ using UTC_DATN.Entities;
 using Microsoft.EntityFrameworkCore;
 using System.Text.RegularExpressions;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.AspNetCore.Authorization;
 using System.Security.Claims;
+using UTC_DATN.Services.Interfaces;
+using UTC_DATN.Services.Implements;
 
 namespace UTC_DATN.Controllers
 {
@@ -23,19 +26,34 @@ namespace UTC_DATN.Controllers
         private readonly IConfiguration _configuration;
         private readonly UTC_DATNContext _context;
         private readonly IMemoryCache _cache;
+        private readonly IGeminiApiKeyProvider _apiKeyProvider;
+        private readonly IntentClassifier _intentClassifier;
+        private readonly EntityExtractor _entityExtractor;
+        private readonly IServiceScopeFactory _scopeFactory;
+        private readonly UTC_DATN.Services.Background.IBackgroundTaskQueue _taskQueue;
 
         public ChatbotController(
             IHttpClientFactory httpClientFactory, 
             ILogger<ChatbotController> logger, 
             IConfiguration configuration,
             UTC_DATNContext context,
-            IMemoryCache cache)
+            IMemoryCache cache,
+            IGeminiApiKeyProvider apiKeyProvider,
+            IntentClassifier intentClassifier,
+            EntityExtractor entityExtractor,
+            IServiceScopeFactory scopeFactory,
+            UTC_DATN.Services.Background.IBackgroundTaskQueue taskQueue)
         {
             _httpClientFactory = httpClientFactory;
             _logger = logger;
             _configuration = configuration;
             _context = context;
             _cache = cache;
+            _apiKeyProvider = apiKeyProvider;
+            _intentClassifier = intentClassifier;
+            _entityExtractor = entityExtractor;
+            _scopeFactory = scopeFactory ?? throw new ArgumentNullException(nameof(scopeFactory));
+            _taskQueue = taskQueue ?? throw new ArgumentNullException(nameof(taskQueue));
         }
 
         [HttpGet("admin/faqs")]
@@ -192,8 +210,12 @@ namespace UTC_DATN.Controllers
 
                 var sw = Stopwatch.StartNew();
                 var httpClient = _httpClientFactory.CreateClient("GeminiClient");
-                
-                var apiKey = _configuration["GeminiAI:ApiKey"];
+
+                // Ensure we have a session id and persist the user message
+                var sessionId = request.SessionId ?? Guid.NewGuid();
+                var savedUserMessage = await SaveUserMessageAsync(request.Message, sessionId, cts.Token);
+
+                var apiKey = _apiKeyProvider.GetApiKey("Chatbot");
                 if (string.IsNullOrEmpty(apiKey))
                 {
                     _logger.LogWarning("Gemini API Key is not configured.");
@@ -353,54 +375,109 @@ Ví dụ: User hỏi 'Backend Developer khó không?'
                 // 3. Khởi tạo SSE HTTP Headers trước khi gọi Google
                 Response.ContentType = "text/event-stream";
                 Response.Headers["Cache-Control"] = "no-cache";
+                Response.Headers["Connection"] = "keep-alive";
                 await Response.Body.FlushAsync(cts.Token);
 
-                // 4. Hàm thực thi HTTP Call hỗ trợ Streaming
-                async Task<HttpResponseMessage> CallGemini(string modelUrl, string json)
+                // Gửi sessionId về client ngay lập tức để frontend lưu lại (nếu client cần)
+                try
                 {
-                    var req = new HttpRequestMessage(HttpMethod.Post, modelUrl) 
-                    { 
-                        Content = new StringContent(json, Encoding.UTF8, "application/json") 
-                    };
-                    return await httpClient.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, cts.Token);
+                    var sessObj = new { sessionId = sessionId };
+                    await Response.WriteAsync($"data: {JsonSerializer.Serialize(sessObj)}\n\n", cts.Token);
+                    await Response.Body.FlushAsync(cts.Token);
+                }
+                catch { }
+
+                // 4. Hàm thực thi HTTP Call hỗ trợ Streaming với retry + per-key reporting
+                async Task<HttpResponseMessage> CallGeminiWithRetry(string baseModelUrl, string json, string moduleName)
+                {
+                    var maxAttempts = 3;
+                    var attempt = 0;
+                    var delayMs = 1000;
+
+                    while (attempt < maxAttempts && !cts.IsCancellationRequested)
+                    {
+                        attempt++;
+                        string key;
+                        try
+                        {
+                            key = _apiKeyProvider.GetApiKey(moduleName);
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogError(ex, "Lỗi khi lấy Gemini API key");
+                            throw;
+                        }
+
+                        var urlWithKey = baseModelUrl + "&key=" + System.Net.WebUtility.UrlEncode(key);
+                        try
+                        {
+                            var req = new HttpRequestMessage(HttpMethod.Post, urlWithKey)
+                            {
+                                Content = new StringContent(json, Encoding.UTF8, "application/json")
+                            };
+
+                            _logger.LogInformation("[Gemini] Gọi API (attempt {Attempt}) với key {KeyPreview}", attempt, TruncateKeyForLogs(key));
+                            var resp = await httpClient.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, cts.Token);
+
+                            if (resp.IsSuccessStatusCode)
+                            {
+                                _apiKeyProvider.ReportSuccess(key);
+                                return resp;
+                            }
+
+                            // Report failure for 429/5xx
+                            if (resp.StatusCode == System.Net.HttpStatusCode.TooManyRequests || (int)resp.StatusCode >= 500)
+                            {
+                                _apiKeyProvider.ReportFailure(key);
+                                _logger.LogWarning("[Gemini] Non-success status {Status} on attempt {Attempt} (key preview: {KeyPreview})", resp.StatusCode, attempt, TruncateKeyForLogs(key));
+                                resp.Dispose();
+
+                                // jittered backoff
+                                var jitter = new Random().Next(0, 300);
+                                await Task.Delay(delayMs + jitter, cts.Token);
+                                delayMs *= 2;
+                                continue;
+                            }
+
+                            // Other non-success (4xx) - no retry
+                            return resp;
+                        }
+                        catch (OperationCanceledException) when (cts.IsCancellationRequested)
+                        {
+                            throw;
+                        }
+                        catch (Exception ex)
+                        {
+                            _apiKeyProvider.ReportFailure(key);
+                            _logger.LogWarning(ex, "Lỗi khi gọi Gemini trên attempt {Attempt}", attempt);
+                            var jitter = new Random().Next(0, 300);
+                            await Task.Delay(delayMs + jitter, cts.Token);
+                            delayMs *= 2;
+                            continue;
+                        }
+                    }
+
+                    throw new HttpRequestException("Failed to call Gemini after multiple attempts");
                 }
 
-                var url25 = $"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:streamGenerateContent?alt=sse&key={apiKey}";
+                var baseUrl = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:streamGenerateContent?alt=sse";
                 _logger.LogInformation($"[Gemini 2.5] Gọi API... Tokens ước tính: {payloadJson.Length} chars.");
-                var response = await CallGemini(url25, payloadJson);
-                
-                // Retry cho 429 - Đợi 4 giây (đủ thời gian để Google hồi phục Quota)
-                if (response.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
+                HttpResponseMessage response;
+                try
                 {
-                    _logger.LogWarning("[Gemini 2.5] 429 Rate Limit. Đợi 4s để thử lại...");
-                    response.Dispose();
-                    await Task.Delay(4000, cts.Token);
-                    response = await CallGemini(url25, payloadJson);
+                    response = await CallGeminiWithRetry(baseUrl, payloadJson, "Chatbot");
                 }
-
-                if (!response.IsSuccessStatusCode)
+                catch (Exception ex)
                 {
-                    var errBody = await response.Content.ReadAsStringAsync();
-                    _logger.LogError($"[Gemini 2.5 Error] {response.StatusCode}: {errBody}");
-
-                    try 
-                    { 
-                        var logPath = Path.Combine(AppContext.BaseDirectory, "chatbot_api_error.log");
-                        await System.IO.File.AppendAllTextAsync(logPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] {response.StatusCode}: {errBody}\n");
-                    } 
-                    catch { }
-                    
-                    string errorMsg = response.StatusCode == System.Net.HttpStatusCode.TooManyRequests
-                        ? "Hệ thống AI đang bận, bạn vui lòng đợi khoảng 30 giây rồi thử lại nhé!"
-                        : "Rất tiếc, hệ thống AI tạm thời không khả dụng. Vui lòng thử lại sau.";
-
-                    response.Dispose();
-                    await WriteStreamEvent(Response, errorMsg);
-                    return; 
+                    _logger.LogError(ex, "Gọi Gemini thất bại sau retry");
+                    await WriteStreamEvent(Response, "Rất tiếc, hệ thống AI tạm thời không khả dụng. Vui lòng thử lại sau.");
+                    return;
                 }
                 // 5. Đọc Stream liên tục và đẩy về luồng Console/Angular
                 using var responseStream = await response.Content.ReadAsStreamAsync(cts.Token);
                 using var reader = new StreamReader(responseStream);
+
+                var assistantSb = new StringBuilder();
 
                 while (!reader.EndOfStream && !cts.Token.IsCancellationRequested)
                 {
@@ -424,6 +501,7 @@ Ví dụ: User hỏi 'Backend Developer khó không?'
                                     var textChunk = textElement.GetString();
                                     if (!string.IsNullOrEmpty(textChunk))
                                     {
+                                        assistantSb.Append(textChunk);
                                         var chunkObj = new { text = textChunk };
                                         var chunkJson = JsonSerializer.Serialize(chunkObj);
                                         await Response.WriteAsync($"data: {chunkJson}\n\n", cts.Token);
@@ -442,6 +520,20 @@ Ví dụ: User hỏi 'Backend Developer khó không?'
                 // Kết thúc Stream bình thường, gửi cờ DONE để nhả Frontend Loader
                 await Response.WriteAsync("data: [DONE]\n\n", cts.Token);
                 await Response.Body.FlushAsync(cts.Token);
+
+                // Save assistant full message to DB (non-blocking safety)
+                try
+                {
+                    var assistantText = assistantSb.ToString();
+                    if (!string.IsNullOrWhiteSpace(assistantText))
+                    {
+                        _taskQueue.QueueBackgroundWorkItem(ct => SaveAssistantMessageAsync(assistantText, sessionId, ct));
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error saving assistant message");
+                }
             }
             // Khối Fallback 
             catch (Exception ex) when (ex is TaskCanceledException || ex is HttpRequestException)
@@ -543,6 +635,127 @@ Ví dụ: User hỏi 'Backend Developer khó không?'
             }
 
             return Guid.TryParse(claim.Value, out var userId) ? userId : null;
+        }
+
+        private static string TruncateKeyForLogs(string key)
+        {
+            if (string.IsNullOrEmpty(key)) return "(empty)";
+            if (key.Length <= 8) return key;
+            return key.Substring(0, 4) + "..." + key.Substring(key.Length - 4);
+        }
+
+        /// <summary>
+        /// Helper: Lưu user message vào database
+        /// </summary>
+        private async Task<ChatMessage?> SaveUserMessageAsync(string message, Guid sessionId, CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                // If session row doesn't exist in DB (requires ApplicationId FK),
+                // do not attempt to create a placeholder ChatSession here.
+                // Instead leave ChatSessionId null so FK is not violated.
+                var existingSession = await _context.ChatSessions.FindAsync(new object[] { sessionId }, cancellationToken);
+
+                var chatMessage = new ChatMessage
+                {
+                    ChatMessageId = Guid.NewGuid(),
+                    ChatSessionId = existingSession != null ? sessionId : (Guid?)null,
+                    Sender = "user",
+                    Message = message,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                };
+
+                _context.ChatMessages.Add(chatMessage);
+                await _context.SaveChangesAsync(cancellationToken);
+
+                // Phân loại intent non-blocking: enqueue cho background worker
+                _taskQueue.QueueBackgroundWorkItem(ct => ClassifyAndSaveAnalyticsAsync(chatMessage, ct));
+
+                return chatMessage;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error saving user message");
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Helper: Phân loại intent và lưu analytics
+        /// </summary>
+        private async Task ClassifyAndSaveAnalyticsAsync(ChatMessage message, CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                using var scope = _scopeFactory.CreateScope();
+                var db = scope.ServiceProvider.GetRequiredService<UTC_DATNContext>();
+                var intentClassifier = scope.ServiceProvider.GetRequiredService<IntentClassifier>();
+                var entityExtractor = scope.ServiceProvider.GetRequiredService<EntityExtractor>();
+
+                var sw = Stopwatch.StartNew();
+
+                var intentResult = await intentClassifier.ClassifyAsync(message.Message);
+                var entities = await entityExtractor.ExtractAsync(message.Message);
+
+                sw.Stop();
+
+                var analytics = new ChatAnalytics
+                {
+                    AnalyticsId = Guid.NewGuid(),
+                    MessageId = message.ChatMessageId,
+                    Intent = intentResult.Intent,
+                    IntentConfidence = (decimal)intentResult.Confidence,
+                    ResponseTimeMs = (int)sw.ElapsedMilliseconds,
+                    EntityCount = entities.Count,
+                    EntityConfidence = entities.Count > 0 ? (decimal)entities.Average(e => e.Confidence) : null,
+                    CreatedAt = DateTime.UtcNow,
+                    WasEscalated = false
+                };
+
+                db.ChatAnalytics.Add(analytics);
+                await db.SaveChangesAsync(cancellationToken);
+
+                _logger.LogDebug($"[Analytics] Saved for message {message.ChatMessageId}: Intent={intentResult.Intent} ({intentResult.Confidence:P})");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error classifying and saving analytics");
+            }
+        }
+
+        /// <summary>
+        /// Helper: Lưu assistant response message
+        /// </summary>
+        private async Task<ChatMessage?> SaveAssistantMessageAsync(string message, Guid sessionId, CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                using var scope = _scopeFactory.CreateScope();
+                var db = scope.ServiceProvider.GetRequiredService<UTC_DATNContext>();
+
+                var existingSession = await db.ChatSessions.FindAsync(new object[] { sessionId }, cancellationToken);
+
+                var chatMessage = new ChatMessage
+                {
+                    ChatMessageId = Guid.NewGuid(),
+                    ChatSessionId = existingSession != null ? sessionId : (Guid?)null,
+                    Sender = "assistant",
+                    Message = message,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                };
+
+                db.ChatMessages.Add(chatMessage);
+                await db.SaveChangesAsync(cancellationToken);
+
+                return chatMessage;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error saving assistant message");
+                return null;
+            }
         }
     }
 

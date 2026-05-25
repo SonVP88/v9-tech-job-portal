@@ -30,29 +30,52 @@ namespace UTC_DATN.Services.Background
         {
             _logger.LogInformation("🚀 SLA Alert Background Service khởi động");
 
-            // Delay ban đầu 30 giây để app startup xong rồi mới chạy
-            await Task.Delay(TimeSpan.FromSeconds(30), stoppingToken);
-
-            while (!stoppingToken.IsCancellationRequested)
+            try
             {
-                try
+                // Delay ban đầu 30 giây để app startup xong rồi mới chạy
+                await Task.Delay(TimeSpan.FromSeconds(30), stoppingToken);
+
+                while (!stoppingToken.IsCancellationRequested)
                 {
-                    using (var scope = _serviceProvider.CreateScope())
+                    try
                     {
-                        var slaAlertService = scope.ServiceProvider.GetRequiredService<ISlaAlertService>();
-                        await slaAlertService.CheckAndSendSlaAlertsAsync(stoppingToken);
+                        using (var scope = _serviceProvider.CreateScope())
+                        {
+                            var slaAlertService = scope.ServiceProvider.GetRequiredService<ISlaAlertService>();
+                            await slaAlertService.CheckAndSendSlaAlertsAsync(stoppingToken);
+                        }
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        // TaskCanceledException khi app shutdown - normal behavior
+                        _logger.LogInformation("ℹ️ SLA Alert check bị cancel do app shutdown");
+                        break;
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError($"❌ Lỗi trong SLA Alert Background Service: {ex.Message}");
+                    }
+
+                    try
+                    {
+                        // Chờ interval trước khi chạy lần tiếp theo
+                        await Task.Delay(TimeSpan.FromMinutes(_intervalMinutes), stoppingToken);
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        // Normal during shutdown
+                        break;
                     }
                 }
-                catch (Exception ex)
-                {
-                    _logger.LogError($" Lỗi trong SLA Alert Background Service: {ex.Message}");
-                }
-
-                // Chờ interval trước khi chạy lần tiếp theo
-                await Task.Delay(TimeSpan.FromMinutes(_intervalMinutes), stoppingToken);
             }
-
-            _logger.LogInformation("🛑 SLA Alert Background Service dừng lại");
+            catch (OperationCanceledException)
+            {
+                _logger.LogInformation("ℹ️ SLA Alert Background Service cancelled");
+            }
+            finally
+            {
+                _logger.LogInformation("🛑 SLA Alert Background Service dừng lại");
+            }
         }
     }
 }

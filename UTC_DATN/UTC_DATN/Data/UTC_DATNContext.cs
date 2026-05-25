@@ -52,6 +52,16 @@ public partial class UTC_DATNContext : DbContext
 
     public virtual DbSet<ChatbotFaq> ChatbotFaqs { get; set; }
 
+    /// <summary>
+    /// Phase 1: Chat Feedback tracking
+    /// </summary>
+    public virtual DbSet<ChatFeedback> ChatFeedbacks { get; set; }
+
+    /// <summary>
+    /// Phase 1: Chat Analytics tracking
+    /// </summary>
+    public virtual DbSet<ChatAnalytics> ChatAnalytics { get; set; }
+
     public virtual DbSet<EmailQueue> EmailQueues { get; set; }
 
     public virtual DbSet<EmailSendLog> EmailSendLogs { get; set; }
@@ -563,6 +573,65 @@ public partial class UTC_DATNContext : DbContext
                 .HasConstraintName("FK_ChatSessions_App");
         });
 
+        // Phase 1: ChatFeedback configuration
+        modelBuilder.Entity<ChatFeedback>(entity =>
+        {
+            entity.HasKey(e => e.FeedbackId);
+            entity.Property(e => e.FeedbackId).HasDefaultValueSql("(newid())");
+            entity.Property(e => e.Rating).HasDefaultValue(null);
+            entity.Property(e => e.Category).HasMaxLength(100);
+            entity.Property(e => e.Comments).HasMaxLength(1000);
+            entity.Property(e => e.UserSentiment).HasMaxLength(50);
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("(sysutcdatetime())");
+            entity.Property(e => e.UpdatedAt).HasDefaultValueSql("(sysutcdatetime())");
+
+            entity.HasIndex(e => e.ChatSessionId, "IX_ChatFeedback_ChatSessionId");
+            entity.HasIndex(e => e.MessageId, "IX_ChatFeedback_MessageId");
+            entity.HasIndex(e => e.UserId, "IX_ChatFeedback_UserId");
+
+            entity.HasOne(d => d.ChatSession).WithMany()
+                .HasForeignKey(d => d.ChatSessionId)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("FK_ChatFeedback_ChatSession");
+
+            entity.HasOne(d => d.Message).WithOne(p => p.Feedback)
+                .HasForeignKey<ChatFeedback>(d => d.MessageId)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("FK_ChatFeedback_ChatMessage");
+
+            entity.HasOne(d => d.User).WithMany()
+                .HasForeignKey(d => d.UserId)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("FK_ChatFeedback_User");
+        });
+
+        // Phase 1: ChatAnalytics configuration
+        modelBuilder.Entity<ChatAnalytics>(entity =>
+        {
+            entity.HasKey(e => e.AnalyticsId);
+            entity.Property(e => e.AnalyticsId).HasDefaultValueSql("(newid())");
+            entity.Property(e => e.Intent).HasMaxLength(100);
+            entity.Property(e => e.IntentConfidence).HasColumnType("decimal(5, 4)");
+            entity.Property(e => e.EntityConfidence).HasColumnType("decimal(5, 4)");
+            entity.Property(e => e.EscalationReason).HasMaxLength(500);
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("(sysutcdatetime())");
+
+            entity.HasIndex(e => e.MessageId, "IX_ChatAnalytics_MessageId");
+            entity.HasIndex(e => e.UserId, "IX_ChatAnalytics_UserId");
+            entity.HasIndex(e => e.Intent, "IX_ChatAnalytics_Intent");
+            entity.HasIndex(e => e.CreatedAt, "IX_ChatAnalytics_CreatedAt");
+
+            entity.HasOne(d => d.Message).WithMany(p => p.ChatAnalyticsCollection)
+                .HasForeignKey(d => d.MessageId)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("FK_ChatAnalytics_ChatMessage");
+
+            entity.HasOne(d => d.User).WithMany()
+                .HasForeignKey(d => d.UserId)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("FK_ChatAnalytics_User");
+        });
+
         modelBuilder.Entity<EmailQueue>(entity =>
         {
             entity.ToTable("EmailQueue");
@@ -841,7 +910,7 @@ public partial class UTC_DATNContext : DbContext
         {
             entity.HasKey(e => e.TagId);
 
-            entity.HasIndex(e => e.NormalizedName, "UQ_JobTags_NormalizedName").IsUnique();
+            entity.HasIndex(e => e.NormalizedName, "UQ_JobTags_NormalizedName").IsUnique().HasFilter(null);
 
             entity.Property(e => e.TagId).HasDefaultValueSql("(newid())");
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("(sysutcdatetime())");
@@ -982,7 +1051,7 @@ public partial class UTC_DATNContext : DbContext
 
         modelBuilder.Entity<Skill>(entity =>
         {
-            entity.HasIndex(e => e.NormalizedName, "UQ_Skills_NormalizedName").IsUnique();
+            entity.HasIndex(e => e.NormalizedName, "UQ_Skills_NormalizedName").IsUnique().HasFilter(null);
 
             entity.Property(e => e.SkillId).HasDefaultValueSql("(newid())");
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("(sysutcdatetime())");
