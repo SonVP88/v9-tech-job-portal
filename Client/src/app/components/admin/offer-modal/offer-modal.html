@@ -47,7 +47,12 @@
                         <input type="number" [(ngModel)]="offerData.salary" placeholder="VD: 15000000"
                             class="w-full pl-10 pr-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white transition-all" />
                     </div>
-                    <p class="text-xs text-gray-500 mt-1">Gross/Net trước thuế</p>
+                    <p class="text-xs mt-1 text-gray-500" [class.text-blue-600]="offerData.salary">
+                        Gross trước thuế.
+                        <span *ngIf="offerData.salary" class="font-semibold block sm:inline mt-1 sm:mt-0">
+                            (Bằng chữ: {{ formatSalaryInWords(offerData.salary) }})
+                        </span>
+                    </p>
                 </div>
 
                 <!-- Ngày bắt đầu -->

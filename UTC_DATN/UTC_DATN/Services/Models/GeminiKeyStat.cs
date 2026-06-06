@@ -7,4 +7,5 @@ public class GeminiKeyStat
     public int SuccessCount { get; set; }
     public int FailureCount { get; set; }
     public bool Disabled { get; set; }
+    public List<string> AssignedModules { get; set; } = new();
 }

@@ -1,3 +1,5 @@
+using System.Threading.Tasks;
+
 namespace UTC_DATN.Services.Interfaces;
 
 /// <summary>
@@ -55,4 +57,9 @@ public interface IGeminiApiKeyProvider
     /// Kích hoạt lại Gemini API key theo index
     /// </summary>
     bool EnableKey(int keyIndex);
+
+    /// <summary>
+    /// Đăng ký và xác thực Gemini API key mới vào cấu hình hệ thống
+    /// </summary>
+    Task<bool> AddKeyAsync(string key);
 }

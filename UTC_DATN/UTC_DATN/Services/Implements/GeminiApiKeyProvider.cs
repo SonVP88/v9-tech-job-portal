@@ -1,5 +1,10 @@
 using System;
+using System.IO;
 using System.Linq;
+using System.Net.Http;
+using System.Text;
+using System.Text.Json;
+using System.Threading.Tasks;
 using UTC_DATN.Services.Interfaces;
 
 namespace UTC_DATN.Services.Implements;
@@ -13,6 +18,7 @@ public class GeminiApiKeyProvider : IGeminiApiKeyProvider
     private readonly List<ApiKeyInfo> _apiKeys;
     private readonly Dictionary<string, int> _moduleToKeyIndex; // Module -> Key index mapping
     private readonly ILogger<GeminiApiKeyProvider> _logger;
+    private readonly IHttpClientFactory _httpClientFactory;
     private int _roundRobinIndex = 0;
     private readonly object _lock = new object();
 
@@ -43,9 +49,10 @@ public class GeminiApiKeyProvider : IGeminiApiKeyProvider
         { "Code", 5 }          // Key 6 (nếu có, không bắt buộc)
     };
 
-    public GeminiApiKeyProvider(IConfiguration configuration, ILogger<GeminiApiKeyProvider> logger)
+    public GeminiApiKeyProvider(IConfiguration configuration, ILogger<GeminiApiKeyProvider> logger, IHttpClientFactory httpClientFactory)
     {
         _logger = logger;
+        _httpClientFactory = httpClientFactory;
         _apiKeys = new List<ApiKeyInfo>();
         _moduleToKeyIndex = new Dictionary<string, int>();
 
@@ -214,13 +221,21 @@ public class GeminiApiKeyProvider : IGeminiApiKeyProvider
     {
         lock (_lock)
         {
-            return _apiKeys.Select((i, index) => new UTC_DATN.Services.Models.GeminiKeyStat
-            {
-                KeyIndex = index,
-                KeyPreview = TruncateKey(i.Key),
-                SuccessCount = i.SuccessCount,
-                FailureCount = i.FailureCount,
-                Disabled = i.Disabled
+            return _apiKeys.Select((i, index) => {
+                var assigned = _moduleToKeyIndex
+                    .Where(kvp => kvp.Value == index)
+                    .Select(kvp => kvp.Key)
+                    .ToList();
+
+                return new UTC_DATN.Services.Models.GeminiKeyStat
+                {
+                    KeyIndex = index,
+                    KeyPreview = TruncateKey(i.Key),
+                    SuccessCount = i.SuccessCount,
+                    FailureCount = i.FailureCount,
+                    Disabled = i.Disabled,
+                    AssignedModules = assigned
+                };
             }).ToList();
         }
     }
@@ -254,6 +269,111 @@ public class GeminiApiKeyProvider : IGeminiApiKeyProvider
             info.FailureCount = 0;
             info.LastFailureAt = null;
             _logger.LogInformation("✅ API key #{Index} enabled by admin", keyIndex + 1);
+            return true;
+        }
+    }
+
+    private async Task<bool> ValidateApiKeyAsync(string apiKey)
+    {
+        if (string.IsNullOrWhiteSpace(apiKey)) return false;
+
+        try
+        {
+            _logger.LogInformation("🔍 Đang xác thực API Key với Google Gemini API...");
+            var client = _httpClientFactory.CreateClient("GeminiClient");
+            
+            var apiUrl = $"https://generativelanguage.googleapis.com/v1beta/models?key={apiKey}";
+            
+            var response = await client.GetAsync(apiUrl);
+            if (response.IsSuccessStatusCode)
+            {
+                _logger.LogInformation("✅ API Key hợp lệ và hoạt động bình thường.");
+                return true;
+            }
+
+            var errorContent = await response.Content.ReadAsStringAsync();
+            _logger.LogWarning("⚠️ Xác thực API Key thất bại từ Google API. StatusCode: {StatusCode}, Error: {Error}", response.StatusCode, errorContent);
+            return false;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "❌ Gặp lỗi khi cố gắng xác thực API Key qua Google API.");
+            return false;
+        }
+    }
+
+    public async Task<bool> AddKeyAsync(string key)
+    {
+        if (string.IsNullOrWhiteSpace(key)) return false;
+        
+        var cleanKey = key.Trim();
+
+        // 1. Kiểm tra sơ bộ xem đã tồn tại chưa
+        lock (_lock)
+        {
+            if (_apiKeys.Any(i => i.Key == cleanKey))
+            {
+                _logger.LogWarning("⚠️ API Key đã tồn tại trong danh sách: {Key}", TruncateKey(cleanKey));
+                return false;
+            }
+        }
+
+        // 2. Xác thực với Google API (ngoài lock block để tránh block luồng hệ thống)
+        var isValid = await ValidateApiKeyAsync(cleanKey);
+        if (!isValid)
+        {
+            return false;
+        }
+
+        // 3. Tiến hành ghi và lưu trữ trong lock
+        lock (_lock)
+        {
+            // Kiểm tra lại đề phòng race condition
+            if (_apiKeys.Any(i => i.Key == cleanKey))
+            {
+                return false;
+            }
+
+            // Thêm vào danh sách runtime
+            _apiKeys.Add(new ApiKeyInfo { Key = cleanKey });
+            
+            // Ánh xạ lại các module theo số lượng key mới
+            InitializeModuleMapping();
+
+            // Đồng bộ ghi đè vào file cấu hình appsettings.json
+            try
+            {
+                var filePath = Path.Combine(Directory.GetCurrentDirectory(), "appsettings.json");
+                if (File.Exists(filePath))
+                {
+                    var jsonContent = File.ReadAllText(filePath);
+                    
+                    var dict = JsonSerializer.Deserialize<Dictionary<string, object>>(jsonContent);
+                    if (dict != null && dict.TryGetValue("GeminiAI", out var geminiAiObj))
+                    {
+                        var geminiAiJson = JsonSerializer.Serialize(geminiAiObj);
+                        var geminiDict = JsonSerializer.Deserialize<Dictionary<string, object>>(geminiAiJson);
+                        if (geminiDict != null)
+                        {
+                            // Cập nhật mảng ApiKeys mới
+                            var currentKeys = _apiKeys.Select(k => k.Key).ToList();
+                            geminiDict["ApiKeys"] = currentKeys;
+                            dict["GeminiAI"] = geminiDict;
+
+                            var options = new JsonSerializerOptions { WriteIndented = true };
+                            var newJson = JsonSerializer.Serialize(dict, options);
+                            File.WriteAllText(filePath, newJson);
+                            
+                            _logger.LogInformation("💾 Tự động ghi và lưu Gemini API Key mới thành công vào appsettings.json");
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ Lỗi khi tự động lưu Gemini API Key vào file appsettings.json");
+            }
+
             return true;
         }
     }

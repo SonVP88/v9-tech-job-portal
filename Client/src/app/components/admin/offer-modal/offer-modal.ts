@@ -123,6 +123,27 @@ export class OfferModalComponent {
     }
 
     /**
+     * Dịch mức lương sang dạng chữ tiếng Việt dễ đọc (Ví dụ: 10 triệu, 100 triệu)
+     */
+    formatSalaryInWords(value: number | null): string {
+        if (!value || isNaN(value)) return '';
+        if (value < 1000) return `${value} VNĐ`;
+
+        const billion = Math.floor(value / 1000000000);
+        const million = Math.floor((value % 1000000000) / 1000000);
+        const thousand = Math.floor((value % 1000000) / 1000);
+        const remain = value % 1000;
+
+        let parts: string[] = [];
+        if (billion > 0) parts.push(`${billion} tỷ`);
+        if (million > 0) parts.push(`${million} triệu`);
+        if (thousand > 0) parts.push(`${thousand} nghìn`);
+        if (remain > 0) parts.push(`${remain} VNĐ`);
+
+        return parts.join(' ').trim();
+    }
+
+    /**
      * Reset form về trạng thái ban đầu
      */
     resetForm(): void {

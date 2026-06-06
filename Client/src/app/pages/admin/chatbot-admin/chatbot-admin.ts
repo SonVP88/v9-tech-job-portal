@@ -1,4 +1,4 @@
-import { Component, OnDestroy, OnInit } from '@angular/core';
+import { Component, OnDestroy, OnInit, ChangeDetectorRef, NgZone } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { NgFor, NgIf } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -25,6 +25,9 @@ export class ChatbotAdminComponent implements OnInit, OnDestroy {
     isKeysLoading = false;
     isModalOpen = false;
     isSaving = false;
+    isKeyModalOpen = false;
+    newApiKey = '';
+    isSavingKey = false;
     modalMode: 'create' | 'edit' = 'create';
     editingFaqId: string | null = null;
     private keyRefreshHandle: ReturnType<typeof setInterval> | null = null;
@@ -41,7 +44,9 @@ export class ChatbotAdminComponent implements OnInit, OnDestroy {
     constructor(
         private chatbotAdminService: ChatbotAdminService,
         private toast: ToastService,
-        private popup: PopupService
+        private popup: PopupService,
+        private cdr: ChangeDetectorRef,
+        private ngZone: NgZone
     ) { }
 
     ngOnInit(): void {
@@ -61,12 +66,22 @@ export class ChatbotAdminComponent implements OnInit, OnDestroy {
         this.isKeysLoading = true;
         this.chatbotAdminService.getGeminiKeys().subscribe({
             next: (items) => {
-                this.keyStats = items || [];
-                this.isKeysLoading = false;
+                this.ngZone.run(() => {
+                    this.keyStats = items || [];
+                    this.isKeysLoading = false;
+                    setTimeout(() => {
+                        this.cdr.detectChanges();
+                    });
+                });
             },
             error: (err) => {
-                this.isKeysLoading = false;
-                this.toast.error('Lỗi', err.error?.message || 'Không thể tải thống kê API keys.');
+                this.ngZone.run(() => {
+                    this.isKeysLoading = false;
+                    this.toast.error('Lỗi', err.error?.message || 'Không thể tải thống kê API keys.');
+                    setTimeout(() => {
+                        this.cdr.detectChanges();
+                    });
+                });
             }
         });
     }
@@ -89,13 +104,23 @@ export class ChatbotAdminComponent implements OnInit, OnDestroy {
 
         this.chatbotAdminService.getFaqs(this.searchQuery, status).subscribe({
             next: (items) => {
-                this.faqs = items;
-                this.filteredFaqs = items;
-                this.isLoading = false;
+                this.ngZone.run(() => {
+                    this.faqs = items;
+                    this.filteredFaqs = items;
+                    this.isLoading = false;
+                    setTimeout(() => {
+                        this.cdr.detectChanges();
+                    });
+                });
             },
             error: (err) => {
-                this.isLoading = false;
-                this.toast.error('Lỗi', err.error?.message || 'Không thể tải dữ liệu FAQ chatbot.');
+                this.ngZone.run(() => {
+                    this.isLoading = false;
+                    this.toast.error('Lỗi', err.error?.message || 'Không thể tải dữ liệu FAQ chatbot.');
+                    setTimeout(() => {
+                        this.cdr.detectChanges();
+                    });
+                });
             }
         });
     }
@@ -280,6 +305,46 @@ export class ChatbotAdminComponent implements OnInit, OnDestroy {
             },
             error: (err) => {
                 this.toast.error('Lỗi', err.error?.message || 'Không thể kích hoạt key.');
+            }
+        });
+    }
+
+    openAddKeyModal(): void {
+        this.newApiKey = '';
+        this.isKeyModalOpen = true;
+        this.cdr.detectChanges();
+    }
+
+    closeAddKeyModal(): void {
+        if (this.isSavingKey) return;
+        this.newApiKey = '';
+        this.isKeyModalOpen = false;
+        this.cdr.detectChanges();
+    }
+
+    saveNewGeminiKey(): void {
+        const key = this.newApiKey.trim();
+        if (!key) {
+            this.toast.warning('Thiếu dữ liệu', 'Vui lòng nhập chuỗi Gemini API Key.');
+            return;
+        }
+
+        this.isSavingKey = true;
+        this.cdr.detectChanges();
+
+        this.chatbotAdminService.addGeminiKey(key).subscribe({
+            next: (res) => {
+                this.isSavingKey = false;
+                this.isKeyModalOpen = false;
+                this.newApiKey = '';
+                this.toast.success('Thành công', res?.message || 'Đã thêm Gemini API Key thành công.');
+                this.loadKeyStats();
+                this.cdr.detectChanges();
+            },
+            error: (err) => {
+                this.isSavingKey = false;
+                this.toast.error('Lỗi', err.error?.message || 'Không thể thêm Gemini API Key mới.');
+                this.cdr.detectChanges();
             }
         });
     }

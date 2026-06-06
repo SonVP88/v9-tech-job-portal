@@ -30,6 +30,7 @@ export interface GeminiKeyStat {
     successCount: number;
     failureCount: number;
     disabled: boolean;
+    assignedModules?: string[];
 }
 
 @Injectable({
@@ -89,5 +90,9 @@ export class ChatbotAdminService {
 
     enableGeminiKey(keyIndex: number): Observable<any> {
         return this.http.post(`${environment.apiUrl}/admin/gemini-keys/${keyIndex}/enable`, {}, { headers: this.getHeaders() });
+    }
+
+    addGeminiKey(key: string): Observable<any> {
+        return this.http.post(`${environment.apiUrl}/admin/gemini-keys/add`, { key }, { headers: this.getHeaders() });
     }
 }

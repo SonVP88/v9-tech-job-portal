@@ -57,6 +57,42 @@ public class ApplicationService : IApplicationService
         return "Ứng viên";
     }
 
+    private IQueryable<ApplicationDto> ProjectToApplicationDto(IQueryable<Entities.Application> query)
+    {
+        return query.Select(a => new ApplicationDto
+        {
+            ApplicationId = a.ApplicationId,
+            JobId = a.JobId,
+            JobTitle = a.Job.Title,
+            CandidateId = a.CandidateId,
+            Status = a.Status,
+            AppliedAt = a.AppliedAt,
+            CvUrl = a.ResumeDocument.File.Url ?? "",
+            CandidateName = a.ContactName ?? a.Candidate.FullName,
+            Email = a.ContactEmail ?? a.Candidate.Email,
+            Phone = a.ContactPhone ?? a.Candidate.Phone,
+            MatchScore = a.ApplicationAiScores.OrderByDescending(x => x.CreatedAt).FirstOrDefault() != null 
+                ? (int?)a.ApplicationAiScores.OrderByDescending(x => x.CreatedAt).FirstOrDefault().MatchingScore 
+                : null,
+            AiExplanation = a.ApplicationAiScores.OrderByDescending(x => x.CreatedAt).FirstOrDefault() != null && a.ApplicationAiScores.OrderByDescending(x => x.CreatedAt).FirstOrDefault().MatchedSkillsJson != null 
+                ? "AI đã phân tích kỹ năng ứng viên" 
+                : null,
+            CurrentStageCode = a.CurrentStage != null ? a.CurrentStage.Code : null,
+            CurrentStageName = a.CurrentStage != null ? a.CurrentStage.Name : null,
+            SlaMaxDays = a.CurrentStage != null ? a.CurrentStage.SlaMaxDays : null,
+            SlaWarnBeforeDays = a.CurrentStage != null ? a.CurrentStage.SlaWarnBeforeDays : null,
+            SlaDueAt = (a.CurrentStage != null && a.CurrentStage.SlaMaxDays.HasValue) ? a.LastStageChangedAt.AddDays(a.CurrentStage.SlaMaxDays.Value) : null,
+            SlaOverdueDays = (a.CurrentStage != null && a.CurrentStage.SlaMaxDays.HasValue && DateTime.UtcNow > a.LastStageChangedAt.AddDays(a.CurrentStage.SlaMaxDays.Value)) 
+                ? (int)(DateTime.UtcNow - a.LastStageChangedAt.AddDays(a.CurrentStage.SlaMaxDays.Value)).TotalDays : 0,
+            SlaStatus = (a.CurrentStage == null || !a.CurrentStage.SlaMaxDays.HasValue) ? "DISABLED" : 
+                (DateTime.UtcNow > a.LastStageChangedAt.AddDays(a.CurrentStage.SlaMaxDays.Value) ? "OVERDUE" : 
+                (a.CurrentStage.SlaWarnBeforeDays.HasValue && DateTime.UtcNow > a.LastStageChangedAt.AddDays(a.CurrentStage.SlaMaxDays.Value - a.CurrentStage.SlaWarnBeforeDays.Value) ? "WARNING" : "ON_TRACK")),
+            JobStatus = a.Job.Status,
+            JobNumberOfPositions = a.Job.NumberOfPositions,
+            JobTotalHired = a.Job.Applications.Count(app => app.Status == "HIRED")
+        });
+    }
+
     /// <summary>
     /// ✅ NEW: Gửi email async (background task) - không block response
     /// </summary>
@@ -327,10 +363,50 @@ public class ApplicationService : IApplicationService
                         savedFilePath,
                         job.Title,
                         job.Description,
-                        job.Requirements
+                        job.Requirements,
+                        application.ContactEmail ?? candidate.Email
                     ));
                     _logger.LogInformation("⚡ Đã gửi AI scoring task vào background");
                     // ===== END AI SCORING =====
+
+                    // ===== GỬI EMAIL XÁC NHẬN CHO CANDIDATE =====
+                    var candidateName = ResolveCandidateDisplayName(application);
+                    var candidateEmail = application.ContactEmail ?? candidate.Email;
+                    
+                    if (!string.IsNullOrWhiteSpace(candidateEmail))
+                    {
+                        _ = Task.Run(async () =>
+                        {
+                            try
+                            {
+                                using var scope = _serviceProvider.CreateScope();
+                                var scopedEmailService = scope.ServiceProvider.GetRequiredService<IEmailService>();
+                                var scopedAiService = scope.ServiceProvider.GetRequiredService<IAiMatchingService>();
+
+                                // Tạo nội dung email xác nhận
+                                var confirmationBody = $@"
+<h2>Xác nhận nộp hồ sơ</h2>
+<p>Xin chào <strong>{candidateName}</strong>,</p>
+<p>Cảm ơn bạn đã nộp hồ sơ ứng tuyển vị trí <strong>{job.Title}</strong>.</p>
+<p>Chúng tôi sẽ review hồ sơ của bạn sớm nhất và liên hệ với bạn trong thời gian sớm nhất.</p>
+<p>Chúc bạn may mắn!</p>
+<hr/>
+<p><em>Đây là email tự động từ hệ thống tuyển dụng. Vui lòng không reply email này.</em></p>
+";
+                                await scopedEmailService.SendEmailAsync(
+                                    candidateEmail,
+                                    $"Xác nhận nộp hồ sơ - Vị trí {job.Title}",
+                                    confirmationBody
+                                );
+                                _logger.LogInformation("✅ Đã gửi email xác nhận cho candidate: {Email}", candidateEmail);
+                            }
+                            catch (Exception emailEx)
+                            {
+                                _logger.LogError(emailEx, "❌ Lỗi khi gửi email xác nhận cho candidate: {Email}", candidateEmail);
+                            }
+                        });
+                    }
+                    // ===== END EMAIL CONFIRMATION =====
 
                     // Tạo thông báo cho ứng viên
                     if (userId.HasValue)
@@ -422,7 +498,7 @@ public class ApplicationService : IApplicationService
         }
     }
 
-    private async Task ScoreApplicationInBackgroundAsync(Guid applicationId, string? savedFilePath, string jobTitle, string? jobDescription, string? jobRequirements)
+    private async Task ScoreApplicationInBackgroundAsync(Guid applicationId, string? savedFilePath, string jobTitle, string? jobDescription, string? jobRequirements, string? candidateEmail = null)
     {
         _logger.LogInformation("🔄 [BACKGROUND] Bắt đầu chấm điểm CV bằng AI cho ApplicationId: {Id}", applicationId);
 
@@ -430,6 +506,7 @@ public class ApplicationService : IApplicationService
         var scopedDbContext = scope.ServiceProvider.GetRequiredService<UTC_DATNContext>();
         var scopedLogger    = scope.ServiceProvider.GetRequiredService<ILogger<ApplicationService>>();
         var scopedAiService = scope.ServiceProvider.GetRequiredService<IAiMatchingService>();
+        var scopedEmailService = scope.ServiceProvider.GetRequiredService<IEmailService>();
 
         if (string.IsNullOrEmpty(savedFilePath))
         {
@@ -453,7 +530,11 @@ public class ApplicationService : IApplicationService
 
         try
         {
-            var application = await scopedDbContext.Applications.FindAsync(applicationId);
+            var application = await scopedDbContext.Applications
+                .Include(a => a.Job)
+                .Include(a => a.Candidate)
+                .FirstOrDefaultAsync(a => a.ApplicationId == applicationId);
+            
             if (application == null)
             {
                 scopedLogger.LogWarning("⚠️ Application {ApplicationId} không tồn tại", applicationId);
@@ -498,6 +579,62 @@ public class ApplicationService : IApplicationService
 
             scopedLogger.LogInformation("✅ AI scoring hoàn thành. Score={Score} Breakdown={Breakdown}",
                 aiResult.Score, breakdownJson);
+
+            // ===== GỬI EMAIL THÔNG BÁO ADMIN KHI AI CHẤM XONG =====
+            try
+            {
+                var candidateName = ResolveCandidateDisplayName(application);
+                var scorePercentage = (int)aiResult.Score;
+                
+                var adminNotificationBody = $@"
+<h2>Chấm điểm CV hoàn thành</h2>
+<p><strong>Ứng viên:</strong> {candidateName}</p>
+<p><strong>Vị trí:</strong> {jobTitle}</p>
+<p><strong>Điểm AI Match:</strong> <span style='color: {(scorePercentage >= 70 ? "green" : scorePercentage >= 50 ? "orange" : "red")}'>{scorePercentage}%</span></p>
+<p><strong>Kỹ năng phù hợp:</strong></p>
+<ul>
+  {string.Join("\n", aiResult.MatchedSkills.Select(s => $"  <li>{s}</li>"))}
+</ul>
+<p><strong>Kỹ năng thiếu:</strong></p>
+<ul>
+  {string.Join("\n", aiResult.MissingSkills.Select(s => $"  <li>{s}</li>"))}
+</ul>
+<p><strong>Giải thích:</strong></p>
+<p>{aiResult.Explanation}</p>
+<hr/>
+<p><em>Vui lòng đăng nhập vào hệ thống để xem chi tiết đầy đủ.</em></p>
+";
+
+                // Lấy danh sách HR/Admin emails
+                var adminEmails = await scopedDbContext.UserRoles
+                    .Where(ur => (ur.Role.Code == "ADMIN" || ur.Role.Code == "HR") && ur.User.IsActive)
+                    .Select(ur => ur.User.Email)
+                    .Where(e => !string.IsNullOrWhiteSpace(e))
+                    .ToListAsync();
+
+                foreach (var adminEmail in adminEmails)
+                {
+                    try
+                    {
+                        await scopedEmailService.SendEmailAsync(
+                            adminEmail!,
+                            $"[Chấm điểm CV] {candidateName} - {jobTitle} ({scorePercentage}%)",
+                            adminNotificationBody
+                        );
+                    }
+                    catch (Exception ex)
+                    {
+                        scopedLogger.LogError(ex, "❌ Lỗi khi gửi email tới admin: {AdminEmail}", adminEmail);
+                    }
+                }
+
+                scopedLogger.LogInformation("✅ Đã gửi email thông báo cho {Count} Admin", adminEmails.Count);
+            }
+            catch (Exception emailEx)
+            {
+                scopedLogger.LogError(emailEx, "❌ Lỗi khi gửi email thông báo Admin");
+            }
+            // ===== END EMAIL NOTIFICATION =====
         }
         catch (Exception ex)
         {
@@ -508,48 +645,15 @@ public class ApplicationService : IApplicationService
 
     public async Task<List<ApplicationDto>> GetApplicationsByJobIdAsync(Guid jobId)
     {
-        var applications = await _context.Applications
+        var query = _context.Applications
             .Include(a => a.Candidate)
             .Include(a => a.Job)
             .Include(a => a.CurrentStage)
             .Include(a => a.ApplicationAiScores)
             .Where(a => a.JobId == jobId && !a.Job.IsDeleted)
-            .OrderByDescending(a => a.AppliedAt)
-            .Select(a => new ApplicationDto
-            {
-                ApplicationId = a.ApplicationId,
-                JobId = a.JobId,
-                JobTitle = a.Job.Title,
-                CandidateId = a.CandidateId,
-                Status = a.Status,
-                AppliedAt = a.AppliedAt,
-                CvUrl = a.ResumeDocument.File.Url ?? "",
-                CandidateName = a.ContactName ?? a.Candidate.FullName,
-                Email = a.ContactEmail ?? a.Candidate.Email,
-                Phone = a.ContactPhone ?? a.Candidate.Phone,
-                MatchScore = a.ApplicationAiScores.OrderByDescending(x => x.CreatedAt).FirstOrDefault() != null 
-                    ? (int?)a.ApplicationAiScores.OrderByDescending(x => x.CreatedAt).FirstOrDefault().MatchingScore 
-                    : null,
-                AiExplanation = a.ApplicationAiScores.OrderByDescending(x => x.CreatedAt).FirstOrDefault() != null && a.ApplicationAiScores.OrderByDescending(x => x.CreatedAt).FirstOrDefault().MatchedSkillsJson != null 
-                    ? "AI đã phân tích kỹ năng ứng viên" 
-                    : null,
-                CurrentStageCode = a.CurrentStage != null ? a.CurrentStage.Code : null,
-                CurrentStageName = a.CurrentStage != null ? a.CurrentStage.Name : null,
-                SlaMaxDays = a.CurrentStage != null ? a.CurrentStage.SlaMaxDays : null,
-                SlaWarnBeforeDays = a.CurrentStage != null ? a.CurrentStage.SlaWarnBeforeDays : null,
-                SlaDueAt = (a.CurrentStage != null && a.CurrentStage.SlaMaxDays.HasValue) ? a.LastStageChangedAt.AddDays(a.CurrentStage.SlaMaxDays.Value) : null,
-                SlaOverdueDays = (a.CurrentStage != null && a.CurrentStage.SlaMaxDays.HasValue && DateTime.UtcNow > a.LastStageChangedAt.AddDays(a.CurrentStage.SlaMaxDays.Value)) 
-                    ? (int)(DateTime.UtcNow - a.LastStageChangedAt.AddDays(a.CurrentStage.SlaMaxDays.Value)).TotalDays : 0,
-                SlaStatus = (a.CurrentStage == null || !a.CurrentStage.SlaMaxDays.HasValue) ? "DISABLED" : 
-                    (DateTime.UtcNow > a.LastStageChangedAt.AddDays(a.CurrentStage.SlaMaxDays.Value) ? "OVERDUE" : 
-                    (a.CurrentStage.SlaWarnBeforeDays.HasValue && DateTime.UtcNow > a.LastStageChangedAt.AddDays(a.CurrentStage.SlaMaxDays.Value - a.CurrentStage.SlaWarnBeforeDays.Value) ? "WARNING" : "ON_TRACK")),
-                JobStatus = a.Job.Status,
-                JobNumberOfPositions = a.Job.NumberOfPositions,
-                JobTotalHired = a.Job.Applications.Count(app => app.Status == "HIRED")
-            })
-            .ToListAsync();
+            .OrderByDescending(a => a.AppliedAt);
 
-        return applications;
+        return await ProjectToApplicationDto(query).ToListAsync();
     }
 
     public async Task<UpdateApplicationStatusResponse?> UpdateStatusAsync(Guid applicationId, string newStatus, bool isHrAction = true, Guid? actorUserId = null)
@@ -680,48 +784,15 @@ public class ApplicationService : IApplicationService
 
     public async Task<List<ApplicationDto>> GetAllApplicationsAsync()
     {
-        var applications = await _context.Applications
+        var query = _context.Applications
             .Include(a => a.Candidate)
             .Include(a => a.Job)
             .Include(a => a.CurrentStage)
             .Include(a => a.ApplicationAiScores)
             .Where(a => !a.Job.IsDeleted)
-            .OrderByDescending(a => a.AppliedAt)
-            .Select(a => new ApplicationDto
-            {
-                ApplicationId = a.ApplicationId,
-                JobId = a.JobId,
-                JobTitle = a.Job.Title,
-                CandidateId = a.CandidateId,
-                Status = a.Status,
-                AppliedAt = a.AppliedAt,
-                CvUrl = a.ResumeDocument.File.Url ?? "",
-                CandidateName = a.ContactName ?? a.Candidate.FullName,
-                Email = a.ContactEmail ?? a.Candidate.Email,
-                Phone = a.ContactPhone ?? a.Candidate.Phone,
-                MatchScore = a.ApplicationAiScores.OrderByDescending(x => x.CreatedAt).FirstOrDefault() != null 
-                    ? (int?)a.ApplicationAiScores.OrderByDescending(x => x.CreatedAt).FirstOrDefault().MatchingScore 
-                    : null,
-                AiExplanation = a.ApplicationAiScores.OrderByDescending(x => x.CreatedAt).FirstOrDefault() != null && a.ApplicationAiScores.OrderByDescending(x => x.CreatedAt).FirstOrDefault().MatchedSkillsJson != null 
-                    ? "AI đã phân tích kỹ năng ứng viên" 
-                    : null,
-                CurrentStageCode = a.CurrentStage != null ? a.CurrentStage.Code : null,
-                CurrentStageName = a.CurrentStage != null ? a.CurrentStage.Name : null,
-                SlaMaxDays = a.CurrentStage != null ? a.CurrentStage.SlaMaxDays : null,
-                SlaWarnBeforeDays = a.CurrentStage != null ? a.CurrentStage.SlaWarnBeforeDays : null,
-                SlaDueAt = (a.CurrentStage != null && a.CurrentStage.SlaMaxDays.HasValue) ? a.LastStageChangedAt.AddDays(a.CurrentStage.SlaMaxDays.Value) : null,
-                SlaOverdueDays = (a.CurrentStage != null && a.CurrentStage.SlaMaxDays.HasValue && DateTime.UtcNow > a.LastStageChangedAt.AddDays(a.CurrentStage.SlaMaxDays.Value)) 
-                    ? (int)(DateTime.UtcNow - a.LastStageChangedAt.AddDays(a.CurrentStage.SlaMaxDays.Value)).TotalDays : 0,
-                SlaStatus = (a.CurrentStage == null || !a.CurrentStage.SlaMaxDays.HasValue) ? "DISABLED" : 
-                    (DateTime.UtcNow > a.LastStageChangedAt.AddDays(a.CurrentStage.SlaMaxDays.Value) ? "OVERDUE" : 
-                    (a.CurrentStage.SlaWarnBeforeDays.HasValue && DateTime.UtcNow > a.LastStageChangedAt.AddDays(a.CurrentStage.SlaMaxDays.Value - a.CurrentStage.SlaWarnBeforeDays.Value) ? "WARNING" : "ON_TRACK")),
-                JobStatus = a.Job.Status,
-                JobNumberOfPositions = a.Job.NumberOfPositions,
-                JobTotalHired = a.Job.Applications.Count(app => app.Status == "HIRED")
-            })
-            .ToListAsync();
+            .OrderByDescending(a => a.AppliedAt);
 
-        return applications;
+        return await ProjectToApplicationDto(query).ToListAsync();
     }
 
     public async Task<List<SlaStageConfigDto>> GetSlaStageConfigsAsync()
