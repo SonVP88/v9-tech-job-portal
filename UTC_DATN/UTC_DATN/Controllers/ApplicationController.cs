@@ -132,7 +132,7 @@ public class ApplicationController : ControllerBase
     /// <param name="jobId">ID của công việc</param>
     /// <returns>Danh sách ứng viên kèm điểm số AI</returns>
     [HttpGet("~/api/jobs/{jobId}/applications")]
-    [Authorize(Roles = "HR, ADMIN")]
+    [Authorize(Roles = "HR, ADMIN, INTERVIEWER")]
     public async Task<IActionResult> GetApplicationsByJobId(Guid jobId)
     {
         try
@@ -290,7 +290,7 @@ public class ApplicationController : ControllerBase
     /// Lấy toàn bộ danh sách hồ sơ ứng tuyển (Dành cho HR/Admin)
     /// </summary>
     [HttpGet]
-    [Authorize(Roles = "HR, ADMIN")]
+    [Authorize(Roles = "HR, ADMIN, INTERVIEWER")]
     public async Task<IActionResult> GetAllApplications()
     {
         try
@@ -395,7 +395,7 @@ public class ApplicationController : ControllerBase
     /// API ghi nhận lượt xem CV (Dành cho HR/Admin)
     /// </summary>
     [HttpPost("{id}/track-view")]
-    [Authorize(Roles = "HR, ADMIN")]
+    [Authorize(Roles = "HR, ADMIN, INTERVIEWER")]
     public async Task<IActionResult> TrackView(Guid id)
     {
         try
@@ -420,7 +420,7 @@ public class ApplicationController : ControllerBase
     /// Lấy điểm AI và breakdown (Explainable AI) của một Application
     /// </summary>
     [HttpGet("{id}/ai-score")]
-    [Authorize(Roles = "HR, ADMIN")]
+    [Authorize(Roles = "HR, ADMIN, INTERVIEWER")]
     public async Task<IActionResult> GetAiScore(Guid id)
     {
         try

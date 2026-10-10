@@ -77,16 +77,25 @@
 
         <!-- Action Buttons -->
         <div class="flex flex-wrap justify-center w-full md:w-auto gap-3">
-          <button (click)="rejectCandidate()"
-            [disabled]="isUpdatingStatus() || currentStatus === 'REJECTED' || currentStatus === 'HIRED'"
-            class="flex items-center gap-2 px-4 h-10 rounded-lg bg-red-50 hover:bg-red-100 text-red-600 font-semibold text-sm transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
-            <span class="material-symbols-outlined text-[18px]">block</span>Từ chối
-          </button>
+          <ng-container *ngIf="!isInterviewerUser()">
+            <button (click)="rejectCandidate()"
+              [disabled]="isUpdatingStatus() || currentStatus === 'REJECTED' || currentStatus === 'HIRED'"
+              class="flex items-center gap-2 px-4 h-10 rounded-lg bg-red-50 hover:bg-red-100 text-red-600 font-semibold text-sm transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
+              <span class="material-symbols-outlined text-[18px]">block</span>Từ chối
+            </button>
 
-          <button *ngIf="currentStatus === 'Pending_Offer'" (click)="onOpenOffer()"
-            class="flex items-center gap-2 px-5 h-10 rounded-lg bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-semibold text-sm shadow-lg transition-all">
-            <span class="material-symbols-outlined text-[18px]">mail</span>Gửi Offer
-          </button>
+            <button *ngIf="currentStatus === 'Pending_Offer'" (click)="onOpenOffer()"
+              class="flex items-center gap-2 px-5 h-10 rounded-lg bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-semibold text-sm shadow-lg transition-all">
+              <span class="material-symbols-outlined text-[18px]">mail</span>Gửi Offer
+            </button>
+          </ng-container>
+
+          <ng-container *ngIf="isInterviewerUser()">
+            <span class="text-gray-500 text-sm italic flex items-center gap-1.5 px-3 py-1.5 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-100 dark:border-gray-700">
+              <span class="material-symbols-outlined text-[18px]">visibility</span>
+              Chỉ xem (Không có quyền thao tác)
+            </span>
+          </ng-container>
         </div>
       </div>
 

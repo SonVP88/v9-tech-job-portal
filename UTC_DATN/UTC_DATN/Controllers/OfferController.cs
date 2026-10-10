@@ -350,7 +350,7 @@ namespace UTC_DATN.Controllers
                 <h3>📋 ĐIỀU KHOẢN OFFER</h3>
                 <ul>
                     <li>📅 <strong>Ngày bắt đầu:</strong> {startDateFormatted}</li>
-                    <li>💰 <strong>Mức lương:</strong> <span class=""highlight"">{salaryFormatted} VNĐ</span> (Gross/Net)</li>
+                    <li>💰 <strong>Mức lương:</strong> <span class=""highlight"">{salaryFormatted} VNĐ</span> Gross</li>
                     <li>📝 <strong>Loại hợp đồng:</strong> {contractTypeName}</li>
                     <li>⏳ <strong>Hạn phản hồi:</strong> {expiryDateFormatted}</li>
                 </ul>

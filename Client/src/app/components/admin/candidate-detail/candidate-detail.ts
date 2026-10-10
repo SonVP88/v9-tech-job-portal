@@ -7,6 +7,7 @@ import { ApplicationService, CandidateProfileDto } from '../../../services/appli
 import { ToastService } from '../../../services/toast.service';
 import { PopupService } from '../../../services/popup.service';
 import { AiScoreRadarComponent } from '../../hr/ai-score-radar/ai-score-radar.component';
+import { AuthService } from '../../../services/auth.service';
 
 interface CandidateRouteState {
   applicationId: string;
@@ -50,6 +51,11 @@ export class CandidateDetail implements OnInit {
   private appService = inject(ApplicationService);
   private toast = inject(ToastService);
   private popup = inject(PopupService);
+  private authService = inject(AuthService);
+
+  isInterviewerUser(): boolean {
+    return this.authService.getUserRole() === 'INTERVIEWER';
+  }
 
   profile = signal<CandidateProfileDto | null>(null);
   isLoadingProfile = signal(false);

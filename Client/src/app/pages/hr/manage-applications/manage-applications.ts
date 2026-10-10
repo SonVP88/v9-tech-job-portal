@@ -8,6 +8,7 @@ import { JobService } from '../../../services/job.service';
 import { OfferModalComponent } from '../../../components/admin/offer-modal/offer-modal';
 import { ToastService } from '../../../services/toast.service';
 import { PopupService } from '../../../services/popup.service';
+import { AuthService } from '../../../services/auth.service';
 
 interface InterviewForm {
   date: string;
@@ -55,6 +56,11 @@ export class ManageApplications implements OnInit, OnDestroy {
   private toast = inject(ToastService);
   private ngZone = inject(NgZone);
   private popup = inject(PopupService);
+  private authService = inject(AuthService);
+
+  isInterviewerUser(): boolean {
+    return this.authService.getUserRole() === 'INTERVIEWER';
+  }
 
   // Tabs
   activeTab: 'APPLICATIONS' | 'RECOMMENDATIONS' = 'APPLICATIONS';
@@ -82,14 +88,14 @@ export class ManageApplications implements OnInit, OnDestroy {
 
   // Email preview
   emailPreviewContent = '';
-  aiOpeningText = ''; // Lưu đoạn mở đầu do AI sinh
+  aiOpeningText = '';
 
   // ==================== INTERVIEW VALIDATION ====================
   // Validation errors
   dateValidationError = '';
   timeValidationError = '';
   locationValidationError = '';
-  
+
   // Constants for validation
   readonly BUSINESS_HOURS_START = 8; // 8 AM (Giờ hành chính VN)
   readonly BUSINESS_HOURS_END = 18; // 6 PM (Giờ hành chính VN)
@@ -382,9 +388,7 @@ export class ManageApplications implements OnInit, OnDestroy {
     });
   }
 
-  /**
-   * Trả về class CSS cho điểm AI Match
-   */
+
   getScoreColor(score?: number): string {
     if (!score) return 'text-gray-500 bg-gray-50';
     if (score >= 70) return 'text-green-700 bg-green-50 border-green-200';
@@ -668,8 +672,8 @@ export class ManageApplications implements OnInit, OnDestroy {
 
     // 1. Gọi API tracking (không cần chờ kết quả để mở CV)
     this.applicationService.trackCvView(app.applicationId).subscribe({
-      next: () => {},
-      error: (err: any) => {}
+      next: () => { },
+      error: (err: any) => { }
     });
 
     // 2. Mở CV
@@ -681,7 +685,7 @@ export class ManageApplications implements OnInit, OnDestroy {
     if (url.startsWith('http://') && window.location.protocol === 'https:') {
       url = url.replace('http://', 'https://');
     }
-    
+
     window.open(url, '_blank');
   }
 
@@ -715,12 +719,12 @@ export class ManageApplications implements OnInit, OnDestroy {
       interviewerId: ''
     };
     this.aiOpeningText = '';
-    
+
     // Reset validation errors
     this.dateValidationError = '';
     this.timeValidationError = '';
     this.locationValidationError = '';
-    
+
     this.updateEmailPreview();
 
     // Load danh sách Interviewer
@@ -1080,7 +1084,7 @@ Phòng Nhân sự`;
 
     const selectedDate = new Date(this.interviewForm.date);
     selectedDate.setHours(0, 0, 0, 0);
-    
+
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
@@ -1096,11 +1100,11 @@ Phòng Nhân sự`;
     }
 
     // Kiểm tra weekend (thứ 7, chủ nhật)
-    if (this.isWeekend(selectedDate)) {
-      const dayName = selectedDate.getDay() === 0 ? 'Chủ nhật' : 'Thứ 7';
-      this.dateValidationError = ` ${dayName} không phải ngày lao động, vui lòng chọn ngày khác`;
-      return false;
-    }
+    // if (this.isWeekend(selectedDate)) {
+    //   const dayName = selectedDate.getDay() === 0 ? 'Chủ nhật' : 'Thứ 7';
+    //   this.dateValidationError = ` ${dayName} không phải ngày lao động, vui lòng chọn ngày khác`;
+    //   return false;
+    // }
 
     this.dateValidationError = '';
     return true;
@@ -1138,7 +1142,7 @@ Phòng Nhân sự`;
     }
 
     const location = this.interviewForm.location?.trim() || '';
-    
+
     if (!location) {
       this.locationValidationError = ' Vui lòng nhập link meeting';
       return false;
@@ -1166,7 +1170,7 @@ Phòng Nhân sự`;
     }
 
     const location = this.interviewForm.location?.trim() || '';
-    
+
     if (!location || location.length < this.MIN_LOCATION_LENGTH) {
       this.locationValidationError = ` Vui lòng nhập địa điểm (tối thiểu ${this.MIN_LOCATION_LENGTH} ký tự)`;
       return false;

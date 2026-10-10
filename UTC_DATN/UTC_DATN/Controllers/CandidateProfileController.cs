@@ -66,7 +66,7 @@ namespace UTC_DATN.Controllers
         /// GET /api/candidate/profile/{candidateId} - HR/Admin xem profile ứng viên theo CandidateId
         /// </summary>
         [HttpGet("profile/{candidateId:guid}")]
-        [Authorize(Roles = "HR, ADMIN")]
+        [Authorize(Roles = "HR, ADMIN, INTERVIEWER")]
         public async Task<IActionResult> GetProfileByCandidateId(Guid candidateId)
         {
             try
