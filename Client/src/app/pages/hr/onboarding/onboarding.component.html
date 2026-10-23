@@ -1,0 +1,234 @@
+<div class="space-y-6 animate-fade-in-up">
+  <!-- Header Title & Action Bar -->
+  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
+    <div>
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+          <span class="material-symbols-outlined text-2xl">badge</span>
+        </div>
+        <div>
+          <h1 class="text-2xl font-black text-slate-900 dark:text-white tracking-tight">Quy Trình Tiếp Nhận & Onboarding</h1>
+          <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Tiếp nhận công nhân & nhân sự trúng tuyển, khám sức khỏe, cấp phát bảo hộ và phân tổ sản xuất</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Filters & Action Buttons -->
+    <div class="flex items-center gap-3 flex-wrap">
+      <div class="relative">
+        <select [(ngModel)]="selectedDepartment" (change)="onDepartmentFilterChange()"
+                class="text-xs font-semibold bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 pr-8 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500">
+          <option value="ALL">🏢 Toàn bộ Nhà máy</option>
+          <option value="PROD_LINE">🏭 Xưởng Sản Xuất</option>
+          <option value="WH_LOGS">📦 Kho & Logistics</option>
+          <option value="QA_QC">🔍 Quản Lý Chất Lượng (QA/QC)</option>
+          <option value="TECH_MNT">⚙️ Kỹ Thuật & Bảo Trì</option>
+        </select>
+      </div>
+
+      <button (click)="loadCandidates()" [disabled]="isLoading"
+              class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition-colors">
+        <span class="material-symbols-outlined text-base" [class.animate-spin]="isLoading">refresh</span>
+        Làm mới
+      </button>
+    </div>
+  </div>
+
+  <!-- KPI Cards -->
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+    <!-- Card 1: Tổng trúng tuyển -->
+    <div class="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden">
+      <div class="flex items-center justify-between mb-3">
+        <span class="text-xs font-bold text-slate-500 uppercase tracking-wider">Trúng tuyển chờ nhận</span>
+        <div class="p-2 rounded-xl bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400">
+          <span class="material-symbols-outlined text-lg">how_to_reg</span>
+        </div>
+      </div>
+      <div class="flex items-baseline gap-2">
+        <span class="text-3xl font-black text-slate-900 dark:text-white">{{ candidates.length }}</span>
+        <span class="text-xs text-blue-600 font-semibold">ứng viên</span>
+      </div>
+      <p class="text-[11px] text-slate-400 mt-2">Hồ sơ đã gửi thư mời nhận việc (Offer)</p>
+    </div>
+
+    <!-- Card 2: Đạt Khám sức khỏe -->
+    <div class="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden">
+      <div class="flex items-center justify-between mb-3">
+        <span class="text-xs font-bold text-slate-500 uppercase tracking-wider">Đạt Khám Sức Khỏe</span>
+        <div class="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400">
+          <span class="material-symbols-outlined text-lg">medical_services</span>
+        </div>
+      </div>
+      <div class="flex items-baseline gap-2">
+        <span class="text-3xl font-black text-emerald-600">{{ countHealthPassed }}</span>
+        <span class="text-xs text-slate-500">/ {{ candidates.length }} đạt</span>
+      </div>
+      <div class="w-full bg-slate-100 dark:bg-slate-800 h-1.5 rounded-full mt-3 overflow-hidden">
+        <div class="bg-emerald-500 h-1.5 rounded-full" [style.width.%]="healthPassedPercent"></div>
+      </div>
+    </div>
+
+    <!-- Card 3: Đã cấp đồng phục & thẻ -->
+    <div class="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden">
+      <div class="flex items-center justify-between mb-3">
+        <span class="text-xs font-bold text-slate-500 uppercase tracking-wider">Đồng phục & Thẻ từ</span>
+        <div class="p-2 rounded-xl bg-purple-50 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400">
+          <span class="material-symbols-outlined text-lg">dry_cleaning</span>
+        </div>
+      </div>
+      <div class="flex items-baseline gap-2">
+        <span class="text-3xl font-black text-purple-600">{{ countUniformIssued }}</span>
+        <span class="text-xs text-slate-500">/ {{ candidates.length }} đã nhận</span>
+      </div>
+      <div class="w-full bg-slate-100 dark:bg-slate-800 h-1.5 rounded-full mt-3 overflow-hidden">
+        <div class="bg-purple-500 h-1.5 rounded-full" [style.width.%]="uniformIssuedPercent"></div>
+      </div>
+    </div>
+
+    <!-- Card 4: Sẵn sàng vào chuyền -->
+    <div class="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden">
+      <div class="flex items-center justify-between mb-3">
+        <span class="text-xs font-bold text-slate-500 uppercase tracking-wider">Sẵn Sàng Làm Việc</span>
+        <div class="p-2 rounded-xl bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400">
+          <span class="material-symbols-outlined text-lg">precision_manufacturing</span>
+        </div>
+      </div>
+      <div class="flex items-baseline gap-2">
+        <span class="text-3xl font-black text-amber-600">{{ countReadyToWork }}</span>
+        <span class="text-xs text-slate-500">nhân sự sẵn sàng</span>
+      </div>
+      <p class="text-[11px] text-emerald-600 font-semibold mt-2">Đủ điều kiện chuyển chính thức</p>
+    </div>
+  </div>
+
+  <!-- Main Checklist Table -->
+  <div class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+    <div class="p-5 border-b border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <div>
+        <h3 class="font-bold text-slate-900 dark:text-white text-base">Checklist Tiếp Nhận Ứng Viên Nhà Máy</h3>
+        <p class="text-xs text-slate-500 dark:text-slate-400">Quản đốc và Phòng Nhân sự hoàn thành 3 tiêu chí: Khám sức khỏe, Cấp thẻ từ, Bố trí dây chuyền sản xuất</p>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <span class="text-xs font-medium text-slate-500">Tìm kiếm:</span>
+        <input type="text" [(ngModel)]="searchKeyword" placeholder="Tên hoặc SĐT ứng viên..."
+               class="text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-emerald-500">
+      </div>
+    </div>
+
+    <!-- Loading State -->
+    <div *ngIf="isLoading" class="p-12 text-center">
+      <div class="w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto mb-3"></div>
+      <p class="text-sm font-semibold text-slate-600 dark:text-slate-300">Đang tải danh sách Onboarding...</p>
+    </div>
+
+    <!-- Empty State -->
+    <div *ngIf="!isLoading && filteredCandidates.length === 0" class="p-12 text-center">
+      <div class="w-16 h-16 rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400 mx-auto mb-3">
+        <span class="material-symbols-outlined text-3xl">task_alt</span>
+      </div>
+      <h4 class="font-bold text-slate-800 dark:text-slate-200">Không có ứng viên nào cần tiếp nhận</h4>
+      <p class="text-xs text-slate-500 mt-1">Toàn bộ ứng viên trúng tuyển đã hoàn tất quy trình hoặc chưa có đợt tiếp nhận mới.</p>
+    </div>
+
+    <!-- Data Table -->
+    <div *ngIf="!isLoading && filteredCandidates.length > 0" class="overflow-x-auto">
+      <table class="w-full text-left border-collapse">
+        <thead>
+          <tr class="bg-slate-50/70 dark:bg-slate-800/50 text-[11px] font-bold text-slate-500 uppercase tracking-wider border-b border-slate-200 dark:border-slate-800">
+            <th class="py-3.5 px-4">Ứng Viên / Vị Trí Tuyển</th>
+            <th class="py-3.5 px-4">Phòng Ban / Xưởng</th>
+            <th class="py-3.5 px-4 text-center">1. Khám Sức Khỏe</th>
+            <th class="py-3.5 px-4 text-center">2. Thẻ Từ & Bảo Hộ</th>
+            <th class="py-3.5 px-4">3. Phân Tổ / Chuyền</th>
+            <th class="py-3.5 px-4 text-center">Trạng Thái</th>
+            <th class="py-3.5 px-4 text-right">Kích Hoạt Chính Thức</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100 dark:divide-slate-800/60 text-xs">
+          <tr *ngFor="let item of filteredCandidates" class="hover:bg-slate-50/60 dark:hover:bg-slate-800/30 transition-colors">
+            <!-- Ứng viên -->
+            <td class="py-3 px-4">
+              <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-emerald-500 to-teal-400 text-white font-bold flex items-center justify-center text-xs shrink-0 shadow-sm">
+                  {{ getInitials(item.fullName) }}
+                </div>
+                <div>
+                  <p class="font-bold text-slate-900 dark:text-white text-xs">{{ item.fullName }}</p>
+                  <p class="text-[11px] font-medium text-emerald-600 dark:text-emerald-400">{{ item.jobTitle }}</p>
+                  <p class="text-[10px] text-slate-400 mt-0.5">📞 {{ item.phone }} | ✉️ {{ item.email }}</p>
+                </div>
+              </div>
+            </td>
+
+            <!-- Phòng ban -->
+            <td class="py-3 px-4">
+              <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                <span class="material-symbols-outlined text-[13px]">factory</span>
+                {{ item.departmentName }}
+              </span>
+            </td>
+
+            <!-- 1. Khám sức khỏe -->
+            <td class="py-3 px-4 text-center">
+              <div class="inline-block">
+                <select [(ngModel)]="item.healthCheckStatus" (change)="saveChecklist(item)"
+                        [class]="'text-[11px] font-bold rounded-lg px-2.5 py-1 border focus:outline-none transition-colors ' + getHealthStatusClass(item.healthCheckStatus)">
+                  <option value="PASSED">✅ Đạt sức khỏe loại 1-2</option>
+                  <option value="PENDING">⏳ Chờ kết quả BV Đa khoa</option>
+                  <option value="FAILED">❌ Không đủ điều kiện</option>
+                </select>
+              </div>
+            </td>
+
+            <!-- 2. Thẻ từ & Đồng phục -->
+            <td class="py-3 px-4 text-center">
+              <label class="inline-flex items-center gap-1.5 cursor-pointer">
+                <input type="checkbox" [(ngModel)]="item.uniformCardIssued" (change)="saveChecklist(item)"
+                       class="w-4 h-4 rounded text-emerald-600 border-slate-300 focus:ring-emerald-500 cursor-pointer">
+                <span class="text-[11px] font-semibold" [class.text-emerald-600]="item.uniformCardIssued" [class.text-slate-400]="!item.uniformCardIssued">
+                  {{ item.uniformCardIssued ? 'Đã cấp thẻ & áo' : 'Chưa cấp phát' }}
+                </span>
+              </label>
+            </td>
+
+            <!-- 3. Phân Tổ / Chuyền -->
+            <td class="py-3 px-4">
+              <input type="text" [(ngModel)]="item.lineAssignment" (blur)="saveChecklist(item)"
+                     placeholder="VD: Chuyền 1 - Ca A"
+                     class="w-36 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500">
+            </td>
+
+            <!-- Trạng thái -->
+            <td class="py-3 px-4 text-center">
+              <span *ngIf="item.status === 'HIRED'" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-400">
+                <span class="material-symbols-outlined text-[13px]">check_circle</span> Đã thành Nhân viên
+              </span>
+              <span *ngIf="item.status !== 'HIRED'" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-400">
+                <span class="material-symbols-outlined text-[13px]">schedule</span> Đang tiếp nhận
+              </span>
+            </td>
+
+            <!-- Nút Chuyển thành Nhân viên chính thức -->
+            <td class="py-3 px-4 text-right">
+              <button *ngIf="item.status !== 'HIRED'"
+                      (click)="confirmConvertToEmployee(item)"
+                      [disabled]="item.healthCheckStatus !== 'PASSED' || isConvertingMap[item.applicationId]"
+                      [title]="item.healthCheckStatus !== 'PASSED' ? 'Ứng viên phải Đạt khám sức khỏe trước khi tiếp nhận chính thức' : 'Kích hoạt hồ sơ nhân sự chính thức'"
+                      class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all shadow-sm disabled:opacity-40 disabled:cursor-not-allowed bg-emerald-600 hover:bg-emerald-700 text-white hover:shadow-emerald-500/20">
+                <span class="material-symbols-outlined text-sm" [class.animate-spin]="isConvertingMap[item.applicationId]">
+                  {{ isConvertingMap[item.applicationId] ? 'sync' : 'celebration' }}
+                </span>
+                Chính Thức
+              </button>
+
+              <span *ngIf="item.status === 'HIRED'" class="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 inline-flex items-center gap-1">
+                <span class="material-symbols-outlined text-sm">verified</span> Đã tiếp nhận
+              </span>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>

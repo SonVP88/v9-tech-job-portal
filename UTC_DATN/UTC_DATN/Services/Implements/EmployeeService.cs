@@ -17,32 +17,41 @@ namespace UTC_DATN.Services.Implements
 
         public async Task<List<EmployeeDto>> GetEmployeesAsync()
         {
-            // Query users có role HR hoặc INTERVIEWER
+            var staffRoles = new[] { "ADMIN", "MANAGER", "HR", "INTERVIEWER" };
+
             var employees = await _context.Users
-                .Join(_context.UserRoles,
-                    user => user.UserId,
-                    userRole => userRole.UserId,
-                    (user, userRole) => new { user, userRole })
-                .Join(_context.Roles,
-                    combined => combined.userRole.RoleId,
-                    role => role.RoleId,
-                    (combined, role) => new { combined.user, role })
-                .Where(x => x.role.Code == "HR" || x.role.Code == "INTERVIEWER")
-                .Select(x => new EmployeeDto
+                .IgnoreQueryFilters()
+                .Include(u => u.Department)
+                .Include(u => u.Manager)
+                .Include(u => u.Subordinates)
+                .Include(u => u.UserRoles)
+                    .ThenInclude(ur => ur.Role)
+                .Where(u => u.UserRoles.Any(ur => staffRoles.Contains(ur.Role.Code)))
+                .OrderBy(u => u.DepartmentId)
+                .ThenBy(u => u.FullName)
+                .Select(u => new EmployeeDto
                 {
-                    UserId = x.user.UserId,
-                    FullName = x.user.FullName,
-                    Email = x.user.Email,
-                    Phone = x.user.Phone,
-                    Role = x.role.Code,
-                    IsActive = x.user.IsActive,
-                    CreatedAt = x.user.CreatedAt,
-                    // Audit Trail
-                    LockedAt = x.user.LockedAt,
-                    LockedByName = x.user.LockedByName,
-                    LockReason = x.user.LockReason
+                    UserId = u.UserId,
+                    FullName = u.FullName ?? string.Empty,
+                    Email = u.Email,
+                    Phone = u.Phone ?? string.Empty,
+                    Role = u.UserRoles.Select(ur => ur.Role.Code).FirstOrDefault() ?? "HR",
+                    RoleName = u.UserRoles.Select(ur => ur.Role.Code).FirstOrDefault() == "ADMIN" ? "Ban Giám Đốc" :
+                               u.UserRoles.Select(ur => ur.Role.Code).FirstOrDefault() == "MANAGER" ? "Trưởng Phòng" :
+                               u.UserRoles.Select(ur => ur.Role.Code).FirstOrDefault() == "HR" ? "Chuyên viên Nhân sự" :
+                               u.UserRoles.Select(ur => ur.Role.Code).FirstOrDefault() == "INTERVIEWER" ? "Hội đồng Phỏng vấn" : "Nhân viên",
+                    IsActive = u.IsActive,
+                    CreatedAt = u.CreatedAt,
+                    DepartmentId = u.DepartmentId,
+                    DepartmentCode = u.Department != null ? u.Department.DepartmentCode : null,
+                    DepartmentName = u.Department != null ? u.Department.DepartmentName : "Chưa phân bổ",
+                    ManagerId = u.ManagerId,
+                    ManagerName = u.Manager != null ? u.Manager.FullName : null,
+                    SubordinatesCount = u.Subordinates.Count(),
+                    LockedAt = u.LockedAt,
+                    LockedByName = u.LockedByName,
+                    LockReason = u.LockReason
                 })
-                .OrderByDescending(e => e.CreatedAt)
                 .ToListAsync();
 
             return employees;
@@ -50,30 +59,27 @@ namespace UTC_DATN.Services.Implements
 
         public async Task<EmployeeDto?> CreateEmployeeAsync(CreateEmployeeRequest request)
         {
-            // Kiểm tra email đã tồn tại chưa
-            var emailExists = await _context.Users.AnyAsync(u => u.Email == request.Email);
+            // Kiểm tra email đã tồn tại chưa (kể cả đã bị xóa mềm)
+            var emailExists = await _context.Users.IgnoreQueryFilters().AnyAsync(u => u.Email == request.Email);
             if (emailExists)
             {
-                return null; // Email đã tồn tại
+                return null;
             }
 
-            // Validate role phải là HR hoặc INTERVIEWER
-            if (request.Role != "HR" && request.Role != "INTERVIEWER")
+            var validRoles = new[] { "ADMIN", "MANAGER", "HR", "INTERVIEWER" };
+            if (!validRoles.Contains(request.Role))
             {
-                return null; // Role không hợp lệ
+                return null;
             }
 
-            // Tìm role theo Code
             var role = await _context.Roles.FirstOrDefaultAsync(r => r.Code == request.Role);
             if (role == null)
             {
-                return null; // Role không tồn tại trong database
+                return null;
             }
 
-            // Hash password mặc định
             var passwordHash = BCrypt.Net.BCrypt.HashPassword("123456");
 
-            // Tạo user mới
             var newUser = new User
             {
                 UserId = Guid.NewGuid(),
@@ -82,13 +88,14 @@ namespace UTC_DATN.Services.Implements
                 PasswordHash = passwordHash,
                 FullName = request.FullName,
                 Phone = request.PhoneNumber,
+                DepartmentId = request.DepartmentId,
+                ManagerId = request.ManagerId,
                 IsActive = true,
                 CreatedAt = DateTime.UtcNow
             };
 
             _context.Users.Add(newUser);
 
-            // Gán role cho user
             var userRole = new UserRole
             {
                 UserId = newUser.UserId,
@@ -97,11 +104,16 @@ namespace UTC_DATN.Services.Implements
             };
 
             _context.UserRoles.Add(userRole);
-
-            // Lưu vào database
             await _context.SaveChangesAsync();
 
-            // Trả về EmployeeDto
+            // Load navigation props for DTO
+            var dept = request.DepartmentId.HasValue 
+                ? await _context.Departments.FindAsync(request.DepartmentId.Value) 
+                : null;
+            var mgr = request.ManagerId.HasValue 
+                ? await _context.Users.FindAsync(request.ManagerId.Value) 
+                : null;
+
             return new EmployeeDto
             {
                 UserId = newUser.UserId,
@@ -109,8 +121,17 @@ namespace UTC_DATN.Services.Implements
                 Email = newUser.Email,
                 Phone = newUser.Phone,
                 Role = request.Role,
+                RoleName = request.Role == "ADMIN" ? "Ban Giám Đốc" :
+                           request.Role == "MANAGER" ? "Trưởng Phòng" :
+                           request.Role == "HR" ? "Chuyên viên Nhân sự" : "Hội đồng Phỏng vấn",
                 IsActive = newUser.IsActive,
-                CreatedAt = newUser.CreatedAt
+                CreatedAt = newUser.CreatedAt,
+                DepartmentId = newUser.DepartmentId,
+                DepartmentCode = dept?.DepartmentCode,
+                DepartmentName = dept?.DepartmentName ?? "Chưa phân bổ",
+                ManagerId = newUser.ManagerId,
+                ManagerName = mgr?.FullName,
+                SubordinatesCount = 0
             };
         }
 
@@ -146,30 +167,32 @@ namespace UTC_DATN.Services.Implements
 
         public async Task<EmployeeDto?> UpdateEmployeeAsync(Guid userId, CreateEmployeeRequest request)
         {
-            var user = await _context.Users.FindAsync(userId);
+            var user = await _context.Users
+                .Include(u => u.Subordinates)
+                .FirstOrDefaultAsync(u => u.UserId == userId);
             if (user == null)
             {
                 return null; 
             }
 
-            // Check email trùng (ngoại trừ user hiện tại)
             var emailExists = await _context.Users.AnyAsync(u => u.Email == request.Email && u.UserId != userId);
             if (emailExists)
             {
                 return null; 
             }
 
-            // Validate role
-            if (request.Role != "HR" && request.Role != "INTERVIEWER")
+            var validRoles = new[] { "ADMIN", "MANAGER", "HR", "INTERVIEWER" };
+            if (!validRoles.Contains(request.Role))
             {
                 return null;
             }
 
-            // Update user info
             user.FullName = request.FullName;
             user.Email = request.Email;
             user.NormalizedEmail = request.Email.ToUpper().Trim();
             user.Phone = request.PhoneNumber;
+            user.DepartmentId = request.DepartmentId;
+            user.ManagerId = request.ManagerId;
 
             // Update role nếu thay đổi
             var currentUserRole = await _context.UserRoles
@@ -180,7 +203,6 @@ namespace UTC_DATN.Services.Implements
             {
                 _context.UserRoles.Remove(currentUserRole);
 
-                // Thêm role mới
                 var newRole = await _context.Roles.FirstOrDefaultAsync(r => r.Code == request.Role);
                 if (newRole != null)
                 {
@@ -193,19 +215,86 @@ namespace UTC_DATN.Services.Implements
                     _context.UserRoles.Add(newUserRole);
                 }
             }
+            else if (currentUserRole == null)
+            {
+                var newRole = await _context.Roles.FirstOrDefaultAsync(r => r.Code == request.Role);
+                if (newRole != null)
+                {
+                    _context.UserRoles.Add(new UserRole
+                    {
+                        UserId = userId,
+                        RoleId = newRole.RoleId,
+                        CreatedAt = DateTime.UtcNow
+                    });
+                }
+            }
 
             await _context.SaveChangesAsync();
+
+            var dept = user.DepartmentId.HasValue 
+                ? await _context.Departments.FindAsync(user.DepartmentId.Value) 
+                : null;
+            var mgr = user.ManagerId.HasValue 
+                ? await _context.Users.FindAsync(user.ManagerId.Value) 
+                : null;
 
             return new EmployeeDto
             {
                 UserId = user.UserId,
                 FullName = user.FullName,
                 Email = user.Email,
-                Phone = user.Phone,
+                Phone = user.Phone ?? string.Empty,
                 Role = request.Role,
+                RoleName = request.Role == "ADMIN" ? "Ban Giám Đốc" :
+                           request.Role == "MANAGER" ? "Trưởng Phòng" :
+                           request.Role == "HR" ? "Chuyên viên Nhân sự" : "Hội đồng Phỏng vấn",
                 IsActive = user.IsActive,
-                CreatedAt = user.CreatedAt
+                CreatedAt = user.CreatedAt,
+                DepartmentId = user.DepartmentId,
+                DepartmentCode = dept?.DepartmentCode,
+                DepartmentName = dept?.DepartmentName ?? "Chưa phân bổ",
+                ManagerId = user.ManagerId,
+                ManagerName = mgr?.FullName,
+                SubordinatesCount = user.Subordinates.Count()
             };
+        }
+
+        public async Task<List<DepartmentLookupDto>> GetDepartmentsAsync()
+        {
+            var depts = await _context.Departments
+                .Select(d => new DepartmentLookupDto
+                {
+                    DepartmentId = d.DepartmentId,
+                    DepartmentCode = d.DepartmentCode,
+                    DepartmentName = d.DepartmentName,
+                    EmployeeCount = _context.Users.Count(u => u.DepartmentId == d.DepartmentId)
+                })
+                .OrderBy(d => d.DepartmentCode)
+                .ToListAsync();
+
+            return depts;
+        }
+
+        public async Task<List<ManagerLookupDto>> GetManagersAsync()
+        {
+            var managerRoles = new[] { "ADMIN", "MANAGER" };
+            var managers = await _context.Users
+                .Include(u => u.Department)
+                .Include(u => u.UserRoles)
+                    .ThenInclude(ur => ur.Role)
+                .Where(u => u.IsActive && u.UserRoles.Any(ur => managerRoles.Contains(ur.Role.Code)))
+                .OrderBy(u => u.FullName)
+                .Select(u => new ManagerLookupDto
+                {
+                    UserId = u.UserId,
+                    FullName = u.FullName ?? string.Empty,
+                    Email = u.Email,
+                    Role = u.UserRoles.Select(ur => ur.Role.Code).FirstOrDefault() ?? "MANAGER",
+                    DepartmentName = u.Department != null ? u.Department.DepartmentName : "Ban Giám Đốc"
+                })
+                .ToListAsync();
+
+            return managers;
         }
     }
 }

@@ -134,7 +134,7 @@ export class Login implements AfterViewInit {
     try {
       const decoded: any = jwtDecode(token);
       const role = decoded['http://schemas.microsoft.com/ws/2008/06/identity/claims/role'] || decoded['role'];
-      if (role === 'HR' || role === 'ADMIN' || role === 'INTERVIEWER') {
+      if (role === 'HR' || role === 'ADMIN' || role === 'INTERVIEWER' || role === 'MANAGER') {
         this.router.navigate(['/hr/dashboard']);
       } else {
         this.router.navigate(['/candidate/home']);
@@ -188,7 +188,7 @@ export class Login implements AfterViewInit {
               // Hiển thị thông báo cho user
 
               // 4. Điều hướng dựa trên Role
-              if (role === 'HR' || role === 'ADMIN' || role === 'INTERVIEWER') {
+              if (role === 'HR' || role === 'ADMIN' || role === 'INTERVIEWER' || role === 'MANAGER') {
                 console.log('➡️ Chuyển hướng đến HR Dashboard...');
                 this.router.navigate(['/hr/dashboard']);
               } else {

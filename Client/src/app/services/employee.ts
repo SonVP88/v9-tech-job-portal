@@ -8,19 +8,46 @@ export interface EmployeeDto {
   email: string;
   phone: string;
   role: string;
+  roleName?: string;
   isActive: boolean;
   createdAt: string;
+
+  // Organization & Hierarchy
+  departmentId?: string;
+  departmentCode?: string;
+  departmentName?: string;
+  managerId?: string;
+  managerName?: string;
+  subordinatesCount: number;
+
   // Audit Trail
   lockedAt?: string;
   lockedByName?: string;
   lockReason?: string;
 }
 
+export interface DepartmentLookupDto {
+  departmentId: string;
+  departmentCode: string;
+  departmentName: string;
+  employeeCount: number;
+}
+
+export interface ManagerLookupDto {
+  userId: string;
+  fullName: string;
+  email: string;
+  role: string;
+  departmentName?: string;
+}
+
 export interface CreateEmployeeRequest {
   fullName: string;
   email: string;
   phoneNumber: string;
-  role: 'HR' | 'INTERVIEWER';
+  role: 'ADMIN' | 'MANAGER' | 'HR' | 'INTERVIEWER';
+  departmentId?: string;
+  managerId?: string;
 }
 
 export interface ApiResponse<T> {
@@ -38,10 +65,24 @@ export class EmployeeService {
   constructor(private http: HttpClient) { }
 
   /**
-   * Lấy danh sách nhân viên (HR và INTERVIEWER)
+   * Lấy danh sách nhân viên (ADMIN, MANAGER, HR, INTERVIEWER)
    */
   getEmployees(): Observable<EmployeeDto[]> {
     return this.http.get<EmployeeDto[]>(this.apiUrl);
+  }
+
+  /**
+   * Lấy danh mục phòng ban
+   */
+  getDepartments(): Observable<DepartmentLookupDto[]> {
+    return this.http.get<DepartmentLookupDto[]>(`${this.apiUrl}/departments`);
+  }
+
+  /**
+   * Lấy danh sách quản lý / trưởng phòng
+   */
+  getManagers(): Observable<ManagerLookupDto[]> {
+    return this.http.get<ManagerLookupDto[]>(`${this.apiUrl}/managers`);
   }
 
   /**
@@ -51,12 +92,16 @@ export class EmployeeService {
     return this.http.post<EmployeeDto>(this.apiUrl, request);
   }
 
+  toggleStatus(userId: string, reason?: string): Observable<any> {
+    return this.http.patch(`/api/users/${userId}/toggle-status`, { reason });
+  }
+
   deactivateEmployee(userId: string, reason?: string): Observable<any> {
-    return this.http.put(`${this.apiUrl}/${userId}/deactivate`, { reason });
+    return this.toggleStatus(userId, reason);
   }
 
   reactivateEmployee(userId: string): Observable<any> {
-    return this.http.put(`${this.apiUrl}/${userId}/reactivate`, {});
+    return this.toggleStatus(userId);
   }
 
   updateEmployee(userId: string, request: CreateEmployeeRequest): Observable<EmployeeDto> {

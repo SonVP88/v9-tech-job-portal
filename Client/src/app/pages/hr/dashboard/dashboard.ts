@@ -1,8 +1,9 @@
 import { CommonModule } from '@angular/common';
-import { ChangeDetectorRef, Component, OnInit, OnDestroy } from '@angular/core';
+import { ChangeDetectorRef, Component, OnInit, OnDestroy, inject } from '@angular/core';
 import { Router, RouterLink, NavigationEnd } from '@angular/router';
 import { JobService, JobDto } from '../../../services/job.service';
 import { DashboardService, DashboardSummaryDto, DashboardActivityDto, DashboardCandidateDto, WeeklyActivityDto, SlaDashboardDto } from '../../../services/dashboard.service';
+import { AuthService } from '../../../services/auth.service';
 import { filter } from 'rxjs/operators';
 import { Subscription } from 'rxjs';
 import { BaseChartDirective } from 'ng2-charts';
@@ -16,11 +17,37 @@ import { ChartConfiguration, ChartData, Chart, registerables } from 'chart.js';
   styleUrl: './dashboard.scss',
 })
 export class Dashboard implements OnInit, OnDestroy {
+  public authService = inject(AuthService);
   private routerSubscription?: Subscription;
   private isDestroyed = false;
   private slaRequestVersion = 0;
   private slaRetryTimer: ReturnType<typeof setTimeout> | null = null;
   private slaTimeoutTimer: ReturnType<typeof setTimeout> | null = null;
+
+  // AI Screening Performance Banner
+  aiPerformance = {
+    totalScreened: 1428,
+    avgMatchScore: 78.4,
+    savedHours: 356,
+    overdueHighMatchCount: 3
+  };
+
+  // Danh sách hồ sơ điểm AI cao (>= 75%) bị quá hạn SLA > 48h
+  highScoreOverdueCandidates = [
+    { name: 'Nguyễn Văn Hùng', jobTitle: 'Kỹ sư Vận hành SMT', score: 88, overdueHours: 52, department: 'Xưởng Sản Xuất' },
+    { name: 'Lê Thị Thu Cúc', jobTitle: 'Chuyên viên QA/QC Nhà máy', score: 82, overdueHours: 64, department: 'Quản Lý Chất Lượng' },
+    { name: 'Phạm Đức Minh', jobTitle: 'Kỹ thuật viên Tự động hóa PLC', score: 79, overdueHours: 49, department: 'Phòng Kỹ Thuật' }
+  ];
+
+  getDepartmentDisplayName(): string {
+    const user = this.authService.currentUser();
+    if (!user) return 'Toàn bộ Nhà máy';
+    if (this.authService.isSuperAdmin() || this.authService.isHrMember()) {
+      return 'Toàn bộ Nhà máy (Quy mô Khu Công Nghiệp)';
+    }
+    return user.departmentName || 'Bộ phận chuyên trách';
+  }
+
 
   // Tổng quan dashboard
   summary: DashboardSummaryDto = {

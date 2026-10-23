@@ -22,14 +22,36 @@ namespace UTC_DATN.Controllers
         }
 
         /// <summary>
-        /// Lấy danh sách nhân viên (HR được VIEW, Admin được FULL)
+        /// Lấy danh sách nhân viên (HR, Manager, Admin)
         /// </summary>
         [HttpGet]
-        [Authorize(Roles = "ADMIN,HR")]
+        [Authorize(Roles = "ADMIN,HR,MANAGER")]
         public async Task<IActionResult> GetEmployees()
         {
             var employees = await _employeeService.GetEmployeesAsync();
             return Ok(employees);
+        }
+
+        /// <summary>
+        /// Lấy danh mục phòng ban và số lượng nhân sự
+        /// </summary>
+        [HttpGet("departments")]
+        [Authorize(Roles = "ADMIN,HR,MANAGER")]
+        public async Task<IActionResult> GetDepartments()
+        {
+            var depts = await _employeeService.GetDepartmentsAsync();
+            return Ok(depts);
+        }
+
+        /// <summary>
+        /// Lấy danh sách quản lý / trưởng phòng cho dropdown gán người quản lý
+        /// </summary>
+        [HttpGet("managers")]
+        [Authorize(Roles = "ADMIN,HR,MANAGER")]
+        public async Task<IActionResult> GetManagers()
+        {
+            var managers = await _employeeService.GetManagersAsync();
+            return Ok(managers);
         }
 
         /// <summary>
@@ -78,10 +100,10 @@ namespace UTC_DATN.Controllers
     }
 
         /// <summary>
-        /// Tạo nhân viên mới (HR được tạo Interviewer, Admin được FULL)
+        /// Tạo nhân viên mới tuân thủ ủy quyền phân cấp (Delegated Administration)
         /// </summary>
         [HttpPost]
-        [Authorize(Roles = "ADMIN,HR")]
+        [Authorize(Roles = "ADMIN,HR,MANAGER")]
         public async Task<IActionResult> CreateEmployee([FromBody] CreateEmployeeRequest request)
         {
             if (!ModelState.IsValid)
@@ -89,14 +111,143 @@ namespace UTC_DATN.Controllers
                 return BadRequest(ModelState);
             }
 
+            var currentRole = User.FindFirst(ClaimTypes.Role)?.Value ?? "";
+            if (!Guid.TryParse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value, out Guid currentUserId))
+            {
+                return Unauthorized();
+            }
+
+            // ── KIỂM TRA ỦY QUYỀN PHÂN CẤP (DELEGATED ADMINISTRATION) ──
+            if (currentRole == "MANAGER")
+            {
+                var currentDbUser = await _context.Users.IgnoreQueryFilters().FirstOrDefaultAsync(u => u.UserId == currentUserId);
+                var currentDeptId = currentDbUser?.DepartmentId;
+
+                // Check 1: DepartmentId bắt buộc phải trùng với phòng ban của Manager
+                if (request.DepartmentId.HasValue && request.DepartmentId != currentDeptId)
+                {
+                    return StatusCode(403, new { message = "Trưởng phòng chỉ được phép tạo tài khoản trong phòng ban/xưởng của mình." });
+                }
+
+                // Tự động gán DepartmentId của Manager nếu chưa có
+                request.DepartmentId = currentDeptId;
+
+                // Check 2: Role được gán BẮT BUỘC phải cấp thấp hơn Manager (chỉ được tạo HR, INTERVIEWER, TeamLeader, Staff)
+                if (request.Role == "ADMIN" || request.Role == "MANAGER")
+                {
+                    return StatusCode(403, new { message = "Trưởng phòng chỉ được cấp tài khoản cấp dưới, không được phép tạo Admin hoặc Manager khác." });
+                }
+
+                // Gán người quản lý trực tiếp mặc định là chính Manager này
+                if (!request.ManagerId.HasValue)
+                {
+                    request.ManagerId = currentUserId;
+                }
+            }
+            else if (currentRole != "ADMIN")
+            {
+                // HR / TeamLeader / Staff không được phép tạo tài khoản
+                return StatusCode(403, new { message = "Bạn không có quyền tạo tài khoản nhân sự nội bộ." });
+            }
+
             var employee = await _employeeService.CreateEmployeeAsync(request);
 
             if (employee == null)
             {
-                return BadRequest(new { message = "Có lỗi xảy ra khi tạo nhân viên" });
+                return BadRequest(new { message = "Email đã tồn tại hoặc dữ liệu không hợp lệ." });
             }
 
             return CreatedAtAction(nameof(GetEmployees), new { id = employee.UserId }, employee);
+        }
+
+        /// <summary>
+        /// PATCH /api/users/{id}/toggle-status hoặc /api/employees/{id}/toggle-status
+        /// Khóa / Mở khóa tài khoản nhân sự (Xóa mềm thay cho DELETE)
+        /// </summary>
+        [HttpPatch("{id}/toggle-status")]
+        [HttpPatch("/api/users/{id}/toggle-status")]
+        [Authorize]
+        public async Task<IActionResult> ToggleStatus(Guid id, [FromBody] DeactivateRequest? request = null)
+        {
+            var currentRole = User.FindFirst(ClaimTypes.Role)?.Value ?? "";
+            if (currentRole != "ADMIN" && currentRole != "MANAGER")
+            {
+                return StatusCode(403, new { message = "Bạn không có quyền thực hiện thao tác này." });
+            }
+
+            if (!Guid.TryParse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value, out Guid currentUserId))
+            {
+                return Unauthorized();
+            }
+
+            var fullName = User.FindFirst("FullName")?.Value ?? "User";
+            var adminName = $"{fullName} ({currentRole})";
+
+            // Target user - Cần IgnoreQueryFilters để tìm thấy cả user đang bị khóa
+            var targetUser = await _context.Users
+                .IgnoreQueryFilters()
+                .Include(u => u.UserRoles)
+                    .ThenInclude(ur => ur.Role)
+                .FirstOrDefaultAsync(u => u.UserId == id);
+
+            if (targetUser == null)
+            {
+                return NotFound(new { message = "Không tìm thấy người dùng." });
+            }
+
+            if (targetUser.UserId == currentUserId)
+            {
+                return BadRequest(new { message = "Bạn không thể tự khóa tài khoản của chính mình." });
+            }
+
+            // Delegated checks cho DepartmentManager
+            if (currentRole == "MANAGER")
+            {
+                var currentDbUser = await _context.Users.IgnoreQueryFilters().FirstOrDefaultAsync(u => u.UserId == currentUserId);
+                var currentDeptId = currentDbUser?.DepartmentId;
+
+                // Check 1: Thuộc tính DepartmentId của user bị khóa BẮT BUỘC phải trùng với CurrentUser.DepartmentId
+                if (targetUser.DepartmentId != currentDeptId)
+                {
+                    return StatusCode(403, new { message = "Trưởng phòng chỉ được phép khóa/mở khóa nhân sự trong phòng ban của mình." });
+                }
+
+                // Check 2: Cấp quản lý mục tiêu không được là Admin hoặc Manager khác
+                var targetRoles = targetUser.UserRoles.Select(ur => ur.Role.Code).ToList();
+                if (targetRoles.Any(r => r == "ADMIN" || r == "MANAGER"))
+                {
+                    return StatusCode(403, new { message = "Trưởng phòng không có quyền can thiệp vào tài khoản cấp Quản lý khác hoặc Ban Giám Đốc." });
+                }
+            }
+
+            // Đảo trạng thái Soft Delete (IsActive)
+            targetUser.IsActive = !targetUser.IsActive;
+            targetUser.UpdatedAt = DateTime.UtcNow;
+
+            if (!targetUser.IsActive)
+            {
+                targetUser.LockedAt = DateTime.UtcNow;
+                targetUser.LockedById = currentUserId;
+                targetUser.LockedByName = adminName;
+                targetUser.LockReason = request?.Reason ?? "Khóa tài khoản bởi cấp quản lý.";
+            }
+            else
+            {
+                targetUser.LockedAt = null;
+                targetUser.LockedById = null;
+                targetUser.LockedByName = null;
+                targetUser.LockReason = null;
+            }
+
+            await _context.SaveChangesAsync();
+
+            return Ok(new
+            {
+                userId = targetUser.UserId,
+                isActive = targetUser.IsActive,
+                statusText = targetUser.IsActive ? "Đang hoạt động" : "Đã khóa",
+                message = targetUser.IsActive ? "Mở khóa tài khoản thành công" : "Khóa tài khoản thành công"
+            });
         }
 
         [HttpGet("{id}/pending-interviews")]
@@ -127,51 +278,18 @@ namespace UTC_DATN.Controllers
             });
         }
 
-
         [HttpPut("{id}/deactivate")]
         [Authorize]
         public async Task<IActionResult> DeactivateEmployee(Guid id, [FromBody] DeactivateRequest? request = null)
         {
-            // Check authorization - HR không được phép
-            var userRole = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value ?? "";
-            if (userRole != "ADMIN")
-            {
-                return StatusCode(403, new { message = " Bạn không có quyền khóa tài khoản nhân viên. Chỉ Admin mới có quyền này." });
-            }
-
-            if (!Guid.TryParse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value, out Guid adminId))
-                return Unauthorized();
-            var fullName = User.FindFirst("FullName")?.Value ?? "User";
-            var role = User.FindFirst(ClaimTypes.Role)?.Value ?? "Admin";
-            var adminName = $"{fullName} {role}";
-
-            var result = await _employeeService.DeactivateEmployeeAsync(id, adminId, adminName, request?.Reason);
-            
-            if (!result)
-                return NotFound(new { message = "Không tìm thấy nhân viên" });
-
-            return Ok(new { message = "Vô hiệu hóa nhân viên thành công" });
+            return await ToggleStatus(id, request);
         }
 
         [HttpPut("{id}/reactivate")]
         [Authorize]
         public async Task<IActionResult> ReactivateEmployee(Guid id)
         {
-            // Check authorization
-            var userRole = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value ?? "";
-            if (userRole != "ADMIN")
-            {
-                return StatusCode(403, new { message = " Bạn không có quyền kích hoạt tài khoản nhân viên. Chỉ Admin mới có quyền này." });
-            }
-            
-            var result = await _employeeService.ReactivateEmployeeAsync(id);
-            
-            if (!result)
-            {
-                return NotFound(new { message = "Không tìm thấy nhân viên" });
-            }
-
-            return Ok(new { message = "Kích hoạt nhân viên thành công" });
+            return await ToggleStatus(id, null);
         }
 
         [HttpPut("{id}")]
@@ -180,9 +298,9 @@ namespace UTC_DATN.Controllers
         {
             // Check authorization
             var userRole = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value ?? "";
-            if (userRole != "ADMIN")
+            if (userRole != "ADMIN" && userRole != "MANAGER")
             {
-                return StatusCode(403, new { message = " Bạn không có quyền chỉnh sửa thông tin nhân viên. Chỉ Admin mới có quyền này." });
+                return StatusCode(403, new { message = " Bạn không có quyền chỉnh sửa thông tin nhân viên." });
             }
             
             var employee = await _employeeService.UpdateEmployeeAsync(id, request);

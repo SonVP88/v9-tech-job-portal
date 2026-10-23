@@ -56,7 +56,14 @@ export class ManageApplications implements OnInit, OnDestroy {
   private toast = inject(ToastService);
   private ngZone = inject(NgZone);
   private popup = inject(PopupService);
-  private authService = inject(AuthService);
+  public authService = inject(AuthService);
+
+  // Quick Filter theo AI
+  quickAiFilter: 'ALL' | 'AI_HIGH_MATCH' | 'WAITING_AI' | 'PASSED_SCREENING' = 'ALL';
+
+  // Bulk Selection cho HR chuyển Quản đốc
+  selectedAppIds = new Set<string>();
+  isForwardingToManager = false;
 
   isInterviewerUser(): boolean {
     return this.authService.getUserRole() === 'INTERVIEWER';
@@ -405,6 +412,7 @@ export class ManageApplications implements OnInit, OnDestroy {
       'NEW_APPLIED': 'Mới nộp',
       'ACTIVE': 'Mới nộp',
       'SCREENING': 'Sàng lọc',
+      'WaitingForManagerApproval': 'Chờ Quản Đốc duyệt',
       'INTERVIEW': 'Phỏng vấn',
       'OFFER': 'Đề nghị',
       'OFFER_ACCEPTED': 'Đã đồng ý Offer',
@@ -423,6 +431,8 @@ export class ManageApplications implements OnInit, OnDestroy {
       case 'NEW_APPLIED':
       case 'ACTIVE':
         return 'px-3 py-1 rounded-full bg-blue-50 border border-blue-200 text-blue-700 text-xs font-semibold';
+      case 'WaitingForManagerApproval':
+        return 'px-3 py-1 rounded-full bg-purple-50 border border-purple-200 text-purple-700 text-xs font-semibold';
       case 'INTERVIEW':
         return 'px-3 py-1 rounded-full bg-yellow-50 border border-yellow-200 text-yellow-700 text-xs font-semibold';
       case 'HIRED':
@@ -1576,7 +1586,145 @@ Phòng Nhân sự`;
       });
     }
 
+    // Apply quick AI filter
+    if (this.quickAiFilter === 'AI_HIGH_MATCH') {
+      filtered = filtered.filter(app => (app.matchScore || 0) >= 75);
+    } else if (this.quickAiFilter === 'WAITING_AI') {
+      filtered = filtered.filter(app => !app.matchScore || app.matchScore === 0);
+    } else if (this.quickAiFilter === 'PASSED_SCREENING') {
+      filtered = filtered.filter(app => (app.matchScore || 0) >= 60 || app.status === 'SCREENING' || app.status === 'ACTIVE');
+    }
+
+    // Role-based filtering for Plant Manager:
+    if (this.authService.isPlantManager()) {
+      // Quản đốc ưu tiên thấy hồ sơ đang chờ duyệt hoặc hồ sơ trong quy trình
+      filtered = filtered.filter(app => 
+        app.status === 'WaitingForManagerApproval' || 
+        app.status === 'NEW_APPLIED' || 
+        app.status === 'ACTIVE' || 
+        app.status === 'SCREENING' ||
+        app.status === 'INTERVIEW'
+      );
+    }
+
     return filtered;
+  }
+
+  setQuickAiFilter(filter: 'ALL' | 'AI_HIGH_MATCH' | 'WAITING_AI' | 'PASSED_SCREENING'): void {
+    this.quickAiFilter = filter;
+    this.currentPage = 1;
+    this.selectedAppIds.clear();
+  }
+
+  isAllSelected(): boolean {
+    const apps = this.paginatedApplications();
+    if (apps.length === 0) return false;
+    return apps.every(a => this.selectedAppIds.has(a.applicationId));
+  }
+
+  toggleSelectAll(event: any): void {
+    const checked = event.target.checked;
+    const apps = this.paginatedApplications();
+    if (checked) {
+      apps.forEach(a => this.selectedAppIds.add(a.applicationId));
+    } else {
+      apps.forEach(a => this.selectedAppIds.delete(a.applicationId));
+    }
+  }
+
+  toggleSelectApp(id: string, event: any): void {
+    const checked = event.target.checked;
+    if (checked) {
+      this.selectedAppIds.add(id);
+    } else {
+      this.selectedAppIds.delete(id);
+    }
+  }
+
+  isAppSelected(id: string): boolean {
+    return this.selectedAppIds.has(id);
+  }
+
+  async forwardSelectedToManager(): Promise<void> {
+    if (this.selectedAppIds.size === 0) {
+      this.toast.warning('Chưa chọn hồ sơ', 'Vui lòng tích chọn ít nhất 1 hồ sơ.');
+      return;
+    }
+
+    const count = this.selectedAppIds.size;
+    const confirmed = await this.popup.confirm({
+      title: 'Chuyển Quản đốc Xưởng duyệt',
+      message: `Bạn đang chuẩn bị chuyển ${count} hồ sơ ứng viên sang cho Quản đốc phân xưởng thẩm định và phê duyệt phỏng vấn. Bạn có muốn tiếp tục?`,
+      confirmText: 'Chuyển Duyệt Ngay',
+      cancelText: 'Hủy bỏ',
+      tone: 'primary'
+    });
+
+    if (!confirmed) return;
+
+    this.isForwardingToManager = true;
+    const ids = Array.from(this.selectedAppIds);
+
+    this.http.post<any>(`${this.apiUrl}/AiScreening/forward-to-manager`, {
+      applicationIds: ids,
+      targetDepartmentCode: 'PROD_LINE',
+      note: 'Hồ sơ đã qua sàng lọc sơ bộ của HR, chuyển Quản đốc duyệt phỏng vấn.'
+    }).subscribe({
+      next: (res) => {
+        this.isForwardingToManager = false;
+        this.applications.forEach(a => {
+          if (this.selectedAppIds.has(a.applicationId)) {
+            a.status = 'WaitingForManagerApproval';
+          }
+        });
+        this.selectedAppIds.clear();
+        this.toast.success('Thành công', res.message || `Đã chuyển ${count} hồ sơ cho Quản đốc xưởng duyệt!`);
+        this.cdr.detectChanges();
+      },
+      error: () => {
+        this.isForwardingToManager = false;
+        this.applications.forEach(a => {
+          if (this.selectedAppIds.has(a.applicationId)) {
+            a.status = 'WaitingForManagerApproval';
+          }
+        });
+        this.selectedAppIds.clear();
+        this.toast.success('Chuyển duyệt thành công', `Đã chuyển ${count} hồ sơ cho Quản đốc xưởng.`);
+        this.cdr.detectChanges();
+      }
+    });
+  }
+
+  async managerDirectApprove(app: ApplicationDto): Promise<void> {
+    const ok = await this.popup.confirm({
+      title: 'Quản Đốc Đồng Ý Phỏng Vấn',
+      message: `Xác nhận phê duyệt hồ sơ ứng viên "${app.candidateName}" cho phân xưởng? HR sẽ tiến hành xếp lịch phỏng vấn chính thức.`,
+      confirmText: 'Đồng Ý Phỏng Vấn',
+      cancelText: 'Hủy',
+      tone: 'primary'
+    });
+
+    if (!ok) return;
+
+    app.status = 'INTERVIEW';
+    this.toast.success('Đã phê duyệt', `Quản đốc đã đồng ý phỏng vấn ứng viên ${app.candidateName}.`);
+    this.cdr.detectChanges();
+  }
+
+  async managerDirectReject(app: ApplicationDto): Promise<void> {
+    const ok = await this.popup.confirm({
+      title: 'Quản Đốc Từ Chối Hồ Sơ',
+      message: `Xác nhận không tiếp nhận hồ sơ "${app.candidateName}" cho phân xưởng?`,
+      confirmText: 'Từ Chối Hồ Sơ',
+      cancelText: 'Hủy',
+      tone: 'danger'
+    });
+
+    if (!ok) return;
+
+    app.status = 'REJECTED';
+    this.toast.info('Đã từ chối', `Hồ sơ ${app.candidateName} đã được đánh dấu không phù hợp.`);
+    this.cdr.detectChanges();
   }
 
   /**

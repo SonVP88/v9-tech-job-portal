@@ -1,6 +1,35 @@
 @UTC_DATN_HostAddress = http://localhost:5222
+@AuthToken = 
 
-GET {{UTC_DATN_HostAddress}}/weatherforecast/
+### ✅ CHECK GEMINI API KEYS STATUS
+GET {{UTC_DATN_HostAddress}}/api/admin/gemini-keys
+Authorization: Bearer {{AuthToken}}
 Accept: application/json
+
+###
+
+### Test CV Scoring (Email Module - Module "CV")
+POST {{UTC_DATN_HostAddress}}/api/v1/ai-matching/score-cv
+Authorization: Bearer {{AuthToken}}
+Content-Type: application/json
+
+{
+  "cvContent": "Test CV with basic skills",
+  "jobDescription": "Senior Developer needed - Skills: C#, SQL, Azure"
+}
+
+###
+
+### Test Cover Letter Generation (Module "Email")
+POST {{UTC_DATN_HostAddress}}/api/v1/ai-matching/generate-cover-letter
+Authorization: Bearer {{AuthToken}}
+Content-Type: application/json
+
+{
+  "candidateName": "John Doe",
+  "jobTitle": "Senior Developer",
+  "companyName": "Tech Corp",
+  "jobDescription": "Looking for experienced developer with C# knowledge"
+}
 
 ###

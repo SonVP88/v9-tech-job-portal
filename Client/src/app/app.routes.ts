@@ -11,6 +11,7 @@ import { EmployeeManagement } from './pages/admin/employee-management/employee-m
 import { ForbiddenComponent } from './pages/forbidden/forbidden.component';
 import { roleGuard } from './guards/role.guard';
 import { authGuard } from './guards/auth.guard';
+import { roleAccessGuard } from './guards/role-access.guard';
 import { CandidateDetail } from './components/admin/candidate-detail/candidate-detail';
 import { jobResolver } from './resolvers/job-search.resolver';
 import { profileResolver } from './resolvers/profile.resolver';
@@ -28,7 +29,6 @@ export const routes: Routes = [
     path: 'candidate',
     canActivateChild: [candidateLayoutGuard],
     children: [
-      // Public - không cần đăng nhập
       { path: 'home', component: Home },
       {
         path: 'jobs',
@@ -40,7 +40,6 @@ export const routes: Routes = [
         path: 'company',
         loadComponent: () => import('./pages/candidate/company/company').then(m => m.CompanyComponent)
       },
-      // Private - yêu cầu đăng nhập
       {
         path: 'my-applications',
         component: MyApplications,
@@ -79,88 +78,146 @@ export const routes: Routes = [
     path: 'hr',
     component: HrLayout,
     children: [
-      { path: 'dashboard', component: Dashboard },
+      // ─── NHÓM 1: BÀN LÀM VIỆC ─────────────────────────────────────────
+      {
+        path: 'dashboard',
+        component: Dashboard,
+        canActivate: [roleAccessGuard]
+      },
+      {
+        path: 'ai-screening',
+        loadComponent: () => import('./pages/hr/ai-screening/ai-screening.component').then(m => m.AiScreeningComponent),
+        canActivate: [roleAccessGuard]
+      },
       {
         path: 'activities',
         loadComponent: () => import('./pages/hr/recent-activities/recent-activities').then(m => m.RecentActivitiesComponent)
       },
+
+      // ─── NHÓM 2: NGHIỆP VỤ TUYỂN DỤNG ──────────────────────────────────
       {
         path: 'jobs',
-        loadComponent: () => import('./pages/hr/job-list/job-list').then(m => m.JobListComponent)
+        loadComponent: () => import('./pages/hr/job-list/job-list').then(m => m.JobListComponent),
+        canActivate: [roleAccessGuard]
       },
       {
         path: 'post-job',
-        loadComponent: () => import('./pages/hr/post-job').then(m => m.PostJob)
-      },
-      {
-        path: 'settings',
-        loadComponent: () => import('./pages/hr/settings/settings').then(m => m.SettingsComponent)
+        loadComponent: () => import('./pages/hr/post-job').then(m => m.PostJob),
+        canActivate: [roleAccessGuard]
       },
       {
         path: 'post-job/:id',
-        loadComponent: () => import('./pages/hr/post-job').then(m => m.PostJob)
+        loadComponent: () => import('./pages/hr/post-job').then(m => m.PostJob),
+        canActivate: [roleAccessGuard]
       },
-      { path: 'manage-applications/:jobId', component: ManageApplications },
-      { path: 'manage-applications', component: ManageApplications },
-      { path: 'candidate-detail', component: CandidateDetail },
+      // Hỗ trợ cả 2 route /applications và /manage-applications
       {
-        path: 'reports',
-        loadComponent: () => import('./components/admin/reports/reports').then(m => m.Reports),
-        data: { ssr: false }
+        path: 'applications',
+        component: ManageApplications,
+        canActivate: [roleAccessGuard]
+      },
+      {
+        path: 'applications/:jobId',
+        component: ManageApplications,
+        canActivate: [roleAccessGuard]
+      },
+      {
+        path: 'manage-applications',
+        redirectTo: 'applications',
+        pathMatch: 'full'
+      },
+      {
+        path: 'manage-applications/:jobId',
+        redirectTo: 'applications/:jobId',
+        pathMatch: 'full'
+      },
+      {
+        path: 'candidate-detail',
+        component: CandidateDetail
+      },
+      // Hỗ trợ cả 2 route /interviews và /my-interviews
+      {
+        path: 'interviews',
+        loadComponent: () => import('./components/my-interviews/my-interviews').then(m => m.MyInterviews),
+        canActivate: [roleAccessGuard]
       },
       {
         path: 'my-interviews',
-        loadComponent: () => import('./components/my-interviews/my-interviews').then(m => m.MyInterviews),
-        canActivate: [roleGuard],
-        data: { roles: ['INTERVIEWER', 'HR', 'ADMIN'] }
+        redirectTo: 'interviews',
+        pathMatch: 'full'
       },
+      // Tiếp nhận & Onboarding mới
+      {
+        path: 'onboarding',
+        loadComponent: () => import('./pages/hr/onboarding/onboarding.component').then(m => m.OnboardingComponent),
+        canActivate: [roleAccessGuard]
+      },
+      // Kho nhân tài (Talent Pool) - đổi từ /candidates
+      {
+        path: 'talent-pool',
+        loadComponent: () => import('./pages/admin/candidate-management/candidate-management').then(m => m.CandidateManagementComponent),
+        canActivate: [roleAccessGuard]
+      },
+      {
+        path: 'candidates',
+        redirectTo: 'talent-pool',
+        pathMatch: 'full'
+      },
+
+      // ─── NHÓM 3: TỔ CHỨC & ĐÁNH GIÁ ────────────────────────────────────
       {
         path: 'employees',
         component: EmployeeManagement,
-        canActivate: [roleGuard],
-        data: { roles: ['ADMIN', 'HR'] }
+        canActivate: [roleAccessGuard]
       },
       {
         path: 'skills',
         loadComponent: () => import('./pages/admin/skill-management/skill-management').then(m => m.SkillManagementComponent),
-        canActivate: [roleGuard],
-        data: { roles: ['ADMIN', 'HR', 'INTERVIEW'] }
+        canActivate: [roleAccessGuard]
       },
       {
         path: 'question-bank',
         loadComponent: () => import('./pages/hr/question-bank/question-bank').then(m => m.QuestionBankComponent),
-        canActivate: [roleGuard],
-        data: { roles: ['ADMIN', 'HR', 'INTERVIEWER'] }
+        canActivate: [roleAccessGuard]
+      },
+      {
+        path: 'reports',
+        loadComponent: () => import('./components/admin/reports/reports').then(m => m.Reports),
+        canActivate: [roleAccessGuard],
+        data: { ssr: false }
+      },
+
+      // ─── NHÓM 4: HỆ THỐNG ──────────────────────────────────────────────
+      {
+        path: 'chatbot-faq',
+        loadComponent: () => import('./pages/admin/chatbot-admin/chatbot-admin').then(m => m.ChatbotAdminComponent),
+        canActivate: [roleAccessGuard]
       },
       {
         path: 'chatbot-admin',
-        loadComponent: () => import('./pages/admin/chatbot-admin/chatbot-admin').then(m => m.ChatbotAdminComponent),
-        canActivate: [roleGuard],
-        data: { roles: ['ADMIN', 'HR'] }
+        redirectTo: 'chatbot-faq',
+        pathMatch: 'full'
       },
       {
-        path: 'candidates',
-        loadComponent: () => import('./pages/admin/candidate-management/candidate-management').then(m => m.CandidateManagementComponent),
-        canActivate: [roleGuard],
-        data: { roles: ['ADMIN', 'HR'] }
+        path: 'settings',
+        loadComponent: () => import('./pages/hr/settings/settings').then(m => m.SettingsComponent),
+        canActivate: [roleAccessGuard]
       },
       {
         path: 'code-challenges',
         component: CodeChallengesComponent,
         canActivate: [roleGuard],
-        data: { roles: ['ADMIN', 'HR'] }
+        data: { roles: ['ADMIN', 'HR', 'MANAGER'] }
       },
       {
         path: 'analytics',
         component: AnalyticsDashboardComponent,
         canActivate: [roleGuard],
-        data: { roles: ['ADMIN', 'HR'] }
+        data: { roles: ['ADMIN', 'HR', 'MANAGER'] }
       },
       { path: '', redirectTo: 'dashboard', pathMatch: 'full' }
     ]
   },
-  // Trang chủ mặc định → vào trang job listing (không cần login)
   { path: '', redirectTo: 'candidate/home', pathMatch: 'full' },
   { path: '**', redirectTo: 'candidate/home' }
 ];
-  

@@ -1,4 +1,4 @@
-<div class="container mx-auto px-4 py-6">
+<div class="w-full">
     <!-- Header -->
     <div class="mb-6">
         <h1 class="text-3xl font-bold text-gray-900 mb-2">
@@ -24,6 +24,57 @@
     </div>
 
     <ng-container *ngIf="activeTab === 'APPLICATIONS'">
+        <!-- Plant Manager Alert Banner -->
+        <div *ngIf="authService.isPlantManager()" class="mb-4 p-4 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 flex items-center justify-between gap-3">
+            <div class="flex items-center gap-3">
+                <span class="material-symbols-outlined text-amber-600 dark:text-amber-400 text-2xl">precision_manufacturing</span>
+                <div>
+                    <h4 class="text-xs font-bold text-amber-900 dark:text-amber-200 uppercase tracking-wide">Chế độ Quản Đốc Phân Xưởng</h4>
+                    <p class="text-xs text-amber-800 dark:text-amber-300">Đang hiển thị hồ sơ cần thẩm định chuyên môn kỹ thuật hoặc duyệt lịch phỏng vấn cho phân xưởng.</p>
+                </div>
+            </div>
+            <span class="px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-200 text-amber-900">Quản Đốc</span>
+        </div>
+
+        <!-- Quick AI Filters & Bulk Action Bar -->
+        <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <div class="flex items-center gap-2 flex-wrap">
+                <span class="text-xs font-bold text-gray-500 uppercase">Lọc nhanh AI:</span>
+                <button (click)="setQuickAiFilter('ALL')"
+                        [class]="quickAiFilter === 'ALL' ? 'bg-blue-600 text-white font-bold' : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-200'"
+                        class="px-3 py-1.5 rounded-lg text-xs transition-colors shadow-sm">
+                    Tất cả ({{ applications.length }})
+                </button>
+                <button (click)="setQuickAiFilter('AI_HIGH_MATCH')"
+                        [class]="quickAiFilter === 'AI_HIGH_MATCH' ? 'bg-emerald-600 text-white font-bold shadow-emerald-500/20' : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200'"
+                        class="px-3 py-1.5 rounded-lg text-xs transition-colors flex items-center gap-1 shadow-sm">
+                    🤖 AI Đề xuất cao (&ge;75%)
+                </button>
+                <button (click)="setQuickAiFilter('WAITING_AI')"
+                        [class]="quickAiFilter === 'WAITING_AI' ? 'bg-amber-600 text-white font-bold shadow-amber-500/20' : 'bg-amber-50 text-amber-700 hover:bg-amber-100 border border-amber-200'"
+                        class="px-3 py-1.5 rounded-lg text-xs transition-colors flex items-center gap-1 shadow-sm">
+                    ⏳ Chờ AI chấm
+                </button>
+                <button (click)="setQuickAiFilter('PASSED_SCREENING')"
+                        [class]="quickAiFilter === 'PASSED_SCREENING' ? 'bg-indigo-600 text-white font-bold shadow-indigo-500/20' : 'bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200'"
+                        class="px-3 py-1.5 rounded-lg text-xs transition-colors flex items-center gap-1 shadow-sm">
+                    ✅ Đạt sơ loại
+                </button>
+            </div>
+
+            <!-- Bulk Action: Forward to Manager (For HR) -->
+            <div *ngIf="!authService.isPlantManager() && selectedAppIds.size > 0" class="flex items-center gap-2">
+                <span class="text-xs font-semibold text-gray-600">Đã chọn <b>{{ selectedAppIds.size }}</b> hồ sơ:</span>
+                <button (click)="forwardSelectedToManager()" [disabled]="isForwardingToManager"
+                        class="px-3 py-1.5 rounded-lg text-xs font-bold bg-purple-600 hover:bg-purple-700 text-white flex items-center gap-1.5 shadow-sm transition-colors">
+                    <span class="material-symbols-outlined text-sm" [class.animate-spin]="isForwardingToManager">
+                        {{ isForwardingToManager ? 'sync' : 'forward_to_inbox' }}
+                    </span>
+                    📤 Chuyển Quản đốc Xưởng duyệt
+                </button>
+            </div>
+        </div>
+
         <!-- Search/Filter/Export Toolbar -->
         <div class="mb-6 bg-white rounded-xl shadow-sm border border-gray-100 p-4">
             <div class="flex flex-wrap items-center gap-4">
@@ -178,6 +229,9 @@
                 <table class="min-w-full divide-y divide-gray-200">
                     <thead class="bg-gray-50">
                         <tr>
+                            <th scope="col" class="px-4 py-3 text-center w-10" *ngIf="!isInterviewerUser()">
+                                <input type="checkbox" [checked]="isAllSelected()" (change)="toggleSelectAll($event)" class="rounded text-blue-600 focus:ring-blue-500 cursor-pointer">
+                            </th>
                             <th scope="col"
                                 class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                 Ứng viên
@@ -214,6 +268,11 @@
                     </thead>
                     <tbody class="bg-white divide-y divide-gray-200">
                         <tr *ngFor="let app of paginatedApplications()" [ngClass]="getSlaRowClass(app)" class="transition-colors">
+                            <!-- Checkbox for Bulk Selection -->
+                            <td class="px-4 py-4 text-center whitespace-nowrap" *ngIf="!isInterviewerUser()" (click)="$event.stopPropagation()">
+                                <input type="checkbox" [checked]="isAppSelected(app.applicationId)" (change)="toggleSelectApp(app.applicationId, $event)" class="rounded text-blue-600 focus:ring-blue-500 cursor-pointer">
+                            </td>
+
                             <!-- Candidate Info -->
                             <td class="px-6 py-4 whitespace-nowrap cursor-pointer" (click)="viewCandidateDetail(app)">
                                 <div class="flex items-center">
@@ -277,7 +336,29 @@
 
                             <!-- Actions -->
                             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                <div class="flex items-center gap-2" *ngIf="!isInterviewerUser()">
+                                <!-- Quản Đốc Phân Xưởng View: Duyệt nhanh hoặc Từ chối -->
+                                <div *ngIf="authService.isPlantManager()" class="flex items-center gap-2">
+                                    <button (click)="managerDirectApprove(app); $event.stopPropagation()"
+                                            class="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center gap-1 shadow-sm transition-colors">
+                                        <span class="material-symbols-outlined" style="font-size: 14px;">check</span>
+                                        Đồng ý PV
+                                    </button>
+                                    <button (click)="managerDirectReject(app); $event.stopPropagation()"
+                                            class="px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-lg text-xs font-semibold flex items-center gap-1 transition-colors">
+                                        <span class="material-symbols-outlined" style="font-size: 14px;">close</span>
+                                        Từ chối
+                                    </button>
+                                </div>
+
+                                <div class="flex items-center gap-2" *ngIf="!authService.isPlantManager() && !isInterviewerUser()">
+                                    <!-- Trường hợp Chờ Quản Đốc Duyệt -->
+                                    <ng-container *ngIf="app.status === 'WaitingForManagerApproval'">
+                                        <span class="px-2.5 py-1.5 bg-purple-50 text-purple-700 rounded-lg text-xs font-semibold flex items-center gap-1 border border-purple-200">
+                                            <span class="material-symbols-outlined" style="font-size: 14px;">hourglass_top</span>
+                                            Chờ Quản Đốc duyệt
+                                        </span>
+                                    </ng-container>
+
                                     <!-- Trường hợp 1: NEW_APPLIED hoặc ACTIVE -->
                                     <ng-container *ngIf="app.status === 'NEW_APPLIED' || app.status === 'ACTIVE'">
                                         <button

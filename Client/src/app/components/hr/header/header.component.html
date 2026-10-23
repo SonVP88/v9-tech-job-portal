@@ -1,0 +1,163 @@
+<header
+  class="sticky top-0 z-30 h-20 bg-white dark:bg-slate-950 border-b border-gray-200 dark:border-slate-800 flex items-center justify-between px-6 lg:px-8 transition-colors duration-300">
+  
+  <!-- Thanh Tìm Kiếm Nhanh -->
+  <div class="flex-1 max-w-lg">
+    <label class="relative block group">
+      <span class="absolute inset-y-0 left-0 flex items-center pl-3.5 text-gray-400 group-focus-within:text-blue-600 transition-colors">
+        <span class="material-symbols-outlined text-[20px]">search</span>
+      </span>
+      <input
+        class="block w-full rounded-xl border border-gray-200 dark:border-slate-800 bg-gray-50 dark:bg-slate-900/60 py-2.5 pl-10 pr-4 text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:bg-white dark:focus:bg-slate-900 dark:text-white transition-all shadow-sm"
+        name="search" placeholder="Tìm kiếm ứng viên, mã hồ sơ, kỹ năng hoặc việc làm..." type="text" />
+    </label>
+  </div>
+
+  <!-- Nút Hành Động Ngữ Cảnh (Contextual CTA Button) -->
+  <div class="flex items-center gap-4 ml-6">
+    <!-- TRƯỜNG HỢP 1: SuperAdmin hoặc Phòng Nhân Sự (HR_TEAM) -> Nút + Đăng Tin Mới -->
+    @if (authService.canPostJob()) {
+      <button routerLink="/hr/post-job" type="button"
+        class="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white text-sm font-bold rounded-xl transition-all shadow-lg shadow-blue-500/25 active:scale-95">
+        <span class="material-symbols-outlined text-[20px]">add_circle</span>
+        <span>+ Đăng Tin Mới</span>
+      </button>
+    }
+
+    <!-- TRƯỜNG HỢP 2: Quản đốc các Xưởng / Bộ phận chuyên môn (PROD_LINE, WH_LOGS, TECH_MNT, QA_QC) -> Nút + Đề Xuất Tuyển Dụng -->
+    @if (authService.isPlantManager()) {
+      <button (click)="openHiringRequestModal()" type="button"
+        class="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white text-sm font-bold rounded-xl transition-all shadow-lg shadow-indigo-500/25 active:scale-95">
+        <span class="material-symbols-outlined text-[20px]">assignment_add</span>
+        <span>+ Đề Xuất Tuyển Dụng</span>
+      </button>
+    }
+  </div>
+</header>
+
+<!-- ════════════════════════════════════════════════════════════════════════════ -->
+<!-- MODAL ĐỀ XUẤT TUYỂN DỤNG NHÂN SỰ CHO QUẢN ĐỐC / TRƯỞNG BỘ PHẬN               -->
+<!-- ════════════════════════════════════════════════════════════════════════════ -->
+@if (isHiringModalOpen()) {
+  <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
+    <div class="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-gray-100 dark:border-slate-800 w-full max-w-2xl overflow-hidden animate-scale-up">
+      
+      <!-- Modal Header -->
+      <div class="px-6 py-4 border-b border-gray-100 dark:border-slate-800 flex items-center justify-between bg-gradient-to-r from-indigo-50/50 to-purple-50/50 dark:from-slate-900 dark:to-slate-900">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-indigo-100 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
+            <span class="material-symbols-outlined text-[22px]">assignment_add</span>
+          </div>
+          <div>
+            <h3 class="text-base font-bold text-slate-900 dark:text-white">Đề Xuất Nhu Cầu Tuyển Dụng</h3>
+            <p class="text-xs text-gray-500 dark:text-slate-400">Gửi phiếu yêu cầu định biên nhân sự tới Phòng Nhân Sự (HR)</p>
+          </div>
+        </div>
+        <button (click)="closeHiringRequestModal()" type="button"
+          class="text-gray-400 hover:text-gray-600 dark:hover:text-white p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors">
+          <span class="material-symbols-outlined text-[20px]">close</span>
+        </button>
+      </div>
+
+      <!-- Modal Body (Form Fields) -->
+      <div class="p-6 space-y-4 max-h-[75vh] overflow-y-auto custom-scrollbar">
+        <!-- Vị trí & Số lượng -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div class="md:col-span-2 space-y-1.5">
+            <label class="text-xs font-bold text-slate-700 dark:text-slate-300">
+              Vị trí / Chức danh cần tuyển <span class="text-red-500">*</span>
+            </label>
+            <input type="text" [(ngModel)]="requestForm.jobTitle"
+              placeholder="VD: Công nhân vận hành máy CNC, Kỹ sư bảo trì..."
+              class="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 dark:text-white" />
+          </div>
+
+          <div class="space-y-1.5">
+            <label class="text-xs font-bold text-slate-700 dark:text-slate-300">
+              Số lượng (Headcount) <span class="text-red-500">*</span>
+            </label>
+            <input type="number" min="1" [(ngModel)]="requestForm.targetHeadcount"
+              class="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 dark:text-white" />
+          </div>
+        </div>
+
+        <!-- Phân xưởng đề xuất (Readonly từ thông tin người dùng đang login) -->
+        <div class="space-y-1.5">
+          <label class="text-xs font-bold text-slate-700 dark:text-slate-300">Đơn vị / Phân xưởng đề xuất</label>
+          <div class="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-gray-50 dark:bg-slate-800/60 border border-gray-200 dark:border-slate-700 text-sm font-semibold text-slate-800 dark:text-slate-200">
+            <span class="material-symbols-outlined text-[18px] text-indigo-600">domain</span>
+            <span>{{ authService.currentUser()?.departmentName || 'Xưởng chuyên môn' }}</span>
+            <span class="ml-auto text-[10px] px-2 py-0.5 rounded bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300 font-mono">
+              {{ authService.currentUser()?.departmentCode || 'DEPT' }}
+            </span>
+          </div>
+        </div>
+
+        <!-- Lý do & Mức độ gấp -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="space-y-1.5">
+            <label class="text-xs font-bold text-slate-700 dark:text-slate-300">Lý do tuyển dụng</label>
+            <select [(ngModel)]="requestForm.reason"
+              class="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 dark:text-white">
+              <option value="EXPANSION">Mở rộng chuyền sản xuất / Tăng công suất</option>
+              <option value="REPLACEMENT">Thay thế nhân sự nghỉ việc / chuyển bộ phận</option>
+              <option value="SEASONAL">Đơn hàng đột biến mùa vụ</option>
+              <option value="PLAN">Bổ sung định biên theo kế hoạch quý</option>
+            </select>
+          </div>
+
+          <div class="space-y-1.5">
+            <label class="text-xs font-bold text-slate-700 dark:text-slate-300">Mức độ khẩn cấp</label>
+            <select [(ngModel)]="requestForm.urgencyLevel"
+              class="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 dark:text-white font-medium">
+              <option value="NORMAL">Bình thường (Trong vòng 30 ngày)</option>
+              <option value="URGENT">Gấp (Cần trong 14 ngày tới)</option>
+              <option value="CRITICAL">Khẩn cấp (Cần bổ sung ngay trong 7 ngày)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Chế độ ca kíp -->
+        <div class="space-y-1.5">
+          <label class="text-xs font-bold text-slate-700 dark:text-slate-300">Chế độ làm việc / Ca kíp</label>
+          <select [(ngModel)]="requestForm.shiftType"
+            class="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 dark:text-white">
+            <option value="3_SHIFTS">Làm việc 3 ca 4 kíp (Có ca đêm)</option>
+            <option value="DAY_SHIFT">Giờ hành chính (8h00 - 17h00)</option>
+            <option value="12H_ROTATION">Xoay ca 12 tiếng (Ngày / Đêm)</option>
+          </select>
+        </div>
+
+        <!-- Tiêu chí & Yêu cầu đặc biệt -->
+        <div class="space-y-1.5">
+          <label class="text-xs font-bold text-slate-700 dark:text-slate-300">
+            Yêu cầu kỹ năng / Thể lực đặc thù (Gợi ý cho AI Sàng lọc & HR)
+          </label>
+          <textarea rows="3" [(ngModel)]="requestForm.specialRequirements"
+            placeholder="VD: Cần có chứng chỉ lái xe nâng, chấp nhận làm thêm giờ mùa cao điểm, không cận thị nặng..."
+            class="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 dark:text-white"></textarea>
+        </div>
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="px-6 py-4 border-t border-gray-100 dark:border-slate-800 flex items-center justify-end gap-3 bg-gray-50/50 dark:bg-slate-900/50">
+        <button (click)="closeHiringRequestModal()" type="button" [disabled]="isSubmitting()"
+          class="px-4 py-2.5 rounded-xl border border-gray-200 dark:border-slate-700 text-gray-700 dark:text-slate-300 text-sm font-semibold hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors">
+          Hủy bỏ
+        </button>
+
+        <button (click)="submitHiringRequest()" type="button" [disabled]="isSubmitting()"
+          class="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white text-sm font-bold shadow-lg shadow-indigo-500/25 transition-all active:scale-95 disabled:opacity-50">
+          @if (isSubmitting()) {
+            <span class="material-symbols-outlined text-[18px] animate-spin">progress_activity</span>
+            <span>Đang gửi...</span>
+          } @else {
+            <span class="material-symbols-outlined text-[18px]">send</span>
+            <span>Gửi Đề Xuất (Pending HR Approval)</span>
+          }
+        </button>
+      </div>
+
+    </div>
+  </div>
+}

@@ -1163,6 +1163,45 @@ namespace UTC_DATN.Migrations
                     b.ToTable("CoverLetters");
                 });
 
+            modelBuilder.Entity("UTC_DATN.Entities.Department", b =>
+                {
+                    b.Property<Guid>("DepartmentId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier")
+                        .HasDefaultValueSql("(newid())");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("(sysutcdatetime())");
+
+                    b.Property<string>("DepartmentCode")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<string>("DepartmentName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(true);
+
+                    b.HasKey("DepartmentId");
+
+                    b.HasIndex(new[] { "DepartmentCode" }, "UQ_Departments_Code")
+                        .IsUnique();
+
+                    b.ToTable("Departments");
+                });
+
             modelBuilder.Entity("UTC_DATN.Entities.EmailQueue", b =>
                 {
                     b.Property<Guid>("EmailQueueId")
@@ -1614,6 +1653,9 @@ namespace UTC_DATN.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
+                    b.Property<Guid?>("DepartmentId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<string>("Description")
                         .HasColumnType("nvarchar(max)");
 
@@ -1664,6 +1706,8 @@ namespace UTC_DATN.Migrations
                     b.HasKey("JobId");
 
                     b.HasIndex("CreatedBy");
+
+                    b.HasIndex("DepartmentId");
 
                     b.HasIndex(new[] { "Status" }, "IX_Jobs_Status");
 
@@ -2186,6 +2230,9 @@ namespace UTC_DATN.Migrations
                         .HasColumnType("datetime2")
                         .HasDefaultValueSql("(sysutcdatetime())");
 
+                    b.Property<Guid?>("DepartmentId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<string>("Email")
                         .IsRequired()
                         .HasMaxLength(320)
@@ -2212,6 +2259,9 @@ namespace UTC_DATN.Migrations
                     b.Property<string>("LockedByName")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<Guid?>("ManagerId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<string>("NormalizedEmail")
                         .ValueGeneratedOnAddOrUpdate()
                         .HasMaxLength(320)
@@ -2231,6 +2281,10 @@ namespace UTC_DATN.Migrations
                         .HasColumnType("datetime2");
 
                     b.HasKey("UserId");
+
+                    b.HasIndex("DepartmentId");
+
+                    b.HasIndex("ManagerId");
 
                     b.ToTable("Users");
                 });
@@ -2781,7 +2835,15 @@ namespace UTC_DATN.Migrations
                         .HasForeignKey("CreatedBy")
                         .HasConstraintName("FK_Jobs_CreatedBy");
 
+                    b.HasOne("UTC_DATN.Entities.Department", "DepartmentNavigation")
+                        .WithMany("Jobs")
+                        .HasForeignKey("DepartmentId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("FK_Jobs_Department");
+
                     b.Navigation("CreatedByNavigation");
+
+                    b.Navigation("DepartmentNavigation");
                 });
 
             modelBuilder.Entity("UTC_DATN.Entities.JobSkillMap", b =>
@@ -2898,6 +2960,24 @@ namespace UTC_DATN.Migrations
                     b.Navigation("Job");
                 });
 
+            modelBuilder.Entity("UTC_DATN.Entities.User", b =>
+                {
+                    b.HasOne("UTC_DATN.Entities.Department", "Department")
+                        .WithMany("Users")
+                        .HasForeignKey("DepartmentId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("FK_Users_Department");
+
+                    b.HasOne("UTC_DATN.Entities.User", "Manager")
+                        .WithMany("Subordinates")
+                        .HasForeignKey("ManagerId")
+                        .HasConstraintName("FK_Users_Manager");
+
+                    b.Navigation("Department");
+
+                    b.Navigation("Manager");
+                });
+
             modelBuilder.Entity("UTC_DATN.Entities.UserRole", b =>
                 {
                     b.HasOne("UTC_DATN.Entities.Role", "Role")
@@ -2981,6 +3061,13 @@ namespace UTC_DATN.Migrations
             modelBuilder.Entity("UTC_DATN.Entities.ChatSession", b =>
                 {
                     b.Navigation("ChatMessages");
+                });
+
+            modelBuilder.Entity("UTC_DATN.Entities.Department", b =>
+                {
+                    b.Navigation("Jobs");
+
+                    b.Navigation("Users");
                 });
 
             modelBuilder.Entity("UTC_DATN.Entities.EmailQueue", b =>
@@ -3070,6 +3157,8 @@ namespace UTC_DATN.Migrations
                     b.Navigation("QuestionBanks");
 
                     b.Navigation("RefreshTokens");
+
+                    b.Navigation("Subordinates");
 
                     b.Navigation("UserRoles");
                 });

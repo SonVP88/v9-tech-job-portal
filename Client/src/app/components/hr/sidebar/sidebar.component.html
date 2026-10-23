@@ -1,0 +1,128 @@
+<aside
+  class="fixed top-0 left-0 z-40 w-72 h-screen bg-white dark:bg-slate-950 border-r border-gray-200 dark:border-slate-800 flex flex-col transition-colors duration-300">
+  
+  <!-- Logo Header -->
+  <div class="h-20 min-h-[5rem] flex items-center px-6 border-b border-gray-100 dark:border-slate-800/60">
+    <div class="flex items-center gap-3">
+      <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white shrink-0 shadow-lg shadow-blue-500/25">
+        <span class="material-symbols-outlined text-[22px] font-bold">factory</span>
+      </div>
+      <div class="flex flex-col">
+        <h1 class="text-lg font-bold tracking-tight text-slate-900 dark:text-white leading-tight">ATS Industrial</h1>
+        <span class="text-[10px] font-semibold text-blue-600 dark:text-blue-400 tracking-wider uppercase">AI Powered Recruitment</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Grouped Navigation List -->
+  <nav class="flex-1 overflow-y-auto custom-scrollbar px-3 py-5 space-y-5">
+    @for (group of visibleMenuGroups(); track group.groupKey) {
+      <div class="space-y-1">
+        <!-- Section Header (Tự động ẩn nếu nhóm không có menu nào khả dụng) -->
+        <div class="px-3 pb-1.5 text-[11px] font-bold tracking-wider text-slate-400 dark:text-slate-500 uppercase flex items-center justify-between">
+          <span>{{ group.groupTitle }}</span>
+          <span class="h-px flex-1 ml-3 bg-gray-100 dark:bg-slate-800"></span>
+        </div>
+
+        <!-- Menu Items in Section -->
+        <ul class="space-y-1">
+          @for (item of group.items; track item.route) {
+            <li>
+              <a [routerLink]="item.route"
+                 routerLinkActive="bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300 font-semibold shadow-sm"
+                 class="flex items-center justify-between px-3.5 py-2.5 rounded-xl text-gray-600 dark:text-slate-400 hover:bg-gray-100/70 hover:text-slate-900 dark:hover:bg-slate-900 dark:hover:text-white transition-all duration-200 group">
+                <div class="flex items-center gap-3 min-w-0">
+                  <span class="material-symbols-outlined text-[20px] transition-transform duration-200 group-hover:scale-110 text-gray-500 group-hover:text-blue-600 dark:text-slate-400 dark:group-hover:text-blue-400">
+                    {{ item.icon }}
+                  </span>
+                  <span class="text-sm truncate">{{ item.label }}</span>
+                </div>
+
+                <!-- Badges -->
+                @if (item.badge) {
+                  @if (item.badge.type === 'ai') {
+                    <span class="{{ item.badge.cssClass }} flex items-center gap-1">
+                      {{ item.badge.text }}
+                    </span>
+                  } @else if (item.badge.type === 'counter') {
+                    <span class="{{ item.badge.cssClass }} inline-flex items-center justify-center min-w-[20px] h-5">
+                      {{ getBadgeCount(item.badge.badgeKey) }}
+                    </span>
+                  }
+                }
+              </a>
+            </li>
+          }
+        </ul>
+      </div>
+    }
+  </nav>
+
+  <!-- Dev Role Switcher Widget (Dành cho kiểm thử & bảo vệ đồ án) -->
+  @if (isDevMode) {
+    <div class="px-3 pb-2">
+      <div class="relative">
+        <button (click)="toggleDevDropdown()" type="button"
+          class="w-full flex items-center justify-between px-3 py-2 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 rounded-xl text-amber-800 dark:text-amber-300 text-xs font-semibold hover:bg-amber-100 dark:hover:bg-amber-900/50 transition-colors shadow-sm">
+          <div class="flex items-center gap-2 truncate">
+            <span class="material-symbols-outlined text-[16px] text-amber-600">switch_account</span>
+            <span class="truncate">Role Test: {{ authService.currentUser()?.roleDisplayName || 'Chọn' }}</span>
+          </div>
+          <span class="material-symbols-outlined text-[16px] transition-transform" [class.rotate-180]="isDevDropdownOpen">expand_more</span>
+        </button>
+
+        @if (isDevDropdownOpen) {
+          <div class="absolute bottom-full left-0 right-0 mb-2 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-xl shadow-2xl p-2 z-50 text-xs space-y-1 backdrop-blur-md">
+            <div class="px-2 py-1 font-bold text-gray-400 uppercase tracking-wider text-[10px]">
+              Chuyển ngữ cảnh tài khoản:
+            </div>
+            @for (acc of devAccounts; track acc.id) {
+              <button (click)="onSelectDevAccount(acc)" type="button"
+                [class.bg-blue-50]="authService.currentUser()?.id === acc.id"
+                [class.text-blue-700]="authService.currentUser()?.id === acc.id"
+                class="w-full text-left px-2.5 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors flex flex-col">
+                <div class="font-bold text-slate-800 dark:text-white flex items-center justify-between">
+                  <span>{{ acc.fullName }}</span>
+                  <span class="text-[9px] px-1.5 py-0.5 rounded bg-gray-100 dark:bg-slate-800 font-mono text-gray-600 dark:text-gray-300">{{ acc.departmentCode }}</span>
+                </div>
+                <span class="text-[11px] text-gray-500 dark:text-gray-400">{{ acc.roleDisplayName }}</span>
+              </button>
+            }
+            <div class="border-t border-gray-100 dark:border-slate-800 my-1"></div>
+            <button (click)="onRestoreRealAccount()" type="button"
+              class="w-full text-left px-2.5 py-1.5 rounded-lg text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 flex items-center gap-1.5 font-medium transition-colors">
+              <span class="material-symbols-outlined text-[14px]">refresh</span>
+              <span>Khôi phục tài khoản thật</span>
+            </button>
+          </div>
+        }
+      </div>
+    </div>
+  }
+
+  <!-- Profile Area at Bottom Left -->
+  <div class="p-3.5 border-t border-gray-100 dark:border-slate-800 bg-white dark:bg-slate-950">
+    <div routerLink="/hr/settings"
+      class="flex items-center gap-3 p-2 rounded-xl hover:bg-gray-50 dark:hover:bg-slate-900 cursor-pointer transition-colors">
+      <!-- Dynamic Initials Avatar -->
+      <div class="w-10 h-10 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 text-white font-bold text-sm flex items-center justify-center shrink-0 shadow-md shadow-blue-500/20">
+        {{ userInitials() }}
+      </div>
+      <div class="flex flex-col overflow-hidden min-w-0">
+        <span class="text-sm font-bold text-slate-900 dark:text-white truncate">
+          {{ authService.currentUser()?.fullName || 'Người dùng' }}
+        </span>
+        <span class="text-xs text-gray-500 dark:text-slate-400 truncate">
+          {{ authService.currentUser()?.roleDisplayName || 'Chuyên viên' }} • {{ authService.currentUser()?.departmentName || 'Hệ thống' }}
+        </span>
+      </div>
+    </div>
+
+    <!-- Logout Button -->
+    <button (click)="logout()" type="button"
+      class="w-full flex items-center gap-3 px-3.5 py-2 mt-1.5 rounded-xl text-gray-500 hover:bg-red-50 hover:text-red-600 dark:text-slate-400 dark:hover:bg-red-900/20 dark:hover:text-red-400 transition-all duration-200 group">
+      <span class="material-symbols-outlined text-[20px] group-hover:scale-110 transition-transform">logout</span>
+      <span class="text-sm font-medium leading-normal">Đăng Xuất</span>
+    </button>
+  </div>
+</aside>

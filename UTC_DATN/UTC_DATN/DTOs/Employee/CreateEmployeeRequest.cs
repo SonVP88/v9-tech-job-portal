@@ -16,7 +16,10 @@ namespace UTC_DATN.DTOs.Employee
         public string PhoneNumber { get; set; } = string.Empty;
 
         [Required(ErrorMessage = "Role là bắt buộc")]
-        [RegularExpression("^(HR|INTERVIEWER)$", ErrorMessage = "Role chỉ có thể là 'HR' hoặc 'INTERVIEWER'")]
+        [RegularExpression("^(ADMIN|MANAGER|HR|INTERVIEWER)$", ErrorMessage = "Role chỉ có thể là 'ADMIN', 'MANAGER', 'HR' hoặc 'INTERVIEWER'")]
         public string Role { get; set; } = string.Empty;
+
+        public Guid? DepartmentId { get; set; }
+        public Guid? ManagerId { get; set; }
     }
 }

@@ -18,10 +18,13 @@ export const candidateLayoutGuard: CanActivateFn = (route, state) => {
 
     if (authService.isAuthenticated()) {
         const role = authService.getUserRole();
-        // Nếu là Admin/HR mà cố tình vào trang Candidate -> Xoá token và bắt đăng nhập lại
-        if (role === 'ADMIN' || role === 'HR') {
-            authService.logout(); // Hàm logout sẽ tự clear token và navigate về login
-            return false;
+        // Nếu là Nhân sự/Quản lý/Admin -> tự động chuyển sang Dashboard
+        if (role === 'ADMIN' || role === 'HR' || role === 'MANAGER' || role === 'INTERVIEWER') {
+            const isAdminPreview = localStorage.getItem('isAdminPreview') === 'true';
+            if (!isAdminPreview) {
+                router.navigate(['/hr/dashboard']);
+                return false;
+            }
         }
     }
 

@@ -16,5 +16,7 @@ namespace UTC_DATN.Services.Interfaces
         Task<bool> DeactivateEmployeeAsync(Guid userId, Guid adminId, string adminName, string? reason = null);
         Task<bool> ReactivateEmployeeAsync(Guid userId);
         Task<EmployeeDto?> UpdateEmployeeAsync(Guid userId, CreateEmployeeRequest request);
+        Task<List<DepartmentLookupDto>> GetDepartmentsAsync();
+        Task<List<ManagerLookupDto>> GetManagersAsync();
     }
 }

@@ -16,17 +16,20 @@ public class ApplicationController : ControllerBase
     private readonly IInterviewService _interviewService;
     private readonly ILogger<ApplicationController> _logger;
     private readonly UTC_DATNContext _context;
+    private readonly IConfiguration _configuration;
 
     public ApplicationController(
         IApplicationService applicationService,
         IInterviewService interviewService,
         ILogger<ApplicationController> logger,
-        UTC_DATNContext context)
+        UTC_DATNContext context,
+        IConfiguration configuration)
     {
         _applicationService = applicationService;
         _interviewService = interviewService;
         _logger = logger;
         _context = context;
+        _configuration = configuration;
     }
 
     /// <summary>
@@ -468,4 +471,152 @@ public class ApplicationController : ControllerBase
             return StatusCode(500, new { success = false, message = "Có lỗi xảy ra." });
         }
     }
+
+    #region GOOGLE SHEETS & FORM INTEGRATION
+
+    /// <summary>
+    /// Phương án 1: Import danh sách ứng viên từ Google Sheets vào chiến dịch tuyển dụng (Dành cho HR/Admin)
+    /// </summary>
+    /// <param name="request">Chứa JobId và danh sách ứng viên trích xuất từ Google Sheets</param>
+    /// <returns>Báo cáo kết quả import (Thành công, Trùng lặp, Bỏ qua)</returns>
+    [HttpPost("import-google-sheets")]
+    [Authorize]
+    public async Task<IActionResult> ImportGoogleSheets([FromBody] ImportGoogleSheetsRequest request)
+    {
+        if (!ModelState.IsValid)
+        {
+            var errors = ModelState.Values
+                .SelectMany(v => v.Errors)
+                .Select(e => e.ErrorMessage)
+                .ToList();
+
+            return BadRequest(new
+            {
+                success = false,
+                message = "Dữ liệu gửi lên không hợp lệ.",
+                errors
+            });
+        }
+
+        try
+        {
+            var result = await _applicationService.ImportGoogleSheetsAsync(request);
+
+            return Ok(new
+            {
+                success = true,
+                message = $"Xử lý xong {result.TotalReceived} bản ghi: Đã nhập {result.ImportedCount}, Trùng lặp {result.DuplicateCount}, Bỏ qua {result.SkippedCount}.",
+                data = result
+            });
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { success = false, message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { success = false, message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Lỗi khi import Google Sheets cho JobId {JobId}", request.JobId);
+            return StatusCode(500, new
+            {
+                success = false,
+                message = "Đã xảy ra lỗi trong quá trình lưu trữ hồ sơ ứng viên.",
+                detail = ex.Message
+            });
+        }
+    }
+
+    /// <summary>
+    /// Phương án 2: Webhook tiếp nhận dữ liệu thời gian thực từ Google Forms / Apps Script
+    /// </summary>
+    /// <param name="webhookSecret">Secret Token truyền trong Header 'X-Webhook-Secret'</param>
+    /// <param name="request">Payload ứng viên gửi từ form đăng ký quét mã QR</param>
+    [HttpPost("webhook-google-form")]
+    [AllowAnonymous]
+    public async Task<IActionResult> WebhookGoogleForm(
+        [FromHeader(Name = "X-Webhook-Secret")] string? webhookSecret,
+        [FromBody] GoogleFormWebhookRequest request)
+    {
+        // 1. Xác thực bảo mật đơn giản qua Header
+        var configuredSecret = _configuration["GoogleIntegration:WebhookSecret"] ?? "ats_google_webhook_secret_2026";
+        if (string.IsNullOrWhiteSpace(webhookSecret) || !string.Equals(webhookSecret, configuredSecret, StringComparison.Ordinal))
+        {
+            _logger.LogWarning("⚠️ [WEBHOOK] Từ chối request do sai Header X-Webhook-Secret. Nhận: {Secret}", webhookSecret);
+            return Unauthorized(new
+            {
+                success = false,
+                message = "Xác thực không hợp lệ. Vui lòng cung cấp chính xác Header 'X-Webhook-Secret'."
+            });
+        }
+
+        if (!ModelState.IsValid)
+        {
+            var errors = ModelState.Values
+                .SelectMany(v => v.Errors)
+                .Select(e => e.ErrorMessage)
+                .ToList();
+
+            return BadRequest(new
+            {
+                success = false,
+                message = "Dữ liệu ứng tuyển không hợp lệ.",
+                errors
+            });
+        }
+
+        try
+        {
+            var result = await _applicationService.ProcessGoogleFormWebhookAsync(request);
+
+            if (!result.Success && result.IsDuplicate)
+            {
+                return Conflict(new
+                {
+                    success = false,
+                    message = result.Message,
+                    data = result
+                });
+            }
+
+            if (!result.Success)
+            {
+                return BadRequest(new
+                {
+                    success = false,
+                    message = result.Message,
+                    data = result
+                });
+            }
+
+            return Ok(new
+            {
+                success = true,
+                message = "Tiếp nhận ứng viên qua Google Forms thành công.",
+                data = result
+            });
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { success = false, message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { success = false, message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Lỗi khi xử lý webhook Google Form cho JobId {JobId}", request.JobId);
+            return StatusCode(500, new
+            {
+                success = false,
+                message = "Đã xảy ra lỗi nội bộ khi xử lý webhook.",
+                detail = ex.Message
+            });
+        }
+    }
+
+    #endregion
 }

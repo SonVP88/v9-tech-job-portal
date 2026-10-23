@@ -52,4 +52,14 @@ public interface IApplicationService
     /// Dashboard bottleneck SLA theo recruiter
     /// </summary>
     Task<SlaDashboardDto> GetSlaDashboardAsync(Guid? recruiterUserId = null);
+
+    /// <summary>
+    /// Import hàng loạt hồ sơ ứng viên từ Google Sheets
+    /// </summary>
+    Task<ImportGoogleSheetsResultDto> ImportGoogleSheetsAsync(ImportGoogleSheetsRequest request);
+
+    /// <summary>
+    /// Tiếp nhận dữ liệu thời gian thực từ Google Apps Script Webhook
+    /// </summary>
+    Task<GoogleFormWebhookResultDto> ProcessGoogleFormWebhookAsync(GoogleFormWebhookRequest request);
 }

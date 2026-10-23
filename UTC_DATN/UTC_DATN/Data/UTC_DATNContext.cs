@@ -119,8 +119,47 @@ public partial class UTC_DATNContext : DbContext
     public virtual DbSet<CandidateCodeSubmission> CandidateCodeSubmissions { get; set; }
     public virtual DbSet<AiCodeReviewReport> AiCodeReviewReports { get; set; }
 
+    // ── Matrix Organization ──────────────────────────────────────────────────
+    /// <summary>Bảng Phòng ban / Khu vực chuyên môn của Khu Công nghiệp</summary>
+    public virtual DbSet<Department> Departments { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        // ════════════════════════════════════════════════════════════════════
+        // DEPARTMENT ENTITY - Matrix Organization
+        // ════════════════════════════════════════════════════════════════════
+        modelBuilder.Entity<Department>(entity =>
+        {
+            entity.HasKey(e => e.DepartmentId);
+
+            entity.HasIndex(e => e.DepartmentCode, "UQ_Departments_Code").IsUnique();
+
+            entity.Property(e => e.DepartmentId).HasDefaultValueSql("(newid())");
+            entity.Property(e => e.DepartmentCode)
+                .IsRequired()
+                .HasMaxLength(30);
+            entity.Property(e => e.DepartmentName)
+                .IsRequired()
+                .HasMaxLength(200);
+            entity.Property(e => e.Description).HasMaxLength(500);
+            entity.Property(e => e.IsActive).HasDefaultValue(true);
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("(sysutcdatetime())");
+
+            // Inverse navigation: 1 Department -> N Users
+            entity.HasMany(d => d.Users)
+                .WithOne(u => u.Department)
+                .HasForeignKey(u => u.DepartmentId)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("FK_Users_Department");
+
+            // Inverse navigation: 1 Department -> N Jobs
+            entity.HasMany(d => d.Jobs)
+                .WithOne(j => j.DepartmentNavigation)
+                .HasForeignKey(j => j.DepartmentId)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("FK_Jobs_Department");
+        });
+
         modelBuilder.Entity<CoverLetter>(entity =>
         {
             entity.HasKey(e => e.CoverLetterId);
@@ -1072,8 +1111,8 @@ public partial class UTC_DATNContext : DbContext
             entity.Property(e => e.Email)
                 .IsRequired()
                 .HasMaxLength(320);
-            entity.Property(e => e.FullName).HasMaxLength(200);
             entity.Property(e => e.IsActive).HasDefaultValue(true);
+            entity.HasQueryFilter(u => u.IsActive);
             entity.Property(e => e.NormalizedEmail)
                 .HasMaxLength(320)
                 .HasComputedColumnSql("(upper(ltrim(rtrim([Email]))))", true);
@@ -1081,7 +1120,16 @@ public partial class UTC_DATNContext : DbContext
                 .IsRequired()
                 .HasMaxLength(500);
             entity.Property(e => e.Phone).HasMaxLength(50);
+
+            // Self-referencing FK: ManagerId -> UserId (Cấp trên trực tiếp)
+            entity.HasOne(u => u.Manager)
+                .WithMany(u => u.Subordinates)
+                .HasForeignKey(u => u.ManagerId)
+                .OnDelete(DeleteBehavior.ClientSetNull) // Tránh cascade cycle
+                .HasConstraintName("FK_Users_Manager")
+                .IsRequired(false);
         });
+
 
         modelBuilder.Entity<UserRole>(entity =>
         {

@@ -1,0 +1,407 @@
+<div class="space-y-8 animate-fade-in pb-12">
+  
+  <!-- ══════════════════════════════════════════════════════════════════════════ -->
+  <!-- PAGE HEADER & BANNER ĐIỂM NHẤN ĐỀ TÀI AI                                   -->
+  <!-- ══════════════════════════════════════════════════════════════════════════ -->
+  <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 p-6 bg-gradient-to-r from-purple-900 via-indigo-900 to-slate-900 rounded-2xl text-white shadow-xl shadow-indigo-950/20 relative overflow-hidden">
+    <!-- Hiệu ứng ánh sáng nền -->
+    <div class="absolute -right-12 -top-12 w-64 h-64 bg-purple-500/10 rounded-full blur-3xl pointer-events-none"></div>
+    <div class="absolute right-40 -bottom-12 w-48 h-48 bg-blue-500/10 rounded-full blur-2xl pointer-events-none"></div>
+
+    <div class="relative z-10 space-y-1.5">
+      <div class="flex items-center gap-2.5">
+        <span class="p-2 rounded-xl bg-white/10 backdrop-blur-md border border-white/10 text-purple-300">
+          <span class="material-symbols-outlined text-[24px]">auto_awesome</span>
+        </span>
+        <h1 class="text-2xl font-bold tracking-tight text-white flex items-center gap-3">
+          <span>AI Sàng Lọc & Xếp Hạng Hồ Sơ</span>
+          <span class="bg-gradient-to-r from-purple-400 to-pink-400 text-slate-950 text-xs font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider shadow-sm">
+            Gemini 2.5 Flash
+          </span>
+        </h1>
+      </div>
+      <p class="text-sm text-purple-200/80 max-w-2xl leading-relaxed">
+        Module trọng tâm tích hợp trí tuệ nhân tạo thế hệ mới: Bóc tách tự động dữ liệu từ file PDF, so khớp đa chiều kỹ năng, kinh nghiệm chuyền và cam kết sức khỏe - ca kíp nhà máy.
+      </p>
+    </div>
+
+    <div class="relative z-10 flex items-center gap-3 shrink-0">
+      <div class="px-4 py-2.5 rounded-xl bg-white/10 backdrop-blur-md border border-white/10 text-center">
+        <span class="block text-xs text-purple-200 font-medium">Tốc độ xử lý TB</span>
+        <span class="text-lg font-black text-white">~1.2s / CV</span>
+      </div>
+      <div class="px-4 py-2.5 rounded-xl bg-white/10 backdrop-blur-md border border-white/10 text-center">
+        <span class="block text-xs text-purple-200 font-medium">Độ chính xác</span>
+        <span class="text-lg font-black text-emerald-400">96.8%</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════════════════════ -->
+  <!-- KHU VỰC 1: CHỌN CHIẾN DỊCH & CẤU HÌNH TRỌNG SỐ AI                         -->
+  <!-- ══════════════════════════════════════════════════════════════════════════ -->
+  <div class="bg-white dark:bg-slate-950 rounded-2xl border border-gray-200 dark:border-slate-800 p-6 shadow-sm space-y-6">
+    <div class="flex items-center justify-between border-b border-gray-100 dark:border-slate-800/80 pb-4">
+      <div class="flex items-center gap-2.5">
+        <div class="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold text-sm">
+          1
+        </div>
+        <div>
+          <h2 class="text-base font-bold text-slate-900 dark:text-white">Chiến Dịch Tuyển Dụng & Cấu Hình Trọng Số Gemini</h2>
+          <p class="text-xs text-gray-500 dark:text-slate-400">Chọn vị trí công việc và điều chỉnh tỷ lệ phần trăm ưu tiên chấm điểm</p>
+        </div>
+      </div>
+
+      <!-- Badge tổng trọng số -->
+      <div class="flex items-center gap-2">
+        <span class="text-xs text-gray-500 dark:text-slate-400">Tổng trọng số:</span>
+        <span [class.text-emerald-600]="totalWeight() === 100" [class.text-red-500]="totalWeight() !== 100"
+          class="font-mono text-sm font-bold px-2.5 py-0.5 rounded-lg bg-gray-100 dark:bg-slate-800">
+          {{ totalWeight() }}%
+        </span>
+      </div>
+    </div>
+
+    <!-- Dropdown Chọn Vị Trí -->
+    <div class="space-y-2">
+      <label class="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+        Vị Trí Công Việc Đang Mở (Target Campaign) <span class="text-red-500">*</span>
+      </label>
+      <select [(ngModel)]="selectedJobId"
+        class="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-slate-700 bg-gray-50/50 dark:bg-slate-900 text-sm font-semibold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500">
+        @for (c of campaigns(); track c.jobId) {
+          <option [value]="c.jobId">
+            {{ c.title }} • [{{ c.department }}] • Định biên: {{ c.numberOfPositions }} người
+          </option>
+        }
+      </select>
+      @if (selectedCampaign(); as camp) {
+        <div class="p-3 bg-slate-50 dark:bg-slate-900/60 rounded-xl border border-gray-100 dark:border-slate-800/80 text-xs text-slate-600 dark:text-slate-300 flex items-center gap-2">
+          <span class="material-symbols-outlined text-[16px] text-blue-600">info</span>
+          <span><strong>Tiêu chuẩn nhà máy:</strong> {{ camp.requirements }}</span>
+        </div>
+      }
+    </div>
+
+    <!-- 3 Thanh Trượt Sliders Trọng Số -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 pt-2">
+      <!-- Tiêu chí 1: Kỹ năng tay nghề -->
+      <div class="p-4 rounded-xl border border-purple-100 dark:border-purple-900/30 bg-purple-50/30 dark:bg-purple-950/20 space-y-3">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-bold text-purple-900 dark:text-purple-300 flex items-center gap-1.5">
+            <span class="material-symbols-outlined text-[18px] text-purple-600">psychology</span>
+            <span>Khớp Kỹ Năng / Tay Nghề</span>
+          </span>
+          <span class="font-mono text-sm font-black text-purple-700 dark:text-purple-300">{{ skillsWeight() }}%</span>
+        </div>
+        <input type="range" min="10" max="70" step="5" [(ngModel)]="skillsWeight"
+          class="w-full h-2 bg-purple-200 dark:bg-purple-900 rounded-lg appearance-none cursor-pointer accent-purple-600" />
+        <p class="text-[11px] text-gray-500 dark:text-slate-400">Đọc bản vẽ, vận hành máy, an toàn lao động, chứng chỉ nghề</p>
+      </div>
+
+      <!-- Tiêu chí 2: Kinh nghiệm thực tế -->
+      <div class="p-4 rounded-xl border border-blue-100 dark:border-blue-900/30 bg-blue-50/30 dark:bg-blue-950/20 space-y-3">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-bold text-blue-900 dark:text-blue-300 flex items-center gap-1.5">
+            <span class="material-symbols-outlined text-[18px] text-blue-600">work_history</span>
+            <span>Kinh Nghiệm Dây Chuyền</span>
+          </span>
+          <span class="font-mono text-sm font-black text-blue-700 dark:text-blue-300">{{ experienceWeight() }}%</span>
+        </div>
+        <input type="range" min="10" max="70" step="5" [(ngModel)]="experienceWeight"
+          class="w-full h-2 bg-blue-200 dark:bg-blue-900 rounded-lg appearance-none cursor-pointer accent-blue-600" />
+        <p class="text-[11px] text-gray-500 dark:text-slate-400">Số năm làm việc tại các nhà máy / KCN trong ngành tương đương</p>
+      </div>
+
+      <!-- Tiêu chí 3: Sức khỏe & Ca kíp -->
+      <div class="p-4 rounded-xl border border-emerald-100 dark:border-emerald-900/30 bg-emerald-50/30 dark:bg-emerald-950/20 space-y-3">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-bold text-emerald-900 dark:text-emerald-300 flex items-center gap-1.5">
+            <span class="material-symbols-outlined text-[18px] text-emerald-600">health_and_safety</span>
+            <span>Sức Khỏe & Làm Ca Kíp</span>
+          </span>
+          <span class="font-mono text-sm font-black text-emerald-700 dark:text-emerald-300">{{ healthShiftWeight() }}%</span>
+        </div>
+        <input type="range" min="10" max="70" step="5" [(ngModel)]="healthShiftWeight"
+          class="w-full h-2 bg-emerald-200 dark:bg-emerald-900 rounded-lg appearance-none cursor-pointer accent-emerald-600" />
+        <p class="text-[11px] text-gray-500 dark:text-slate-400">Cam kết xoay ca 12h, ca đêm, thị lực tốt và độ bền thể lực</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════════════════════ -->
+  <!-- KHU VỰC 2: TẢI LÊN CV HÀNG LOẠT (BULK CV UPLOAD ZONE)                       -->
+  <!-- ══════════════════════════════════════════════════════════════════════════ -->
+  <div class="bg-white dark:bg-slate-950 rounded-2xl border border-gray-200 dark:border-slate-800 p-6 shadow-sm space-y-6">
+    <div class="flex items-center justify-between border-b border-gray-100 dark:border-slate-800/80 pb-4">
+      <div class="flex items-center gap-2.5">
+        <div class="w-8 h-8 rounded-lg bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold text-sm">
+          2
+        </div>
+        <div>
+          <h2 class="text-base font-bold text-slate-900 dark:text-white">Tải Lên Hồ Sơ Ứng Viên Hàng Loạt (Bulk CV Upload)</h2>
+          <p class="text-xs text-gray-500 dark:text-slate-400">Hỗ trợ tải lên cùng lúc 10-50 hồ sơ ứng viên định dạng PDF</p>
+        </div>
+      </div>
+
+      @if (selectedFiles().length > 0) {
+        <button (click)="clearAllFiles()" type="button"
+          class="text-xs text-red-600 hover:text-red-700 dark:text-red-400 font-semibold flex items-center gap-1">
+          <span class="material-symbols-outlined text-[16px]">delete_sweep</span>
+          <span>Xóa tất cả ({{ selectedFiles().length }})</span>
+        </button>
+      }
+    </div>
+
+    <!-- Drag & Drop Zone -->
+    <div
+      (dragover)="onDragOver($event)"
+      (dragleave)="onDragLeave($event)"
+      (drop)="onDrop($event)"
+      [class.border-indigo-500]="isDragging()"
+      [class.bg-indigo-50/40]="isDragging()"
+      class="border-2 border-dashed border-gray-300 dark:border-slate-700 hover:border-indigo-500 dark:hover:border-indigo-400 rounded-2xl p-8 text-center transition-all cursor-pointer group">
+      
+      <input #fileInput type="file" multiple accept=".pdf" class="hidden" (change)="onFileInputChange($event)" />
+
+      <div (click)="fileInput.click()" class="space-y-3">
+        <div class="w-16 h-16 rounded-2xl bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 mx-auto flex items-center justify-center group-hover:scale-110 transition-transform shadow-md shadow-indigo-500/10">
+          <span class="material-symbols-outlined text-[36px]">upload_file</span>
+        </div>
+        <div>
+          <p class="text-sm font-bold text-slate-800 dark:text-white">
+            Kéo thả nhiều file CV PDF vào đây, hoặc <span class="text-indigo-600 hover:underline">bấm để chọn file</span>
+          </p>
+          <p class="text-xs text-gray-400 mt-1">Định dạng hỗ trợ: .PDF • Dung lượng tối đa: 15MB / file</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Danh sách file đã chọn -->
+    @if (selectedFiles().length > 0) {
+      <div class="space-y-3">
+        <div class="flex items-center justify-between text-xs font-bold text-slate-700 dark:text-slate-300">
+          <span>Hồ sơ đã sẵn sàng để phân tích ({{ selectedFiles().length }} file):</span>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 max-h-48 overflow-y-auto custom-scrollbar p-1">
+          @for (file of selectedFiles(); track file.name; let i = $index) {
+            <div class="flex items-center justify-between p-2.5 rounded-xl bg-gray-50 dark:bg-slate-900 border border-gray-200/70 dark:border-slate-800 text-xs">
+              <div class="flex items-center gap-2 truncate min-w-0">
+                <span class="material-symbols-outlined text-[20px] text-red-500 shrink-0">picture_as_pdf</span>
+                <span class="font-medium text-slate-800 dark:text-slate-200 truncate">{{ file.name }}</span>
+                <span class="text-[10px] text-gray-400 shrink-0 font-mono">({{ formatFileSize(file.size) }})</span>
+              </div>
+              <button (click)="removeFile(i)" type="button" class="text-gray-400 hover:text-red-500 p-1 shrink-0">
+                <span class="material-symbols-outlined text-[16px]">close</span>
+              </button>
+            </div>
+          }
+        </div>
+      </div>
+    }
+
+    <!-- Progress Bar (Khi AI đang chấm điểm) -->
+    @if (isAnalyzing()) {
+      <div class="p-5 rounded-2xl bg-indigo-50/60 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-800 space-y-3 animate-pulse">
+        <div class="flex items-center justify-between text-xs font-bold text-indigo-900 dark:text-indigo-200">
+          <div class="flex items-center gap-2">
+            <span class="material-symbols-outlined text-[18px] animate-spin text-indigo-600">progress_activity</span>
+            <span>{{ progressStatusText() }}</span>
+          </div>
+          <span class="font-mono text-sm font-black">{{ progressPercent() }}%</span>
+        </div>
+        <div class="w-full h-3 bg-gray-200 dark:bg-slate-800 rounded-full overflow-hidden">
+          <div [style.width.%]="progressPercent()"
+            class="h-full bg-gradient-to-r from-purple-600 via-indigo-600 to-blue-500 transition-all duration-300 rounded-full shadow-md">
+          </div>
+        </div>
+      </div>
+    }
+
+    <!-- CTA Button Khởi Chạy AI -->
+    <div class="flex items-center justify-end gap-3 pt-2">
+      <button (click)="startAiScreening()" [disabled]="isAnalyzing() || selectedFiles().length === 0"
+        type="button"
+        class="flex items-center gap-2.5 px-6 py-3.5 bg-gradient-to-r from-purple-600 via-indigo-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white text-sm font-bold rounded-xl shadow-xl shadow-indigo-500/25 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed">
+        <span class="material-symbols-outlined text-[20px]">auto_awesome</span>
+        <span>✨ Bắt Đầu AI Phân Tích & Chấm Điểm ({{ selectedFiles().length }} CV)</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════════════════════ -->
+  <!-- KHU VỰC 3: BẢNG XẾP HẠNG ỨNG VIÊN SAU KHI CHẤM (AI RANKING TABLE)          -->
+  <!-- ══════════════════════════════════════════════════════════════════════════ -->
+  @if (screeningResults().length > 0) {
+    <div class="bg-white dark:bg-slate-950 rounded-2xl border border-gray-200 dark:border-slate-800 shadow-sm overflow-hidden space-y-4">
+      
+      <!-- Bảng Header & Bộ Lọc Nhanh -->
+      <div class="p-6 border-b border-gray-100 dark:border-slate-800/80 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div class="flex items-center gap-2.5">
+          <div class="w-8 h-8 rounded-lg bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold text-sm">
+            3
+          </div>
+          <div>
+            <h2 class="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+              <span>Bảng Xếp Hạng Ứng Viên Gemini Matching</span>
+              <span class="text-xs px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 font-bold">
+                {{ filteredResults().length }} Ứng viên
+              </span>
+            </h2>
+            <p class="text-xs text-gray-500 dark:text-slate-400">Xếp hạng theo điểm tổng hợp có trọng số từ cao nhất xuống thấp nhất</p>
+          </div>
+        </div>
+
+        <!-- Bộ Lọc Nhanh & Action Hàng Loạt -->
+        <div class="flex flex-wrap items-center gap-3">
+          <!-- Ô Tìm kiếm nhanh -->
+          <input type="text" [(ngModel)]="searchKeyword" placeholder="Lọc theo tên, kỹ năng..."
+            class="px-3.5 py-2 text-xs rounded-xl border border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:text-white" />
+
+          <!-- Filter buttons -->
+          <div class="inline-flex rounded-xl bg-gray-100 dark:bg-slate-900 p-1 text-xs">
+            <button (click)="selectedFilter.set('ALL')" [class.bg-white]="selectedFilter() === 'ALL'"
+              [class.shadow-sm]="selectedFilter() === 'ALL'" class="px-3 py-1.5 rounded-lg font-bold transition-all">
+              Tất cả
+            </button>
+            <button (click)="selectedFilter.set('TOP')" [class.bg-white]="selectedFilter() === 'TOP'"
+              [class.shadow-sm]="selectedFilter() === 'TOP'" class="px-3 py-1.5 rounded-lg font-bold text-emerald-600 transition-all">
+              Top Đầu (≥80đ)
+            </button>
+            <button (click)="selectedFilter.set('QUALIFIED')" [class.bg-white]="selectedFilter() === 'QUALIFIED'"
+              [class.shadow-sm]="selectedFilter() === 'QUALIFIED'" class="px-3 py-1.5 rounded-lg font-bold text-blue-600 transition-all">
+              Đạt chuẩn (≥70đ)
+            </button>
+          </div>
+
+          <!-- Nút chuyển Quản đốc duyệt hàng loạt -->
+          <button (click)="forwardAllTopCandidates()" type="button"
+            class="flex items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl shadow-md shadow-indigo-500/20 transition-all active:scale-95">
+            <span class="material-symbols-outlined text-[16px]">send_and_archive</span>
+            <span>Chuyển Duyệt Hàng Loạt (≥75đ)</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Bảng Danh Sách Ứng Viên Xếp Hạng -->
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-sm">
+          <thead class="bg-gray-50 dark:bg-slate-900 text-[11px] font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider border-b border-gray-100 dark:border-slate-800">
+            <tr>
+              <th class="py-3.5 px-4 text-center w-16">Hạng</th>
+              <th class="py-3.5 px-4">Ứng Viên</th>
+              <th class="py-3.5 px-4">Kỹ Năng Bóc Tách (AI)</th>
+              <th class="py-3.5 px-4 text-center">Điểm AI Matching</th>
+              <th class="py-3.5 px-4">Đánh Giá Tóm Tắt (Gemini 2.5 Flash)</th>
+              <th class="py-3.5 px-4 text-right">Thao Tác</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-100 dark:divide-slate-800/80 font-normal">
+            @for (item of filteredResults(); track item.id; let idx = $index) {
+              <tr class="hover:bg-slate-50/80 dark:hover:bg-slate-900/60 transition-colors">
+                
+                <!-- Cột 1: Thứ Hạng -->
+                <td class="py-4 px-4 text-center">
+                  @if (idx === 0) {
+                    <span class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-amber-100 text-amber-800 font-black text-sm shadow-sm ring-2 ring-amber-300">
+                      🥇
+                    </span>
+                  } @else if (idx === 1) {
+                    <span class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-slate-100 text-slate-800 font-black text-sm shadow-sm ring-2 ring-slate-300">
+                      🥈
+                    </span>
+                  } @else if (idx === 2) {
+                    <span class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-orange-100 text-orange-800 font-black text-sm shadow-sm ring-2 ring-orange-300">
+                      🥉
+                    </span>
+                  } @else {
+                    <span class="font-mono font-bold text-gray-500 text-sm">
+                      #{{ idx + 1 }}
+                    </span>
+                  }
+                </td>
+
+                <!-- Cột 2: Thông Tin Ứng Viên -->
+                <td class="py-4 px-4">
+                  <div class="flex flex-col">
+                    <span class="font-bold text-slate-900 dark:text-white text-sm">
+                      {{ item.candidateName }}
+                    </span>
+                    <span class="text-xs text-gray-500 dark:text-slate-400">
+                      {{ item.email }} • {{ item.phone }}
+                    </span>
+                    <span class="text-[10px] text-gray-400 font-mono mt-0.5 flex items-center gap-1">
+                      <span class="material-symbols-outlined text-[12px] text-red-500">picture_as_pdf</span>
+                      <span class="truncate max-w-[180px]">{{ item.fileName }}</span>
+                    </span>
+                  </div>
+                </td>
+
+                <!-- Cột 3: Kỹ Năng Bóc Tách -->
+                <td class="py-4 px-4">
+                  <div class="flex flex-wrap gap-1.5 max-w-xs">
+                    @for (skill of item.extractedSkills; track skill) {
+                      <span class="px-2 py-0.5 rounded-lg bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300 text-[11px] font-semibold border border-blue-200/60 dark:border-blue-900/40">
+                        {{ skill }}
+                      </span>
+                    }
+                  </div>
+                </td>
+
+                <!-- Cột 4: Điểm AI Matching -->
+                <td class="py-4 px-4 text-center">
+                  <div class="inline-flex flex-col items-center">
+                    <span [class]="getScoreBadgeClass(item.matchingScore)"
+                      class="px-3 py-1 rounded-xl text-base font-black font-mono border shadow-sm">
+                      {{ item.matchingScore }}/100
+                    </span>
+                    <div class="flex items-center gap-1 text-[10px] text-gray-400 mt-1 font-mono">
+                      <span>K:{{ item.skillsScore }}</span> •
+                      <span>E:{{ item.experienceScore }}</span> •
+                      <span>H:{{ item.healthShiftScore }}</span>
+                    </div>
+                  </div>
+                </td>
+
+                <!-- Cột 5: Đánh Giá Tóm Tắt Từ Gemini -->
+                <td class="py-4 px-4 max-w-sm">
+                  <p class="text-xs text-slate-700 dark:text-slate-300 leading-relaxed italic line-clamp-3">
+                    "{{ item.summaryReview }}"
+                  </p>
+                  <div class="flex items-center gap-2 mt-1.5">
+                    @if (item.strengths.length > 0) {
+                      <span class="text-[10px] text-emerald-700 dark:text-emerald-400 font-semibold flex items-center gap-0.5">
+                        <span class="material-symbols-outlined text-[12px]">check_circle</span>
+                        {{ item.strengths[0] }}
+                      </span>
+                    }
+                  </div>
+                </td>
+
+                <!-- Cột 6: Thao Tác -->
+                <td class="py-4 px-4 text-right">
+                  @if (item.status === 'Forwarded') {
+                    <span class="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 text-xs font-bold">
+                      <span class="material-symbols-outlined text-[16px]">done_all</span>
+                      <span>Đã chuyển Quản đốc</span>
+                    </span>
+                  } @else {
+                    <button (click)="forwardToManager(item)" type="button"
+                      class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 dark:bg-indigo-950/40 dark:hover:bg-indigo-900/60 dark:text-indigo-300 text-xs font-bold transition-all active:scale-95">
+                      <span class="material-symbols-outlined text-[16px]">send</span>
+                      <span>Chuyển duyệt</span>
+                    </button>
+                  }
+                </td>
+
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+    </div>
+  }
+
+</div>

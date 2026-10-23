@@ -23,14 +23,22 @@ builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<IRecommendationService, RecommendationService>();
 builder.Services.AddScoped<ISlaAlertService, SlaAlertService>();
 builder.Services.AddScoped<IAiCodeAssessmentService, AiCodeAssessmentService>();
+builder.Services.AddScoped<IAiScreeningService, AiScreeningService>();
 
 // Phase 1: Đăng ký Chatbot Infrastructure Services
 builder.Services.AddScoped<IntentClassifier>();
 builder.Services.AddScoped<EntityExtractor>();
 builder.Services.AddScoped<ChatAnalyticsService>();
 
-// Đăng ký GeminiApiKeyProvider để quản lý multiple API keys
+// Đăng ký GeminiApiKeyProvider (legacy - giữ tương thích)
 builder.Services.AddSingleton<IGeminiApiKeyProvider, GeminiApiKeyProvider>();
+
+// ── NÂNG CẤP: GeminiKeyPoolManager (Singleton, Thread-Safe, LRU + Cooldown)
+// Quản lý pool API key với thuật toán LRU, tự động Cooldown khi gặp 429/503
+builder.Services.AddSingleton<GeminiKeyPoolManager>();
+
+// ── GeminiCvScreeningService (Scoped): Batch CV Screening 5 CV / 1 API call
+builder.Services.AddScoped<GeminiCvScreeningService>();
 
 // Configure OpenAI Client
 builder.Services.AddHttpClient();
@@ -41,10 +49,11 @@ builder.Services.AddHostedService<SlaAlertBackgroundService>();
 builder.Services.AddHttpClient<IAiMatchingService, AiMatchingService>();
 builder.Services.AddHttpClient(); // Cho MasterDataService
 
-// KẾ HOẠCH TỐI ƯU TỐC ĐỘ: Cấu hình HttpClient riêng cho Gemini 
-// Giới hạn Timeout 60s để tránh treo luồng hệ thống vĩnh viễn
+// KẾ HOẠCH TỐI ƯU TỐC ĐỘ: Cấu hình HttpClient riêng cho Gemini
+// Timeout 90s để đủ thời gian xử lý Batch 5 CV / 1 request
 builder.Services.AddHttpClient("GeminiClient", client => {
-    client.Timeout = TimeSpan.FromSeconds(60);
+    var timeoutSeconds = builder.Configuration.GetValue<int>("GeminiAI:HttpTimeoutSeconds", 90);
+    client.Timeout = TimeSpan.FromSeconds(timeoutSeconds);
     // Tắt Header Expect: 100-continue để tối ưu hóa việc đẩy Stream cho Google
     client.DefaultRequestHeaders.ExpectContinue = false;
 });

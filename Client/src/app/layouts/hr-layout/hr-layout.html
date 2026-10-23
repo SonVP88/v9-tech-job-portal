@@ -1,138 +1,127 @@
 <aside
     class="fixed top-0 left-0 z-40 w-72 h-screen bg-white dark:bg-slate-950 border-r border-gray-200 dark:border-slate-800 flex flex-col transition-colors duration-300">
-    <div class="h-20 min-h-[5rem] flex items-center px-8 border-b border-gray-100 dark:border-slate-800/50">
+    
+    <!-- Logo Header -->
+    <div class="h-20 min-h-[5rem] flex items-center px-6 border-b border-gray-100 dark:border-slate-800/60">
         <div class="flex items-center gap-3">
-            <div
-                class="w-8 h-8 rounded bg-primary flex items-center justify-center text-white shrink-0 shadow-lg shadow-blue-500/30">
-                <span class="material-symbols-outlined text-[20px] font-bold">work</span>
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white shrink-0 shadow-lg shadow-blue-500/25">
+                <span class="material-symbols-outlined text-[22px] font-bold">factory</span>
             </div>
-            <h1 class="text-xl font-bold tracking-tight text-slate-900 dark:text-white">V9 Tech</h1>
+            <div class="flex flex-col">
+                <h1 class="text-lg font-bold tracking-tight text-slate-900 dark:text-white leading-tight">ATS Industrial</h1>
+                <span class="text-[10px] font-semibold text-blue-600 dark:text-blue-400 tracking-wider uppercase">AI Powered Recruitment</span>
+            </div>
         </div>
     </div>
-    <nav class="flex-1 overflow-y-auto custom-scrollbar px-4 py-6">
-        <ul class="space-y-1">
-            <li>
-                <a class="flex items-center gap-3 px-4 py-3 rounded-lg bg-blue-50 text-blue-700 dark:bg-primary/20 dark:text-blue-400 group transition-all duration-200"
-                    routerLink="/hr/dashboard"
-                    routerLinkActive="bg-blue-50 text-blue-700 dark:bg-primary/20 dark:text-blue-400">
-                    <span class="material-symbols-outlined text-[22px] font-bold">dashboard</span>
-                    <span class="text-sm font-bold leading-normal">Tổng Quan</span>
-                </a>
-            </li>
-            <li>
-                <a class="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-500 hover:bg-gray-50 hover:text-gray-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white transition-all duration-200"
-                    routerLink="/hr/jobs"
-                    routerLinkActive="bg-blue-50 text-blue-700 dark:bg-primary/20 dark:text-blue-400">
-                    <span class="material-symbols-outlined text-[22px]">format_list_bulleted</span>
-                    <span class="text-sm font-medium leading-normal">Danh Sách Việc Làm</span>
-                </a>
-            </li>
-            <li>
-                <a class="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-500 hover:bg-gray-50 hover:text-gray-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white transition-all duration-200"
-                    routerLink="/hr/post-job"
-                    routerLinkActive="bg-blue-50 text-blue-700 dark:bg-primary/20 dark:text-blue-400">
-                    <span class="material-symbols-outlined text-[22px]">post_add</span>
-                    <span class="text-sm font-medium leading-normal">Đăng Tin Mới</span>
-                </a>
-            </li>
-            <li>
-                <a class="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-500 hover:bg-gray-50 hover:text-gray-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white transition-all duration-200"
-                    routerLink="/hr/manage-applications"
-                    routerLinkActive="bg-blue-50 text-blue-700 dark:bg-primary/20 dark:text-blue-400">
-                    <span class="material-symbols-outlined text-[22px]">group</span>
-                    <span class="text-sm font-medium leading-normal">Hồ Sơ Ứng Tuyển</span>
-                </a>
-            </li>
-            <li>
-                <a class="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-500 hover:bg-gray-50 hover:text-gray-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white transition-all duration-200"
-                    routerLink="/hr/candidates"
-                    routerLinkActive="bg-blue-50 text-blue-700 dark:bg-primary/20 dark:text-blue-400">
-                    <span class="material-symbols-outlined text-[22px]">manage_accounts</span>
-                    <span class="text-sm font-medium leading-normal">Tài Khoản Ứng Viên</span>
-                </a>
-            </li>
-            <li>
-                <a class="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-500 hover:bg-gray-50 hover:text-gray-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white transition-all duration-200"
-                    routerLink="/hr/employees"
-                    routerLinkActive="bg-blue-50 text-blue-700 dark:bg-primary/20 dark:text-blue-400">
-                    <span class="material-symbols-outlined text-[22px]">badge</span>
-                    <span class="text-sm font-medium leading-normal">Nhân Viên</span>
-                </a>
-            </li>
-            <li>
-                <a class="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-500 hover:bg-gray-50 hover:text-gray-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white transition-all duration-200"
-                    routerLink="/hr/skills"
-                    routerLinkActive="bg-blue-50 text-blue-700 dark:bg-primary/20 dark:text-blue-400">
-                    <span class="material-symbols-outlined text-[22px]">verified</span>
-                    <span class="text-sm font-medium leading-normal">Kỹ Năng</span>
-                </a>
-            </li>
-            <li>
-                <a class="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-500 hover:bg-gray-50 hover:text-gray-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white transition-all duration-200"
-                    routerLink="/hr/question-bank"
-                    routerLinkActive="bg-blue-50 text-blue-700 dark:bg-primary/20 dark:text-blue-400">
-                    <span class="material-symbols-outlined text-[22px]">quiz</span>
-                    <span class="text-sm font-medium leading-normal">Ngân hàng câu hỏi</span>
-                </a>
-            </li>
-            <li>
-                <a class="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-500 hover:bg-gray-50 hover:text-gray-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white transition-all duration-200"
-                    routerLink="/hr/my-interviews"
-                    routerLinkActive="bg-blue-50 text-blue-700 dark:bg-primary/20 dark:text-blue-400">
-                    <span class="material-symbols-outlined text-[22px]">calendar_month</span>
-                    <span class="text-sm font-medium leading-normal">Lịch phỏng vấn</span>
-                </a>
-            </li>
-            <li>
-                <a class="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-500 hover:bg-gray-50 hover:text-gray-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white transition-all duration-200"
-                    routerLink="/hr/reports"
-                    routerLinkActive="bg-blue-50 text-blue-700 dark:bg-primary/20 dark:text-blue-400">
-                    <span class="material-symbols-outlined text-[22px]">bar_chart</span>
-                    <span class="text-sm font-medium leading-normal">Báo Cáo</span>
-                </a>
-            </li>
-            <li>
-                <a class="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-500 hover:bg-gray-50 hover:text-gray-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white transition-all duration-200"
-                    routerLink="/hr/chatbot-admin"
-                    routerLinkActive="bg-blue-50 text-blue-700 dark:bg-primary/20 dark:text-blue-400">
-                    <span class="material-symbols-outlined text-[22px]">smart_toy</span>
-                    <span class="text-sm font-medium leading-normal">Chatbot FAQ</span>
-                </a>
-            </li>
-            <!-- <li class="pt-4 mt-4 border-t border-gray-100 dark:border-slate-800">
-                <a (click)="previewCandidateView()"
-                    class="flex items-center gap-3 px-4 py-3 rounded-lg text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-all duration-200 cursor-pointer group">
-                    <span class="material-symbols-outlined text-[22px]">visibility</span>
-                    <span class="text-sm font-medium leading-normal">👁️ Preview Candidate View</span>
-                </a>
-            </li> -->
-            <li>
-                <a class="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-500 hover:bg-gray-50 hover:text-gray-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white transition-all duration-200"
-                    routerLink="/hr/settings"
-                    routerLinkActive="bg-blue-50 text-blue-700 dark:bg-primary/20 dark:text-blue-400">
-                    <span class="material-symbols-outlined text-[22px]">settings</span>
-                    <span class="text-sm font-medium leading-normal">Cài Đặt</span>
-                </a>
-            </li>
-        </ul>
-    </nav>
-    <div class="p-4 border-t border-gray-100 dark:border-slate-800 bg-white dark:bg-slate-950">
-        <div routerLink="/hr/settings"
-            class="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-800 cursor-pointer transition-colors">
-            <div class="w-10 h-10 rounded-full bg-cover bg-center shrink-0 border border-gray-200 dark:border-slate-700"
-                data-alt="User Avatar"
-                style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuAvZjk-CRj1rhjv2NJx7gn17kSPpCF1hFwODgAJtYIeh1YbWrpAzZbUYw14Qi-KqldWh620VoFKMhiQQgj32TIk6m-sy6lbSkcGF7e0hOMxqeUMYkLHXjqXty2Z0MCpR0g8onwem4gjKymtRQ-iW7r8zEJdpOZ8GjVlI78tSaV0rzYr7bt5VHrTnlrkuEQwVUtpd53Fm4Kd0bteE2Zbr5dSOzhddQHoixRC4eah-DWq38h6DmscQ0Pot1T-YpDXjgTDr09BqmVryqul");'>
+
+    <!-- Grouped Navigation List -->
+    <nav class="flex-1 overflow-y-auto custom-scrollbar px-3 py-5 space-y-5">
+        @for (group of visibleMenuGroups(); track group.groupKey) {
+            <div class="space-y-1">
+                <!-- Section Header (Tự động ẩn nếu nhóm không có menu nào khả dụng) -->
+                <div class="px-3 pb-1.5 text-[11px] font-bold tracking-wider text-slate-400 dark:text-slate-500 uppercase flex items-center justify-between">
+                    <span>{{ group.groupTitle }}</span>
+                    <span class="h-px flex-1 ml-3 bg-gray-100 dark:bg-slate-800"></span>
+                </div>
+
+                <!-- Menu Items in Section -->
+                <ul class="space-y-1">
+                    @for (item of group.items; track item.route) {
+                        <li>
+                            <a [routerLink]="item.route"
+                                routerLinkActive="bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300 font-semibold shadow-sm"
+                                class="flex items-center justify-between px-3.5 py-2.5 rounded-xl text-gray-600 dark:text-slate-400 hover:bg-gray-100/70 hover:text-slate-900 dark:hover:bg-slate-900 dark:hover:text-white transition-all duration-200 group">
+                                <div class="flex items-center gap-3 min-w-0">
+                                    <span class="material-symbols-outlined text-[20px] transition-transform duration-200 group-hover:scale-110 text-gray-500 group-hover:text-blue-600 dark:text-slate-400 dark:group-hover:text-blue-400">
+                                        {{ item.icon }}
+                                    </span>
+                                    <span class="text-sm truncate">{{ item.label }}</span>
+                                </div>
+
+                                <!-- Badges -->
+                                @if (item.badge) {
+                                    @if (item.badge.type === 'ai') {
+                                        <span class="{{ item.badge.cssClass }} flex items-center gap-1">
+                                            {{ item.badge.text }}
+                                        </span>
+                                    } @else if (item.badge.type === 'counter') {
+                                        <span class="{{ item.badge.cssClass }} inline-flex items-center justify-center min-w-[20px] h-5">
+                                            {{ getBadgeCount(item.badge.badgeKey) }}
+                                        </span>
+                                    }
+                                }
+                            </a>
+                        </li>
+                    }
+                </ul>
             </div>
-            <div class="flex flex-col overflow-hidden">
-                <span class="text-sm font-bold text-slate-900 dark:text-white truncate">{{ userFullName }}</span>
-                <span class="text-xs text-gray-500 dark:text-slate-400 truncate">{{ userRole }}</span>
+        }
+    </nav>
+
+    <!-- Dev Role Switcher Widget (Dành cho kiểm thử & bảo vệ đồ án) -->
+    @if (isDevMode) {
+        <div class="px-3 pb-2">
+            <div class="relative">
+                <button (click)="toggleDevDropdown()" type="button"
+                    class="w-full flex items-center justify-between px-3 py-2 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 rounded-xl text-amber-800 dark:text-amber-300 text-xs font-semibold hover:bg-amber-100 dark:hover:bg-amber-900/50 transition-colors shadow-sm">
+                    <div class="flex items-center gap-2 truncate">
+                        <span class="material-symbols-outlined text-[16px] text-amber-600">switch_account</span>
+                        <span class="truncate">Role Test: {{ authService.currentUser()?.roleDisplayName || 'Chọn' }}</span>
+                    </div>
+                    <span class="material-symbols-outlined text-[16px] transition-transform" [class.rotate-180]="isDevDropdownOpen">expand_more</span>
+                </button>
+
+                @if (isDevDropdownOpen) {
+                    <div class="absolute bottom-full left-0 right-0 mb-2 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-xl shadow-2xl p-2 z-50 text-xs space-y-1 backdrop-blur-md">
+                        <div class="px-2 py-1 font-bold text-gray-400 uppercase tracking-wider text-[10px]">
+                            Chuyển ngữ cảnh tài khoản:
+                        </div>
+                        @for (acc of devAccounts; track acc.id) {
+                            <button (click)="onSelectDevAccount(acc)" type="button"
+                                [class.bg-blue-50]="authService.currentUser()?.id === acc.id"
+                                [class.text-blue-700]="authService.currentUser()?.id === acc.id"
+                                class="w-full text-left px-2.5 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors flex flex-col">
+                                <div class="font-bold text-slate-800 dark:text-white flex items-center justify-between">
+                                    <span>{{ acc.fullName }}</span>
+                                    <span class="text-[9px] px-1.5 py-0.5 rounded bg-gray-100 dark:bg-slate-800 font-mono text-gray-600 dark:text-gray-300">{{ acc.departmentCode }}</span>
+                                </div>
+                                <span class="text-[11px] text-gray-500 dark:text-gray-400">{{ acc.roleDisplayName }}</span>
+                            </button>
+                        }
+                        <div class="border-t border-gray-100 dark:border-slate-800 my-1"></div>
+                        <button (click)="onRestoreRealAccount()" type="button"
+                            class="w-full text-left px-2.5 py-1.5 rounded-lg text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 flex items-center gap-1.5 font-medium transition-colors">
+                            <span class="material-symbols-outlined text-[14px]">refresh</span>
+                            <span>Khôi phục tài khoản thật</span>
+                        </button>
+                    </div>
+                }
             </div>
         </div>
-        
+    }
+
+    <!-- Profile Area at Bottom Left -->
+    <div class="p-3.5 border-t border-gray-100 dark:border-slate-800 bg-white dark:bg-slate-950">
+        <div routerLink="/hr/settings"
+            class="flex items-center gap-3 p-2 rounded-xl hover:bg-gray-50 dark:hover:bg-slate-900 cursor-pointer transition-colors">
+            <!-- Dynamic Initials Avatar -->
+            <div class="w-10 h-10 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 text-white font-bold text-sm flex items-center justify-center shrink-0 shadow-md shadow-blue-500/20">
+                {{ userInitials() }}
+            </div>
+            <div class="flex flex-col overflow-hidden min-w-0">
+                <span class="text-sm font-bold text-slate-900 dark:text-white truncate">
+                    {{ authService.currentUser()?.fullName || 'Người dùng' }}
+                </span>
+                <span class="text-xs text-gray-500 dark:text-slate-400 truncate">
+                    {{ authService.currentUser()?.roleDisplayName || 'Chuyên viên' }} • {{ authService.currentUser()?.departmentName || 'Hệ thống' }}
+                </span>
+            </div>
+        </div>
+
         <!-- Logout Button -->
-        <button (click)="logout()"
-            class="w-full flex items-center gap-3 px-4 py-2.5 mt-2 rounded-lg text-gray-500 hover:bg-red-50 hover:text-red-600 dark:text-slate-400 dark:hover:bg-red-900/20 dark:hover:text-red-400 transition-all duration-200 group">
-            <span class="material-symbols-outlined text-[22px] group-hover:scale-110 transition-transform">logout</span>
+        <button (click)="logout()" type="button"
+            class="w-full flex items-center gap-3 px-3.5 py-2 mt-1.5 rounded-xl text-gray-500 hover:bg-red-50 hover:text-red-600 dark:text-slate-400 dark:hover:bg-red-900/20 dark:hover:text-red-400 transition-all duration-200 group">
+            <span class="material-symbols-outlined text-[20px] group-hover:scale-110 transition-transform">logout</span>
             <span class="text-sm font-medium leading-normal">Đăng Xuất</span>
         </button>
     </div>
@@ -140,21 +129,25 @@
 
 <div class="ml-72 min-h-screen flex flex-col transition-colors duration-300">
     <header
-        class="sticky top-0 z-30 h-20 bg-white dark:bg-slate-950 border-b border-gray-200 dark:border-slate-800 flex items-center justify-between px-10 transition-colors duration-300">
-        <div class="flex-1 max-w-lg" >
+        class="sticky top-0 z-30 h-20 bg-white dark:bg-slate-950 border-b border-gray-200 dark:border-slate-800 flex items-center justify-between px-6 lg:px-8 transition-colors duration-300">
+        
+        <!-- Thanh Tìm Kiếm Nhanh -->
+        <div class="flex-1 max-w-lg">
             <label class="relative block group">
-                <span
-                    class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400 group-focus-within:text-primary transition-colors">
-                    <span class="material-symbols-outlined">search</span>
+                <span class="absolute inset-y-0 left-0 flex items-center pl-3.5 text-gray-400 group-focus-within:text-blue-600 transition-colors">
+                    <span class="material-symbols-outlined text-[20px]">search</span>
                 </span>
                 <input
-                    class="block w-full rounded-xl border-none bg-gray-100 dark:bg-slate-900 py-2.5 pl-10 pr-3 text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:bg-white dark:focus:bg-slate-900 dark:text-white transition-all shadow-sm"
-                    name="search" placeholder="Tìm kiếm ứng viên, việc làm, hoặc từ khóa..." type="text" />
+                    class="block w-full rounded-xl border border-gray-200 dark:border-slate-800 bg-gray-50 dark:bg-slate-900/60 py-2.5 pl-10 pr-4 text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:bg-white dark:focus:bg-slate-900 dark:text-white transition-all shadow-sm"
+                    name="search" placeholder="Tìm kiếm ứng viên, mã hồ sơ, kỹ năng hoặc việc làm..." type="text" />
             </label>
         </div>
+
+        <!-- Actions Phía Bên Phải Header -->
         <div class="flex items-center gap-4 ml-6">
+            <!-- Notifications Icon -->
             <div class="relative">
-                <button (click)="toggleNotificationDropdown()"
+                <button (click)="toggleNotificationDropdown()" type="button"
                     class="relative w-10 h-10 flex items-center justify-center rounded-xl text-gray-500 hover:text-slate-900 hover:bg-gray-100 dark:text-slate-400 dark:hover:text-white dark:hover:bg-slate-800 transition-all">
                     <span class="material-symbols-outlined">notifications</span>
                     <span *ngIf="unreadCount > 0"
@@ -163,7 +156,7 @@
                     </span>
                 </button>
 
-                <!-- Dropdown -->
+                <!-- Notifications Dropdown -->
                 <div *ngIf="isNotificationDropdownOpen"
                     class="absolute right-0 top-12 w-80 bg-white dark:bg-slate-900 rounded-xl shadow-xl border border-gray-100 dark:border-slate-800 z-50 overflow-hidden">
                     <div class="p-4 border-b border-gray-100 dark:border-slate-800 flex justify-between items-center">
@@ -171,8 +164,7 @@
                             <h3 class="font-bold text-slate-900 dark:text-white">Thông báo nghiệp vụ</h3>
                             <p class="text-[11px] text-slate-500 dark:text-slate-400">Không bao gồm cảnh báo SLA</p>
                         </div>
-                        <button (click)="markAllAsRead()" class="text-xs text-blue-600 hover:underline">Đã đọc tất
-                            cả</button>
+                        <button (click)="markAllAsRead()" class="text-xs text-blue-600 hover:underline">Đã đọc tất cả</button>
                     </div>
                     <div class="max-h-96 overflow-y-auto">
                         <div *ngIf="notifications.length === 0" class="p-8 text-center text-gray-500 text-sm">
@@ -182,44 +174,176 @@
                             [class.dark:bg-slate-800]="!n.isRead"
                             class="p-4 border-b border-gray-50 dark:border-slate-800 last:border-0 hover:bg-gray-50 dark:hover:bg-slate-800 cursor-pointer transition-colors block">
                             <div class="flex gap-3">
-                                <div
-                                    class="shrink-0 w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center">
+                                <div class="shrink-0 w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center">
                                     <span class="material-symbols-outlined text-sm">notifications</span>
                                 </div>
                                 <div>
-                                    <p class="text-sm font-semibold text-slate-900 dark:text-white line-clamp-1">{{
-                                        n.title }}</p>
-                                    <p class="text-xs text-gray-600 dark:text-gray-400 mt-0.5 line-clamp-2">{{ n.message
-                                        }}</p>
-                                    <span class="text-[10px] text-gray-400 mt-1 block">{{ formatDate(n.createdAt)
-                                        }}</span>
+                                    <p class="text-sm font-semibold text-slate-900 dark:text-white line-clamp-1">{{ n.title }}</p>
+                                    <p class="text-xs text-gray-600 dark:text-gray-400 mt-0.5 line-clamp-2">{{ n.message }}</p>
+                                    <span class="text-[10px] text-gray-400 mt-1 block">{{ formatDate(n.createdAt) }}</span>
                                 </div>
                             </div>
                         </div>
                     </div>
                     <div class="p-2 border-t border-gray-100 dark:border-slate-800 text-center">
                         <span routerLink="/hr/activities"
-                            class="text-xs font-medium text-gray-500 hover:text-blue-600 block py-1 cursor-pointer">Xem
-                            tất cả thông báo</span>
+                            class="text-xs font-medium text-gray-500 hover:text-blue-600 block py-1 cursor-pointer">Xem tất cả thông báo</span>
                     </div>
                 </div>
             </div>
-            <!-- <button
-                class="w-10 h-10 flex items-center justify-center rounded-xl text-gray-500 hover:text-slate-900 hover:bg-gray-100 dark:text-slate-400 dark:hover:text-white dark:hover:bg-slate-800 transition-all">
-                <span class="material-symbols-outlined">help</span>
-            </button>
-            <div class="h-8 w-px bg-gray-200 dark:bg-slate-800 mx-2"></div> -->
-            <button
-                class="flex items-center gap-2 px-4 py-2 bg-primary hover:bg-blue-700 text-white text-sm font-bold rounded-xl transition-colors shadow-lg shadow-blue-500/30">
-                <span class="material-symbols-outlined text-[20px]">add</span>
-                <span routerLink="/hr/post-job">Đăng Tin Mới</span>
-            </button>
+
+            <!-- Nút Hành Động Ngữ Cảnh (Contextual CTA Button) -->
+            <!-- TRƯỜNG HỢP 1: SuperAdmin hoặc Phòng Nhân Sự (HR_TEAM) -> Nút + Đăng Tin Mới -->
+            @if (authService.canPostJob()) {
+                <button routerLink="/hr/post-job" type="button"
+                    class="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white text-sm font-bold rounded-xl transition-all shadow-lg shadow-blue-500/25 active:scale-95">
+                    <span class="material-symbols-outlined text-[20px]">add_circle</span>
+                    <span>+ Đăng Tin Mới</span>
+                </button>
+            }
+
+            <!-- TRƯỜNG HỢP 2: Quản đốc các Xưởng (PROD_LINE, WH_LOGS, TECH_MNT, QA_QC) -> Nút + Đề Xuất Tuyển Dụng -->
+            @if (authService.isPlantManager()) {
+                <button (click)="openHiringRequestModal()" type="button"
+                    class="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white text-sm font-bold rounded-xl transition-all shadow-lg shadow-indigo-500/25 active:scale-95">
+                    <span class="material-symbols-outlined text-[20px]">assignment_add</span>
+                    <span>+ Đề Xuất Tuyển Dụng</span>
+                </button>
+            }
         </div>
     </header>
-    <main class="flex-1 p-10 overflow-x-hidden bg-slate-50 dark:bg-slate-900">
+
+    <main class="flex-1 p-6 lg:p-8 overflow-x-hidden bg-slate-50 dark:bg-slate-900">
         <router-outlet></router-outlet>
     </main>
 </div>
+
+<!-- ════════════════════════════════════════════════════════════════════════════ -->
+<!-- MODAL ĐỀ XUẤT TUYỂN DỤNG NHÂN SỰ CHO QUẢN ĐỐC / TRƯỞNG BỘ PHẬN               -->
+<!-- ════════════════════════════════════════════════════════════════════════════ -->
+@if (isHiringModalOpen()) {
+    <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
+        <div class="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-gray-100 dark:border-slate-800 w-full max-w-2xl overflow-hidden animate-scale-up">
+            
+            <!-- Modal Header -->
+            <div class="px-6 py-4 border-b border-gray-100 dark:border-slate-800 flex items-center justify-between bg-gradient-to-r from-indigo-50/50 to-purple-50/50 dark:from-slate-900 dark:to-slate-900">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-indigo-100 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
+                        <span class="material-symbols-outlined text-[22px]">assignment_add</span>
+                    </div>
+                    <div>
+                        <h3 class="text-base font-bold text-slate-900 dark:text-white">Đề Xuất Nhu Cầu Tuyển Dụng</h3>
+                        <p class="text-xs text-gray-500 dark:text-slate-400">Gửi phiếu yêu cầu định biên nhân sự tới Phòng Nhân Sự (HR)</p>
+                    </div>
+                </div>
+                <button (click)="closeHiringRequestModal()" type="button"
+                    class="text-gray-400 hover:text-gray-600 dark:hover:text-white p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors">
+                    <span class="material-symbols-outlined text-[20px]">close</span>
+                </button>
+            </div>
+
+            <!-- Modal Body (Form Fields) -->
+            <div class="p-6 space-y-4 max-h-[75vh] overflow-y-auto custom-scrollbar">
+                <!-- Vị trí & Số lượng -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="md:col-span-2 space-y-1.5">
+                        <label class="text-xs font-bold text-slate-700 dark:text-slate-300">
+                            Vị trí / Chức danh cần tuyển <span class="text-red-500">*</span>
+                        </label>
+                        <input type="text" [(ngModel)]="requestForm.jobTitle"
+                            placeholder="VD: Công nhân vận hành máy CNC, Kỹ sư bảo trì..."
+                            class="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 dark:text-white" />
+                    </div>
+
+                    <div class="space-y-1.5">
+                        <label class="text-xs font-bold text-slate-700 dark:text-slate-300">
+                            Số lượng (Headcount) <span class="text-red-500">*</span>
+                        </label>
+                        <input type="number" min="1" [(ngModel)]="requestForm.targetHeadcount"
+                            class="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 dark:text-white" />
+                    </div>
+                </div>
+
+                <!-- Phân xưởng đề xuất (Readonly từ thông tin người dùng đang login) -->
+                <div class="space-y-1.5">
+                    <label class="text-xs font-bold text-slate-700 dark:text-slate-300">Đơn vị / Phân xưởng đề xuất</label>
+                    <div class="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-gray-50 dark:bg-slate-800/60 border border-gray-200 dark:border-slate-700 text-sm font-semibold text-slate-800 dark:text-slate-200">
+                        <span class="material-symbols-outlined text-[18px] text-indigo-600">domain</span>
+                        <span>{{ authService.currentUser()?.departmentName || 'Xưởng chuyên môn' }}</span>
+                        <span class="ml-auto text-[10px] px-2 py-0.5 rounded bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300 font-mono">
+                            {{ authService.currentUser()?.departmentCode || 'DEPT' }}
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Lý do & Mức độ gấp -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="space-y-1.5">
+                        <label class="text-xs font-bold text-slate-700 dark:text-slate-300">Lý do tuyển dụng</label>
+                        <select [(ngModel)]="requestForm.reason"
+                            class="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 dark:text-white">
+                            <option value="EXPANSION">Mở rộng chuyền sản xuất / Tăng công suất</option>
+                            <option value="REPLACEMENT">Thay thế nhân sự nghỉ việc / chuyển bộ phận</option>
+                            <option value="SEASONAL">Đơn hàng đột biến mùa vụ</option>
+                            <option value="PLAN">Bổ sung định biên theo kế hoạch quý</option>
+                        </select>
+                    </div>
+
+                    <div class="space-y-1.5">
+                        <label class="text-xs font-bold text-slate-700 dark:text-slate-300">Mức độ khẩn cấp</label>
+                        <select [(ngModel)]="requestForm.urgencyLevel"
+                            class="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 dark:text-white font-medium">
+                            <option value="NORMAL">Bình thường (Trong vòng 30 ngày)</option>
+                            <option value="URGENT">Gấp (Cần trong 14 ngày tới)</option>
+                            <option value="CRITICAL">Khẩn cấp (Cần bổ sung ngay trong 7 ngày)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Chế độ ca kíp -->
+                <div class="space-y-1.5">
+                    <label class="text-xs font-bold text-slate-700 dark:text-slate-300">Chế độ làm việc / Ca kíp</label>
+                    <select [(ngModel)]="requestForm.shiftType"
+                        class="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 dark:text-white">
+                        <option value="3_SHIFTS">Làm việc 3 ca 4 kíp (Có ca đêm)</option>
+                        <option value="DAY_SHIFT">Giờ hành chính (8h00 - 17h00)</option>
+                        <option value="12H_ROTATION">Xoay ca 12 tiếng (Ngày / Đêm)</option>
+                    </select>
+                </div>
+
+                <!-- Tiêu chí & Yêu cầu đặc biệt -->
+                <div class="space-y-1.5">
+                    <label class="text-xs font-bold text-slate-700 dark:text-slate-300">
+                        Yêu cầu kỹ năng / Thể lực đặc thù (Gợi ý cho AI Sàng lọc & HR)
+                    </label>
+                    <textarea rows="3" [(ngModel)]="requestForm.specialRequirements"
+                        placeholder="VD: Cần có chứng chỉ lái xe nâng, chấp nhận làm thêm giờ mùa cao điểm, không cận thị nặng..."
+                        class="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 dark:text-white"></textarea>
+                </div>
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="px-6 py-4 border-t border-gray-100 dark:border-slate-800 flex items-center justify-end gap-3 bg-gray-50/50 dark:bg-slate-900/50">
+                <button (click)="closeHiringRequestModal()" type="button" [disabled]="isSubmitting()"
+                    class="px-4 py-2.5 rounded-xl border border-gray-200 dark:border-slate-700 text-gray-700 dark:text-slate-300 text-sm font-semibold hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors">
+                    Hủy bỏ
+                </button>
+
+                <button (click)="submitHiringRequest()" type="button" [disabled]="isSubmitting()"
+                    class="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white text-sm font-bold shadow-lg shadow-indigo-500/25 transition-all active:scale-95 disabled:opacity-50">
+                    @if (isSubmitting()) {
+                        <span class="material-symbols-outlined text-[18px] animate-spin">progress_activity</span>
+                        <span>Đang gửi...</span>
+                    } @else {
+                        <span class="material-symbols-outlined text-[18px]">send</span>
+                        <span>Gửi Đề Xuất (Pending HR Approval)</span>
+                    }
+                </button>
+            </div>
+
+        </div>
+    </div>
+}
 
 <!-- Toast Notifications -->
 <app-toast></app-toast>

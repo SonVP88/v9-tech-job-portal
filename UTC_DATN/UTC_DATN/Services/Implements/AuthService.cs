@@ -135,6 +135,18 @@ namespace UTC_DATN.Services.Implements
                 claims.Add(new Claim(ClaimTypes.Role, role));
             }
 
+            // Thêm Department claims nếu user thuộc phòng ban cụ thể
+            if (user.DepartmentId.HasValue)
+            {
+                var dept = user.Department ?? await _context.Departments.FindAsync(user.DepartmentId.Value);
+                if (dept != null)
+                {
+                    claims.Add(new Claim("DepartmentId", dept.DepartmentId.ToString()));
+                    claims.Add(new Claim("DepartmentCode", dept.DepartmentCode));
+                    claims.Add(new Claim("DepartmentName", dept.DepartmentName));
+                }
+            }
+
             // Tạo Security Key
             var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key!));
             var credentials = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256);

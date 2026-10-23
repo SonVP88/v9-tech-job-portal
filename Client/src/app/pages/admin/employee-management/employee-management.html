@@ -1,241 +1,451 @@
-<div class="container mx-auto px-4 py-6">
-  <!-- Header -->
-  <div class="mb-6">
-    <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-2">Quản lý Nhân viên</h1>
-    <p class="text-gray-600 dark:text-slate-400">Quản lý danh sách HR và Interviewer trong hệ thống</p>
+<div class="w-full">
+
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       PAGE HEADER
+  ═══════════════════════════════════════════════════════════════════════ -->
+  <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
+    <div>
+      <div class="flex items-center gap-3 flex-wrap">
+        <h1 class="text-2xl md:text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight">
+          Cơ cấu Nhân sự &amp; Phân quyền
+        </h1>
+        <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-sm">
+          <span class="material-symbols-outlined text-[14px]">factory</span>
+          Nhà máy Công nghiệp
+        </span>
+        <span *ngIf="isSuperAdmin()" class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
+          <span class="material-symbols-outlined text-[13px]">military_tech</span>
+          Toàn quyền
+        </span>
+      </div>
+      <p class="text-sm text-gray-500 dark:text-slate-400 mt-1">
+        {{ isSuperAdmin() ? 'Quản lý toàn bộ cơ cấu tổ chức – Giám đốc, Trưởng phòng, Chuyên viên HR & Hội đồng Phỏng vấn' : 'Đang xem phạm vi phòng ban của bạn: ' + currentUserDepartmentName() }}
+      </p>
+    </div>
+
+    <div class="flex items-center gap-3 flex-shrink-0">
+      <button (click)="exportToExcel()" [disabled]="filteredEmployees().length === 0"
+        class="inline-flex items-center gap-2 px-3.5 py-2 border border-gray-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-900 text-sm font-medium text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800 transition-all shadow-sm disabled:opacity-50">
+        <span class="material-symbols-outlined text-[18px] text-emerald-600">download</span>
+        Xuất Excel
+      </button>
+      <button (click)="openAddModal()" *ngIf="isSuperAdmin() || isDepartmentManager()"
+        class="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-semibold transition-all shadow-sm shadow-blue-500/20">
+        <span class="material-symbols-outlined text-[20px]">person_add</span>
+        Thêm nhân sự
+      </button>
+    </div>
   </div>
 
-  <!-- Search/Filter/Export Toolbar -->
-  <div class="mb-6 bg-white dark:bg-slate-950 rounded-xl shadow-sm border border-gray-100 dark:border-slate-800 p-4">
-    <div class="flex flex-wrap items-center gap-4">
-      <!-- Search Box -->
-      <div class="flex-1 min-w-[300px]">
-        <div class="relative">
-          <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
-          </div>
-          <input type="text" [(ngModel)]="searchQuery" (input)="onSearchChange()"
-            placeholder="Tìm kiếm theo tên hoặc email..."
-            class="block w-full pl-10 pr-3 py-2.5 border border-gray-300 dark:border-slate-700 dark:bg-slate-900 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm">
-        </div>
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       SMART ROLE BANNER: Trưởng phòng xem phạm vi cách ly
+  ═══════════════════════════════════════════════════════════════════════ -->
+  <div *ngIf="isDepartmentManager()"
+    class="mb-5 p-4 rounded-2xl bg-gradient-to-r from-indigo-500/10 via-blue-500/10 to-cyan-500/10 border border-indigo-200/80 dark:border-indigo-900/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+    <div class="flex items-center gap-3">
+      <div class="w-11 h-11 rounded-xl bg-gradient-to-br from-indigo-500 to-blue-600 text-white flex items-center justify-center shadow-md flex-shrink-0">
+        <span class="material-symbols-outlined text-[22px]">shield_person</span>
       </div>
+      <div>
+        <h3 class="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2">
+          Chế độ xem Trưởng phòng
+          <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-100 text-indigo-700 dark:bg-indigo-900/60 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
+            Dữ liệu cách ly
+          </span>
+        </h3>
+        <p class="text-xs text-gray-500 dark:text-slate-400 mt-0.5">
+          Chỉ hiển thị nhân sự trong phạm vi: <strong class="text-indigo-700 dark:text-indigo-400">{{ currentUserDepartmentName() }}</strong>
+        </p>
+      </div>
+    </div>
+    <div class="flex items-center gap-2">
+      <span class="text-xs font-semibold px-3 py-1.5 rounded-xl bg-white dark:bg-slate-900 border border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 shadow-sm flex items-center gap-1.5">
+        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+        {{ totalEmployees() }} nhân sự trực thuộc
+      </span>
+    </div>
+  </div>
 
-      <!-- Filter Button -->
-      <button (click)="toggleFilterPanel()"
-        class="inline-flex items-center gap-2 px-4 py-2.5 border border-gray-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900 text-sm font-medium text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors">
-        <svg class="h-5 w-5 text-gray-500 dark:text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-            d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
-        </svg>
-        Bộ lọc
-        <span *ngIf="getActiveFiltersCount() > 0"
-          class="ml-1 px-2 py-0.5 bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 text-xs font-semibold rounded-full">
-          {{ getActiveFiltersCount() }}
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       KPI STAT CARDS
+  ═══════════════════════════════════════════════════════════════════════ -->
+  <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
+    <div class="bg-white dark:bg-slate-900 rounded-xl p-3.5 border border-gray-100 dark:border-slate-800 shadow-sm flex items-center gap-3">
+      <div class="w-10 h-10 rounded-lg bg-blue-50 dark:bg-blue-950/60 text-blue-600 flex items-center justify-center flex-shrink-0">
+        <span class="material-symbols-outlined text-[22px]">group</span>
+      </div>
+      <div>
+        <p class="text-xs text-gray-500 dark:text-slate-400 font-medium leading-tight">Tổng nhân sự</p>
+        <p class="text-xl font-extrabold text-gray-900 dark:text-white leading-tight">{{ totalEmployees() }}</p>
+      </div>
+    </div>
+
+    <div *ngIf="!isDepartmentManager()" class="bg-white dark:bg-slate-900 rounded-xl p-3.5 border border-gray-100 dark:border-slate-800 shadow-sm flex items-center gap-3">
+      <div class="w-10 h-10 rounded-lg bg-purple-50 dark:bg-purple-950/60 text-purple-600 flex items-center justify-center flex-shrink-0">
+        <span class="material-symbols-outlined text-[22px]">military_tech</span>
+      </div>
+      <div>
+        <p class="text-xs text-gray-500 dark:text-slate-400 font-medium leading-tight">Ban Giám Đốc</p>
+        <p class="text-xl font-extrabold text-purple-600 dark:text-purple-400 leading-tight">{{ totalDirectors() }}</p>
+      </div>
+    </div>
+
+    <div class="bg-white dark:bg-slate-900 rounded-xl p-3.5 border border-gray-100 dark:border-slate-800 shadow-sm flex items-center gap-3">
+      <div class="w-10 h-10 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 flex items-center justify-center flex-shrink-0">
+        <span class="material-symbols-outlined text-[22px]">manage_accounts</span>
+      </div>
+      <div>
+        <p class="text-xs text-gray-500 dark:text-slate-400 font-medium leading-tight">Trưởng phòng</p>
+        <p class="text-xl font-extrabold text-indigo-600 dark:text-indigo-400 leading-tight">{{ totalManagers() }}</p>
+      </div>
+    </div>
+
+    <div class="bg-white dark:bg-slate-900 rounded-xl p-3.5 border border-gray-100 dark:border-slate-800 shadow-sm flex items-center gap-3">
+      <div class="w-10 h-10 rounded-lg bg-sky-50 dark:bg-sky-950/60 text-sky-600 flex items-center justify-center flex-shrink-0">
+        <span class="material-symbols-outlined text-[22px]">badge</span>
+      </div>
+      <div>
+        <p class="text-xs text-gray-500 dark:text-slate-400 font-medium leading-tight">Chuyên viên HR</p>
+        <p class="text-xl font-extrabold text-sky-600 dark:text-sky-400 leading-tight">{{ totalHr() }}</p>
+      </div>
+    </div>
+
+    <div class="bg-white dark:bg-slate-900 rounded-xl p-3.5 border border-gray-100 dark:border-slate-800 shadow-sm flex items-center gap-3">
+      <div class="w-10 h-10 rounded-lg bg-teal-50 dark:bg-teal-950/60 text-teal-600 flex items-center justify-center flex-shrink-0">
+        <span class="material-symbols-outlined text-[22px]">rate_review</span>
+      </div>
+      <div>
+        <p class="text-xs text-gray-500 dark:text-slate-400 font-medium leading-tight">Phỏng vấn viên</p>
+        <p class="text-xl font-extrabold text-teal-600 dark:text-teal-400 leading-tight">{{ totalInterviewers() }}</p>
+      </div>
+    </div>
+
+    <div class="bg-white dark:bg-slate-900 rounded-xl p-3.5 border border-gray-100 dark:border-slate-800 shadow-sm flex items-center gap-3">
+      <div class="w-10 h-10 rounded-lg bg-amber-50 dark:bg-amber-950/60 text-amber-600 flex items-center justify-center flex-shrink-0">
+        <span class="material-symbols-outlined text-[22px]">apartment</span>
+      </div>
+      <div>
+        <p class="text-xs text-gray-500 dark:text-slate-400 font-medium leading-tight">Bộ phận</p>
+        <p class="text-xl font-extrabold text-amber-600 dark:text-amber-400 leading-tight">{{ totalActiveDepartments() }}</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       DEPARTMENT FILTER TABS (Chỉ SuperAdmin thấy)
+  ═══════════════════════════════════════════════════════════════════════ -->
+  <div *ngIf="!isDepartmentManager()" class="mb-5 overflow-x-auto pb-1" style="scrollbar-width:none">
+    <div class="flex items-center gap-2 min-w-max">
+      <!-- Tab Tất cả -->
+      <button (click)="selectDepartment('ALL')"
+        [ngClass]="selectedDeptCode() === 'ALL'
+          ? 'bg-blue-600 text-white shadow-sm shadow-blue-500/30 border-transparent'
+          : 'bg-white dark:bg-slate-900 text-gray-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800 border border-gray-200 dark:border-slate-800'"
+        class="px-4 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-2">
+        <span class="material-symbols-outlined text-[15px]">view_list</span>
+        <span>Tất cả</span>
+        <span class="px-1.5 py-0.5 rounded-full text-[10px] font-bold min-w-[20px] text-center"
+          [ngClass]="selectedDeptCode() === 'ALL' ? 'bg-white/25 text-white' : 'bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300'">
+          {{ scopedEmployees().length }}
         </span>
       </button>
 
-      <!-- Export Button -->
-      <button (click)="exportToExcel()" [disabled]="filteredEmployees().length === 0"
-        class="inline-flex items-center gap-2 px-4 py-2.5 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
-        <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-            d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-        </svg>
-        Xuất file
+      <!-- Tab từng phòng ban -->
+      <button *ngFor="let d of visibleDepartments()" (click)="selectDepartment(d.departmentCode)"
+        [ngClass]="selectedDeptCode() === d.departmentCode
+          ? 'bg-blue-600 text-white shadow-sm shadow-blue-500/30 border-transparent'
+          : 'bg-white dark:bg-slate-900 text-gray-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800 border border-gray-200 dark:border-slate-800'"
+        class="px-3.5 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-2">
+        <span>{{ d.departmentName }}</span>
+        <span class="px-1.5 py-0.5 rounded-full text-[10px] font-bold min-w-[20px] text-center"
+          [ngClass]="selectedDeptCode() === d.departmentCode ? 'bg-white/25 text-white' : 'bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300'">
+          {{ d.employeeCount }}
+        </span>
       </button>
     </div>
+  </div>
 
-    <!-- Filter Panel (Collapsible) -->
-    <div *ngIf="showFilterPanel" class="mt-4 pt-4 border-t border-gray-200 dark:border-slate-800">
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <!-- Role Filter -->
-        <div>
-          <label class="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">Vai trò</label>
-          <select [(ngModel)]="filterRole" (change)="applyFilters()"
-            class="block w-full px-3 py-2 border border-gray-300 dark:border-slate-700 dark:bg-slate-900 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm">
-            <option value="">Tất cả</option>
-            <option value="HR">HR Manager</option>
-            <option value="INTERVIEWER">Interviewer</option>
-          </select>
-        </div>
-
-        <!-- Status Filter -->
-        <div>
-          <label class="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">Trạng thái</label>
-          <select [(ngModel)]="filterStatus" (change)="applyFilters()"
-            class="block w-full px-3 py-2 border border-gray-300 dark:border-slate-700 dark:bg-slate-900 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm">
-            <option value="">Tất cả</option>
-            <option value="active">Hoạt động</option>
-            <option value="inactive">Không hoạt động</option>
-          </select>
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       SEARCH / FILTER / VIEW MODE TOOLBAR
+  ═══════════════════════════════════════════════════════════════════════ -->
+  <div class="mb-5 bg-white dark:bg-slate-950 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-800 p-4">
+    <div class="flex flex-wrap items-center justify-between gap-4">
+      <!-- Search -->
+      <div class="flex-1 min-w-[240px]">
+        <div class="relative">
+          <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400">
+            <span class="material-symbols-outlined text-[20px]">search</span>
+          </div>
+          <input type="text" [(ngModel)]="searchQuery" (input)="onSearchChange()"
+            placeholder="Tìm theo họ tên, email, số điện thoại..."
+            class="block w-full pl-10 pr-4 py-2.5 bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-800 dark:text-white rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm transition-all">
         </div>
       </div>
 
-      <!-- Clear Filters Button -->
-      <div class="mt-4 flex justify-end">
+      <div class="flex items-center gap-3">
+        <!-- Filter Button -->
+        <button (click)="toggleFilterPanel()"
+          class="inline-flex items-center gap-2 px-3.5 py-2.5 border border-gray-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-900 text-sm font-medium text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors">
+          <span class="material-symbols-outlined text-[18px]">tune</span>
+          Bộ lọc
+          <span *ngIf="getActiveFiltersCount() > 0"
+            class="px-1.5 py-0.5 bg-blue-600 text-white text-xs font-bold rounded-full min-w-[20px] text-center">
+            {{ getActiveFiltersCount() }}
+          </span>
+        </button>
+
+        <!-- View Mode Switcher -->
+        <div class="inline-flex rounded-xl p-1 bg-gray-100 dark:bg-slate-900 border border-gray-200 dark:border-slate-800">
+          <button (click)="setViewMode('table')"
+            [ngClass]="viewMode() === 'table' ? 'bg-white dark:bg-slate-800 shadow-sm text-blue-600' : 'text-gray-500 dark:text-slate-400 hover:text-gray-700'"
+            class="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5"
+            title="Dạng bảng TreeGrid">
+            <span class="material-symbols-outlined text-[16px]">table_rows</span>
+            <span>Danh sách</span>
+          </button>
+
+          <button (click)="setViewMode('hierarchy')"
+            [ngClass]="viewMode() === 'hierarchy' ? 'bg-white dark:bg-slate-800 shadow-sm text-blue-600' : 'text-gray-500 dark:text-slate-400 hover:text-gray-700'"
+            class="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5"
+            title="Sơ đồ Nested Cards phân cấp">
+            <span class="material-symbols-outlined text-[16px]">account_tree</span>
+            <span>Cơ cấu tổ chức</span>
+          </button>
+
+          <button (click)="setViewMode('department')"
+            [ngClass]="viewMode() === 'department' ? 'bg-white dark:bg-slate-800 shadow-sm text-blue-600' : 'text-gray-500 dark:text-slate-400 hover:text-gray-700'"
+            class="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5"
+            title="Nhóm theo phòng ban">
+            <span class="material-symbols-outlined text-[16px]">domain</span>
+            <span>Phòng ban</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Collapsible Filter Panel -->
+    <div *ngIf="showFilterPanel" class="mt-4 pt-4 border-t border-gray-200 dark:border-slate-800 grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div>
+        <label class="block text-xs font-bold text-gray-600 dark:text-slate-400 mb-1.5">Vai trò / Chức danh</label>
+        <select [(ngModel)]="filterRole" (change)="applyFilters()"
+          class="w-full px-3 py-2 bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-xl text-sm dark:text-white">
+          <option value="">Tất cả vai trò</option>
+          <option value="ADMIN">Ban Giám Đốc / Admin</option>
+          <option value="MANAGER">Trưởng Phòng / Quản Lý</option>
+          <option value="HR">Chuyên viên Nhân sự</option>
+          <option value="INTERVIEWER">Hội đồng Phỏng vấn</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-xs font-bold text-gray-600 dark:text-slate-400 mb-1.5">Trạng thái</label>
+        <select [(ngModel)]="filterStatus" (change)="applyFilters()"
+          class="w-full px-3 py-2 bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-xl text-sm dark:text-white">
+          <option value="">Tất cả trạng thái</option>
+          <option value="active">Đang hoạt động</option>
+          <option value="inactive">Đã khóa tài khoản</option>
+        </select>
+      </div>
+      <div class="flex items-end">
         <button (click)="clearFilters()"
-          class="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium">
-          Xóa tất cả bộ lọc
+          class="w-full px-4 py-2 text-xs font-semibold text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-xl border border-red-200 dark:border-red-900/60 transition-all">
+          Xóa toàn bộ bộ lọc
         </button>
       </div>
     </div>
   </div>
 
-  <div class="flex justify-between items-center mb-6">
-    <div class="flex items-center gap-3">
-      <button (click)="openAddModal()"
-        class="px-4 py-2 bg-primary hover:bg-blue-700 text-white rounded-lg text-sm font-bold transition-all shadow-sm flex items-center gap-2">
-        <span class="material-symbols-outlined text-sm">add</span>
-        Thêm nhân viên mới
-      </button>
-    </div>
-
-    <div class="flex items-center gap-2">
-      <span class="text-sm text-gray-500 dark:text-slate-400">
-        Tổng: <span class="font-bold text-gray-900 dark:text-white">{{ employees().length }}</span> nhân viên
-      </span>
-    </div>
+  <!-- Loading State -->
+  <div *ngIf="isLoading()" class="bg-white dark:bg-slate-900 rounded-2xl p-16 border border-gray-100 dark:border-slate-800 text-center">
+    <div class="animate-spin w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full mx-auto mb-4"></div>
+    <p class="text-sm text-gray-500 dark:text-slate-400">Đang tải dữ liệu nhân sự...</p>
   </div>
 
-  <!-- Loading State -->
-  <div *ngIf="isLoading()" class="space-y-4">
-    <div
-      class="bg-white dark:bg-slate-950 rounded-xl shadow-sm border border-gray-100 dark:border-slate-800 p-4 animate-pulse">
-      <div class="flex items-center gap-4">
-        <div class="h-12 w-12 rounded-full bg-gray-200 dark:bg-slate-700"></div>
-        <div class="flex-1 space-y-2">
-          <div class="h-4 bg-gray-200 dark:bg-slate-700 rounded w-1/4"></div>
-          <div class="h-3 bg-gray-200 dark:bg-slate-700 rounded w-1/3"></div>
-        </div>
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       VIEW 1: TREEGRID TABLE (Bảng phân cấp)
+  ═══════════════════════════════════════════════════════════════════════ -->
+  <div *ngIf="!isLoading() && viewMode() === 'table'" class="bg-white dark:bg-slate-950 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-800 overflow-hidden">
+    <!-- Toolbar -->
+    <div class="px-5 py-3 bg-gray-50/80 dark:bg-slate-900/90 border-b border-gray-100 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3">
+      <div class="flex items-center gap-2">
+        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 border border-blue-200 dark:border-blue-900">
+          <span class="material-symbols-outlined text-[15px]">account_tree</span>
+          TreeGrid Phân cấp
+        </span>
+        <span class="text-xs text-gray-400 dark:text-slate-500">{{ flattenedTreeRows().length }} hàng</span>
+      </div>
+      <div class="flex items-center gap-2">
+        <button (click)="expandAll()"
+          class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors shadow-sm">
+          <span class="material-symbols-outlined text-[15px]">unfold_more</span>
+          Mở rộng tất cả
+        </button>
+        <button (click)="collapseAll()"
+          class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors shadow-sm">
+          <span class="material-symbols-outlined text-[15px]">unfold_less</span>
+          Thu gọn
+        </button>
       </div>
     </div>
-  </div>
 
-  <!-- Employees Table -->
-  <div *ngIf="!isLoading() && employees().length > 0"
-    class="bg-white dark:bg-slate-950 rounded-xl shadow-sm border border-gray-100 dark:border-slate-800 overflow-hidden">
     <div class="overflow-x-auto">
-      <table class="min-w-full divide-y divide-gray-200 dark:divide-slate-800">
-        <thead class="bg-gray-50 dark:bg-slate-900">
+      <table class="min-w-full divide-y divide-gray-100 dark:divide-slate-800">
+        <thead class="bg-gray-50/75 dark:bg-slate-900/80">
           <tr>
-            <th scope="col"
-              class="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider">
-              Nhân viên
-            </th>
-            <th scope="col"
-              class="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider">
-              Số điện thoại
-            </th>
-            <th scope="col"
-              class="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider">
-              Vai trò
-            </th>
-            <th scope="col"
-              class="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider">
-              Trạng thái
-            </th>
-            <th scope="col"
-              class="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider">
-              Ngày tạo
-            </th>
-            <th scope="col"
-              class="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider">
-              Khóa bởi
-            </th>
-            <th scope="col"
-              class="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider">
-              Thao tác
-            </th>
+            <th class="px-5 py-3.5 text-left text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Nhân sự &amp; Cơ cấu</th>
+            <th class="px-5 py-3.5 text-left text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Phòng ban</th>
+            <th class="px-5 py-3.5 text-left text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Vai trò</th>
+            <th class="px-5 py-3.5 text-left text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Quản lý trực tiếp</th>
+            <th class="px-5 py-3.5 text-center text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Cấp dưới</th>
+            <th class="px-5 py-3.5 text-left text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider">SĐT</th>
+            <th class="px-5 py-3.5 text-left text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Trạng thái</th>
+            <th class="px-5 py-3.5 text-right text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Thao tác</th>
           </tr>
         </thead>
-        <tbody class="bg-white dark:bg-slate-950 divide-y divide-gray-200 dark:divide-slate-800">
-          <tr *ngFor="let emp of filteredEmployees()"
-            class="hover:bg-gray-50 dark:hover:bg-slate-800/50 transition-colors">
-            <!-- Employee Info -->
-            <td class="px-6 py-4 whitespace-nowrap">
-              <div class="flex items-center">
-                <div class="flex-shrink-0 h-10 w-10">
-                  <div [ngClass]="getAvatarClass(emp.role)"
-                    class="h-10 w-10 rounded-full flex items-center justify-center font-bold text-sm">
-                    {{ getInitials(emp.fullName) }}
+        <tbody class="divide-y divide-gray-100 dark:divide-slate-800 bg-white dark:bg-slate-950">
+          <tr *ngFor="let row of paginatedEmployees()" class="hover:bg-blue-50/30 dark:hover:bg-slate-900/60 transition-colors">
+
+            <!-- Nhân sự + Phân cấp -->
+            <td class="py-3.5 pr-4 whitespace-nowrap" [style.paddingLeft.px]="row.level * 28 + 16">
+              <div class="flex items-center gap-2">
+                <span *ngIf="row.level > 0" class="inline-block border-l-2 border-b-2 border-slate-300 dark:border-slate-700 w-3.5 h-4 -mt-2.5 mr-1 rounded-bl flex-shrink-0"></span>
+
+                <button *ngIf="row.hasChildren" (click)="toggleNode(row.node.employee.userId)"
+                  class="w-6 h-6 rounded-md flex items-center justify-center hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-500 transition-colors mr-1 flex-shrink-0">
+                  <span class="material-symbols-outlined text-[18px] transition-transform duration-200"
+                    [class.rotate-90]="row.isExpanded">chevron_right</span>
+                </button>
+                <span *ngIf="!row.hasChildren" class="w-6 h-6 inline-flex items-center justify-center mr-1 flex-shrink-0">
+                  <span class="w-1.5 h-1.5 rounded-full bg-slate-300 dark:bg-slate-700"></span>
+                </span>
+
+                <div class="relative flex-shrink-0">
+                  <div [ngClass]="getAvatarGradient(row.node.employee.fullName)"
+                    class="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm shadow-sm">
+                    {{ getInitials(row.node.employee.fullName) }}
+                  </div>
+                  <span *ngIf="row.node.employee.role === 'ADMIN'"
+                    class="absolute -bottom-1 -right-1 w-5 h-5 bg-gradient-to-r from-amber-400 to-amber-500 text-amber-950 rounded-full flex items-center justify-center shadow ring-2 ring-white dark:ring-slate-900">
+                    <span class="material-symbols-outlined text-[12px]">military_tech</span>
+                  </span>
+                  <span *ngIf="row.node.employee.role === 'MANAGER'"
+                    class="absolute -bottom-1 -right-1 w-5 h-5 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-full flex items-center justify-center shadow ring-2 ring-white dark:ring-slate-900">
+                    <span class="material-symbols-outlined text-[12px]">shield_person</span>
+                  </span>
+                  <span *ngIf="row.node.employee.role === 'INTERVIEWER'"
+                    class="absolute -bottom-1 -right-1 w-5 h-5 bg-gradient-to-r from-teal-400 to-emerald-500 text-white rounded-full flex items-center justify-center shadow ring-2 ring-white dark:ring-slate-900">
+                    <span class="material-symbols-outlined text-[12px]">rate_review</span>
+                  </span>
+                </div>
+
+                <div class="min-w-0">
+                  <div class="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-1.5 flex-wrap">
+                    <span>{{ row.node.employee.fullName }}</span>
+                    <span [ngClass]="getLevelBadge(row.level, row.node.employee.role).class"
+                      class="text-[10px] font-bold px-1.5 py-0.5 rounded-full border">
+                      {{ getLevelBadge(row.level, row.node.employee.role).label }}
+                    </span>
+                  </div>
+                  <div class="text-xs text-gray-400 dark:text-slate-500 font-mono truncate max-w-[200px]">{{ row.node.employee.email }}</div>
+                </div>
+              </div>
+            </td>
+
+            <!-- Phòng ban -->
+            <td class="px-5 py-3.5 whitespace-nowrap">
+              <span [ngClass]="getDepartmentBadge(row.node.employee.departmentCode).badge"
+                class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold border">
+                <span class="w-1.5 h-1.5 rounded-full flex-shrink-0" [ngClass]="getDepartmentBadge(row.node.employee.departmentCode).dot"></span>
+                {{ row.node.employee.departmentName || 'Chưa phân bổ' }}
+              </span>
+            </td>
+
+            <!-- Vai trò -->
+            <td class="px-5 py-3.5 whitespace-nowrap">
+              <span [ngClass]="getRoleBadge(row.node.employee.role)"
+                class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold border">
+                <span class="material-symbols-outlined text-[14px]">{{ getRoleIcon(row.node.employee.role) }}</span>
+                {{ row.node.employee.roleName || row.node.employee.role }}
+              </span>
+            </td>
+
+            <!-- Quản lý trực tiếp -->
+            <td class="px-5 py-3.5 whitespace-nowrap">
+              <div *ngIf="row.node.employee.managerName" class="flex items-center gap-1.5 text-xs text-gray-700 dark:text-slate-300">
+                <span class="material-symbols-outlined text-[15px] text-gray-400">subdirectory_arrow_right</span>
+                <span class="font-medium">{{ row.node.employee.managerName }}</span>
+              </div>
+              <span *ngIf="!row.node.employee.managerName" class="text-xs font-medium text-amber-600 dark:text-amber-400 flex items-center gap-1">
+                <span class="material-symbols-outlined text-[14px]">workspace_premium</span>
+                {{ row.node.employee.role === 'ADMIN' ? 'Cấp cao nhất' : 'Không có' }}
+              </span>
+            </td>
+
+            <!-- Cấp dưới Avatar Group -->
+            <td class="px-5 py-3.5 whitespace-nowrap text-center">
+              <div *ngIf="row.node.directSubordinates.length > 0" class="flex flex-col items-center gap-1">
+                <div class="flex items-center -space-x-2 cursor-pointer" (click)="toggleNode(row.node.employee.userId)" title="Nhấn để mở/đóng">
+                  <div *ngFor="let sub of row.node.directSubordinates.slice(0, 3)"
+                    class="w-7 h-7 rounded-full ring-2 ring-white dark:ring-slate-900 flex items-center justify-center text-[10px] font-bold flex-shrink-0"
+                    [ngClass]="getAvatarGradient(sub.fullName)"
+                    [title]="sub.fullName">{{ getInitials(sub.fullName) }}</div>
+                  <div *ngIf="row.node.directSubordinates.length > 3"
+                    class="w-7 h-7 rounded-full ring-2 ring-white dark:ring-slate-900 bg-gray-100 dark:bg-slate-800 flex items-center justify-center text-[10px] font-bold text-gray-600 dark:text-slate-300">
+                    +{{ row.node.directSubordinates.length - 3 }}
                   </div>
                 </div>
-                <div class="ml-4">
-                  <div class="text-sm font-medium text-gray-900 dark:text-white">{{ emp.fullName }}</div>
-                  <div class="text-sm text-gray-500 dark:text-slate-400">{{ emp.email }}</div>
-                </div>
+                <span class="text-[11px] font-semibold text-gray-500 dark:text-slate-400">{{ row.node.directSubordinates.length }} người</span>
               </div>
+              <span *ngIf="row.node.directSubordinates.length === 0" class="text-xs text-gray-300 dark:text-slate-700">—</span>
             </td>
 
-            <!-- Phone -->
-            <td class="px-6 py-4 whitespace-nowrap">
-              <div class="text-sm text-gray-900 dark:text-white">{{ emp.phone }}</div>
+            <!-- SĐT -->
+            <td class="px-5 py-3.5 whitespace-nowrap text-xs text-gray-600 dark:text-slate-400 font-mono">
+              {{ row.node.employee.phone || '—' }}
             </td>
 
-            <!-- Role Badge -->
-            <td class="px-6 py-4 whitespace-nowrap">
-              <span [ngClass]="getRoleBadgeClass(emp.role)" class="px-2.5 py-0.5 rounded-full text-xs font-bold">
-                {{ emp.role }}
+            <!-- Trạng thái -->
+            <td class="px-5 py-3.5 whitespace-nowrap">
+              <span *ngIf="row.node.employee.isActive"
+                class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-900/50">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>Hoạt động
+              </span>
+              <span *ngIf="!row.node.employee.isActive"
+                class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-300 border border-red-200 dark:border-red-900/50">
+                <span class="w-1.5 h-1.5 rounded-full bg-red-500"></span>Đã khóa
               </span>
             </td>
 
-            <!-- Status -->
-            <td class="px-6 py-4 whitespace-nowrap">
-              <span *ngIf="emp.isActive"
-                class="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300 px-2.5 py-0.5 rounded-full text-xs font-bold">
-                Hoạt động
-              </span>
-              <span *ngIf="!emp.isActive"
-                class="bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300 px-2.5 py-0.5 rounded-full text-xs font-bold">
-                Không hoạt động
-              </span>
-            </td>
-
-            <!-- Created Date -->
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-slate-400">
-              {{ formatDate(emp.createdAt) }}
-            </td>
-
-            <!-- Audit Trail: Khóa bởi -->
-            <td class="px-6 py-4 whitespace-nowrap">
-              <div *ngIf="!emp.isActive && emp.lockedByName" class="text-xs">
-                <div class="font-medium text-red-600 dark:text-red-400 flex items-center gap-1">
-                  <span class="material-symbols-outlined text-sm">lock</span>
-                  {{ emp.lockedByName }}
-                </div>
-                <div class="text-gray-400 dark:text-slate-500 mt-0.5">
-                  {{ emp.lockedAt ? formatDate(emp.lockedAt) : '' }}
-                </div>
-                <div *ngIf="emp.lockReason"
-                  class="text-gray-500 dark:text-slate-400 italic mt-0.5 max-w-[150px] truncate"
-                  [title]="emp.lockReason">
-                  {{ emp.lockReason }}
-                </div>
-              </div>
-              <span *ngIf="emp.isActive || !emp.lockedByName" class="text-gray-300 dark:text-slate-600 text-xs">—</span>
-            </td>
-
-            <!-- Actions -->
-            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-              <div class="flex items-center gap-2">
-                <button (click)="viewEmployee(emp)"
-                  class="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 transition-colors flex items-center gap-1">
-                  <span class="material-symbols-outlined text-[18px]">visibility</span>
-                  Xem
+            <!-- Thao tác: Sửa & Toggle Switch Khóa/Mở Khóa (Soft Delete) -->
+            <td class="px-5 py-3.5 whitespace-nowrap text-right">
+              <div class="flex items-center justify-end gap-3">
+                <button (click)="viewEmployee(row.node.employee)"
+                  class="px-2.5 py-1 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/40 rounded-lg transition-colors flex items-center gap-1 text-xs font-semibold">
+                  <span class="material-symbols-outlined text-[16px]">edit</span>Sửa
                 </button>
-                <button (click)="deleteEmployee(emp.userId, emp.fullName, emp.role)" *ngIf="emp.isActive"
-                  class="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 transition-colors flex items-center gap-1">
-                  <span class="material-symbols-outlined text-[18px]">lock</span>
-                  Khóa
-                </button>
-                <button *ngIf="!emp.isActive" (click)="reactivateEmployee(emp.userId)"
-                  class="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300 transition-colors flex items-center gap-1">
-                  <span class="material-symbols-outlined text-[18px]">restart_alt</span>
-                  Cập nhật
-                </button>
+
+                <!-- TOGGLE SWITCH (BẬT/TẮT TRẠNG THÁI ACTIVE THAY CHO NÚT XÓA) -->
+                <div class="flex items-center gap-1.5" [title]="row.node.employee.isActive ? 'Gạt để khóa tài khoản' : 'Gạt để mở khóa tài khoản'">
+                  <button 
+                    type="button"
+                    role="switch"
+                    [attr.aria-checked]="row.node.employee.isActive"
+                    (click)="toggleEmployeeStatus(row.node.employee)"
+                    [disabled]="isToggleDisabled(row.node.employee)"
+                    class="relative inline-flex h-5 w-10 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2 disabled:opacity-40 disabled:cursor-not-allowed"
+                    [ngClass]="row.node.employee.isActive ? 'bg-blue-600' : 'bg-gray-300 dark:bg-slate-700'">
+                    <span 
+                      aria-hidden="true" 
+                      class="pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out flex items-center justify-center"
+                      [ngClass]="row.node.employee.isActive ? 'translate-x-5' : 'translate-x-0'">
+                      <span class="material-symbols-outlined text-[10px]" [class.text-blue-600]="row.node.employee.isActive" [class.text-gray-400]="!row.node.employee.isActive">
+                        {{ row.node.employee.isActive ? 'check' : 'lock' }}
+                      </span>
+                    </span>
+                  </button>
+                  <span class="text-[11px] font-semibold w-7 text-left" [class.text-blue-600]="row.node.employee.isActive" [class.text-gray-400]="!row.node.employee.isActive">
+                    {{ row.node.employee.isActive ? 'Mở' : 'Khóa' }}
+                  </span>
+                </div>
               </div>
             </td>
           </tr>
@@ -244,221 +454,497 @@
     </div>
 
     <!-- Pagination -->
-    <div
-      class="px-6 py-4 bg-gray-50 dark:bg-slate-900/50 border-t border-gray-100 dark:border-slate-800 flex items-center justify-between">
-      <p class="text-xs text-gray-500 dark:text-slate-400 font-medium">
-        Hiển thị {{ (currentPage() - 1) * itemsPerPage + 1 }} - {{ Math.min(currentPage() * itemsPerPage,
-        filteredEmployees().length) }} trên tổng số {{ filteredEmployees().length }} nhân viên
+    <div class="px-5 py-3 bg-gray-50/75 dark:bg-slate-900/60 border-t border-gray-100 dark:border-slate-800 flex items-center justify-between flex-wrap gap-3">
+      <p class="text-xs text-gray-500 dark:text-slate-400">
+        Hiển thị {{ (currentPage() - 1) * itemsPerPage + 1 }}–{{ Math.min(currentPage() * itemsPerPage, flattenedTreeRows().length) }}
+        trên {{ flattenedTreeRows().length }} hàng
       </p>
       <div class="flex gap-1" *ngIf="totalPages() > 1">
         <button [disabled]="currentPage() === 1" (click)="changePage(currentPage() - 1)"
-          class="p-1 px-3 border border-gray-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 dark:text-white disabled:opacity-50 text-sm font-medium transition-colors hover:bg-gray-50">
+          class="px-3 py-1 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-xs font-medium disabled:opacity-40 hover:bg-gray-50">
           Trước
         </button>
-        <div class="flex items-center px-4 font-bold text-sm text-slate-900 dark:text-white">
-          {{ currentPage() }} / {{ totalPages() }}
-        </div>
+        <span class="px-3 py-1 text-xs font-bold text-gray-700 dark:text-slate-300">{{ currentPage() }} / {{ totalPages() }}</span>
         <button [disabled]="currentPage() === totalPages()" (click)="changePage(currentPage() + 1)"
-          class="p-1 px-3 border border-gray-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 dark:text-white disabled:opacity-50 text-sm font-medium transition-colors hover:bg-gray-50">
+          class="px-3 py-1 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-xs font-medium disabled:opacity-40 hover:bg-gray-50">
           Sau
         </button>
       </div>
     </div>
   </div>
 
-  <!-- Empty State -->
-  <div *ngIf="!isLoading() && employees().length === 0"
-    class="bg-white dark:bg-slate-950 rounded-xl shadow-sm border border-gray-100 dark:border-slate-800 p-12 text-center">
-    <div class="flex flex-col items-center gap-4">
-      <div class="w-24 h-24 rounded-full bg-gray-100 dark:bg-slate-800 flex items-center justify-center">
-        <span class="material-symbols-outlined text-gray-400 dark:text-slate-500" style="font-size: 48px;">people</span>
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       VIEW 2: NESTED CARDS – Cơ cấu Tổ chức (MAIN UPGRADE)
+  ═══════════════════════════════════════════════════════════════════════ -->
+  <div *ngIf="!isLoading() && viewMode() === 'hierarchy'" class="space-y-6">
+
+    <!-- Header Banner -->
+    <div class="relative overflow-hidden rounded-2xl bg-gradient-to-r from-slate-900 via-blue-950 to-indigo-950 p-6 text-white shadow-lg">
+      <div class="absolute inset-0 opacity-10"
+        style="background-image: radial-gradient(circle at 20% 50%, #3b82f6 0%, transparent 50%), radial-gradient(circle at 80% 20%, #6366f1 0%, transparent 50%)"></div>
+      <div class="relative flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div class="flex items-center gap-4">
+          <div class="w-14 h-14 rounded-2xl bg-white/10 backdrop-blur-sm border border-white/20 flex items-center justify-center flex-shrink-0">
+            <span class="material-symbols-outlined text-[30px] text-amber-400">account_tree</span>
+          </div>
+          <div>
+            <h2 class="text-xl font-extrabold tracking-tight">Sơ đồ Cơ cấu Tổ chức</h2>
+            <p class="text-sm text-blue-200 mt-0.5">
+              {{ isSuperAdmin() ? 'Toàn bộ phân cấp: Ban Giám Đốc → Trưởng phòng → Nhân sự trực thuộc' : 'Cấu trúc phòng ban: ' + currentUserDepartmentName() }}
+            </p>
+          </div>
+        </div>
+        <div class="flex flex-wrap gap-2">
+          <span class="px-3 py-1.5 rounded-xl bg-white/10 border border-white/20 text-xs font-semibold flex items-center gap-1.5">
+            <span class="material-symbols-outlined text-[14px] text-amber-400">military_tech</span>
+            {{ totalDirectors() }} Giám Đốc
+          </span>
+          <span class="px-3 py-1.5 rounded-xl bg-white/10 border border-white/20 text-xs font-semibold flex items-center gap-1.5">
+            <span class="material-symbols-outlined text-[14px] text-blue-300">shield_person</span>
+            {{ totalManagers() }} Trưởng phòng
+          </span>
+          <span class="px-3 py-1.5 rounded-xl bg-white/10 border border-white/20 text-xs font-semibold flex items-center gap-1.5">
+            <span class="material-symbols-outlined text-[14px] text-teal-300">group</span>
+            {{ totalHr() + totalInterviewers() }} Nhân viên
+          </span>
+        </div>
       </div>
-      <div>
-        <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-1">Chưa có nhân viên nào</h3>
-        <p class="text-gray-500 dark:text-slate-400 text-sm mb-4">Bắt đầu thêm HR hoặc Interviewer vào hệ thống</p>
-        <button (click)="openAddModal()"
-          class="px-5 py-2.5 bg-primary hover:bg-blue-700 text-white rounded-lg text-sm font-bold transition-all shadow-sm">
-          Thêm nhân viên đầu tiên
-        </button>
+    </div>
+
+    <!-- Nested Cards Grid -->
+    <div class="space-y-5">
+      <ng-container *ngFor="let grp of getHierarchyGroups()">
+
+        <!-- Outer Card: Manager / Director -->
+        <div class="rounded-2xl border shadow-sm overflow-hidden transition-all"
+          [ngClass]="grp.manager.role === 'ADMIN'
+            ? 'border-purple-200 dark:border-purple-900/60 bg-gradient-to-br from-purple-50 to-white dark:from-purple-950/20 dark:to-slate-950'
+            : 'border-blue-200 dark:border-blue-900/60 bg-gradient-to-br from-blue-50 to-white dark:from-blue-950/20 dark:to-slate-950'">
+
+          <!-- Manager Header Row -->
+          <div class="px-5 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div class="flex items-center gap-4">
+              <!-- Avatar -->
+              <div class="relative flex-shrink-0">
+                <div [ngClass]="grp.manager.role === 'ADMIN'
+                    ? 'bg-gradient-to-br from-purple-600 to-violet-700'
+                    : 'bg-gradient-to-br from-blue-600 to-indigo-700'"
+                  class="w-14 h-14 rounded-2xl flex items-center justify-center font-bold text-lg text-white shadow-md">
+                  {{ getInitials(grp.manager.fullName) }}
+                </div>
+                <!-- Crown / Shield Badge -->
+                <span *ngIf="grp.manager.role === 'ADMIN'"
+                  class="absolute -bottom-1 -right-1 w-6 h-6 bg-gradient-to-r from-amber-400 to-yellow-500 rounded-full flex items-center justify-center shadow-md ring-2 ring-white dark:ring-slate-900">
+                  <span class="material-symbols-outlined text-[14px] text-amber-900">military_tech</span>
+                </span>
+                <span *ngIf="grp.manager.role === 'MANAGER'"
+                  class="absolute -bottom-1 -right-1 w-6 h-6 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full flex items-center justify-center shadow-md ring-2 ring-white dark:ring-slate-900">
+                  <span class="material-symbols-outlined text-[14px] text-white">shield_person</span>
+                </span>
+              </div>
+
+              <!-- Info -->
+              <div>
+                <div class="flex items-center gap-2 flex-wrap">
+                  <h3 class="text-base font-extrabold text-gray-900 dark:text-white">{{ grp.manager.fullName }}</h3>
+                  <span [ngClass]="grp.manager.role === 'ADMIN'
+                      ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/60 dark:text-purple-300 border-purple-200 dark:border-purple-800'
+                      : 'bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-300 border-blue-200 dark:border-blue-800'"
+                    class="px-2.5 py-0.5 rounded-full text-[11px] font-bold border">
+                    {{ grp.manager.roleName || grp.manager.role }}
+                  </span>
+                  <span *ngIf="!grp.manager.isActive"
+                    class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-100 text-red-700 dark:bg-red-900/60 dark:text-red-300 border border-red-200">
+                    Đã khóa
+                  </span>
+                </div>
+                <p class="text-xs text-gray-500 dark:text-slate-400 font-mono mt-0.5">{{ grp.manager.email }}</p>
+                <div class="flex items-center gap-3 mt-1.5 flex-wrap">
+                  <span [ngClass]="getDepartmentBadge(grp.manager.departmentCode).badge"
+                    class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg text-[11px] font-semibold border">
+                    <span class="w-1.5 h-1.5 rounded-full flex-shrink-0" [ngClass]="getDepartmentBadge(grp.manager.departmentCode).dot"></span>
+                    {{ grp.manager.departmentName || 'Chưa phân bổ' }}
+                  </span>
+                  <span class="text-xs text-gray-400 flex items-center gap-1">
+                    <span class="material-symbols-outlined text-[13px]">phone</span>
+                    {{ grp.manager.phone || '—' }}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="flex items-center gap-2 flex-shrink-0">
+              <span class="px-3 py-1.5 rounded-xl text-xs font-semibold bg-white dark:bg-slate-900/80 border shadow-sm flex items-center gap-1.5"
+                [ngClass]="grp.manager.role === 'ADMIN' ? 'border-purple-200 dark:border-purple-800 text-purple-700 dark:text-purple-300' : 'border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300'">
+                <span class="material-symbols-outlined text-[14px]">people</span>
+                Quản lý {{ grp.subordinates.length }} nhân sự
+              </span>
+              <button (click)="viewEmployee(grp.manager)"
+                class="px-3 py-1.5 rounded-xl text-xs font-bold bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-800 transition-all shadow-sm flex items-center gap-1.5">
+                <span class="material-symbols-outlined text-[15px] text-blue-600">edit</span>
+                Chỉnh sửa
+              </button>
+            </div>
+          </div>
+
+          <!-- Subordinates Section (Inner Card) -->
+          <div class="px-5 pb-5">
+            <!-- Section Title -->
+            <div class="flex items-center gap-2 mb-3 pt-4 border-t"
+              [ngClass]="grp.manager.role === 'ADMIN' ? 'border-purple-100 dark:border-purple-900/40' : 'border-blue-100 dark:border-blue-900/40'">
+              <span class="material-symbols-outlined text-[16px] text-gray-400">subdirectory_arrow_right</span>
+              <span class="text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider">
+                NHÂN SỰ BÁO CÁO TRỰC TIẾP
+              </span>
+              <span class="px-2 py-0.5 rounded-full text-[10px] font-bold"
+                [ngClass]="grp.subordinates.length > 0
+                  ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/60 dark:text-blue-300'
+                  : 'bg-gray-100 text-gray-500 dark:bg-slate-800 dark:text-slate-400'">
+                {{ grp.subordinates.length }} người
+              </span>
+            </div>
+
+            <!-- Empty -->
+            <div *ngIf="grp.subordinates.length === 0"
+              class="py-6 rounded-xl border-2 border-dashed border-gray-200 dark:border-slate-800 text-center">
+              <span class="material-symbols-outlined text-[32px] text-gray-300 dark:text-slate-700 mb-1 block">person_off</span>
+              <p class="text-xs text-gray-400 dark:text-slate-500 italic">Chưa có nhân sự nào báo cáo trực tiếp cho {{ grp.manager.fullName }}</p>
+            </div>
+
+            <!-- Subordinates Grid -->
+            <div *ngIf="grp.subordinates.length > 0" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+              <div *ngFor="let sub of grp.subordinates"
+                class="group relative bg-white dark:bg-slate-900 rounded-xl p-3.5 border border-gray-200 dark:border-slate-800 hover:border-blue-300 dark:hover:border-blue-800 hover:shadow-md transition-all duration-200">
+                <div class="flex items-start justify-between gap-2 mb-2.5">
+                  <!-- Sub Avatar -->
+                  <div class="relative flex-shrink-0">
+                    <div [ngClass]="getAvatarGradient(sub.fullName)"
+                      class="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm shadow-sm">
+                      {{ getInitials(sub.fullName) }}
+                    </div>
+                    <span *ngIf="!sub.isActive"
+                      class="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full ring-1 ring-white dark:ring-slate-900"
+                      title="Tài khoản đã khóa"></span>
+                    <span *ngIf="sub.isActive"
+                      class="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-400 rounded-full ring-1 ring-white dark:ring-slate-900"
+                      title="Đang hoạt động"></span>
+                  </div>
+                  <!-- Edit Button -->
+                  <button (click)="viewEmployee(sub)"
+                    class="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-800 text-gray-500 flex-shrink-0">
+                    <span class="material-symbols-outlined text-[16px]">edit</span>
+                  </button>
+                </div>
+
+                <!-- Sub Info -->
+                <p class="text-xs font-bold text-gray-900 dark:text-white leading-tight mb-0.5 line-clamp-1">{{ sub.fullName }}</p>
+                <p class="text-[11px] text-gray-400 dark:text-slate-500 font-mono truncate mb-2">{{ sub.email }}</p>
+
+                <!-- Role + Dept badges -->
+                <div class="flex flex-wrap gap-1">
+                  <span [ngClass]="getRoleBadgeClass(sub.role)"
+                    class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold">
+                    <span class="material-symbols-outlined text-[12px]">{{ getRoleIcon(sub.role) }}</span>
+                    {{ sub.role }}
+                  </span>
+                  <span *ngIf="!sub.isActive"
+                    class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-red-100 text-red-700 dark:bg-red-900/60 dark:text-red-300">
+                    Khóa
+                  </span>
+                </div>
+
+                <!-- Phone -->
+                <p *ngIf="sub.phone" class="mt-2 text-[10px] text-gray-400 dark:text-slate-600 font-mono flex items-center gap-1">
+                  <span class="material-symbols-outlined text-[12px]">phone</span>
+                  {{ sub.phone }}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </ng-container>
+
+      <!-- Empty Hierarchy -->
+      <div *ngIf="getHierarchyGroups().length === 0"
+        class="bg-white dark:bg-slate-950 rounded-2xl p-16 border border-gray-100 dark:border-slate-800 text-center">
+        <span class="material-symbols-outlined text-[56px] text-gray-300 dark:text-slate-700 mb-3 block">account_tree</span>
+        <h3 class="text-base font-bold text-gray-700 dark:text-white">Chưa có dữ liệu phân cấp</h3>
+        <p class="text-xs text-gray-400 dark:text-slate-500 mt-1">Thêm nhân sự và phân bổ quản lý để xem sơ đồ tổ chức</p>
       </div>
     </div>
   </div>
 
-  <!-- Add Employee Modal -->
-  <div *ngIf="showModal()" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-    <div class="bg-white dark:bg-slate-950 rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
-      <!-- Modal Header -->
-      <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-slate-800">
-        <h2 class="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-          <span class="material-symbols-outlined text-primary">person_add</span>
-          Thêm nhân viên mới
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       VIEW 3: DEPARTMENT CARDS
+  ═══════════════════════════════════════════════════════════════════════ -->
+  <div *ngIf="!isLoading() && viewMode() === 'department'" class="space-y-5">
+    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+      <div *ngFor="let grp of getDepartmentGroups()"
+        class="bg-white dark:bg-slate-950 rounded-2xl border border-gray-200 dark:border-slate-800 shadow-sm overflow-hidden flex flex-col">
+        <!-- Dept Header -->
+        <div class="px-5 py-4 bg-gradient-to-r from-gray-50 to-white dark:from-slate-900 dark:to-slate-950 border-b border-gray-100 dark:border-slate-800 flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <div class="w-9 h-9 rounded-lg bg-blue-100 dark:bg-blue-950/60 text-blue-600 flex items-center justify-center flex-shrink-0">
+              <span class="material-symbols-outlined text-[18px]">apartment</span>
+            </div>
+            <div>
+              <h3 class="text-sm font-extrabold text-gray-900 dark:text-white leading-tight">{{ grp.departmentName }}</h3>
+              <span class="text-[10px] text-gray-400 font-mono">{{ grp.departmentCode }}</span>
+            </div>
+          </div>
+          <span class="px-2.5 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-300">
+            {{ grp.members.length }} người
+          </span>
+        </div>
+
+        <!-- Members -->
+        <div class="p-4 flex-1 space-y-2">
+          <div *ngFor="let m of grp.members"
+            class="flex items-center justify-between p-2 rounded-xl hover:bg-gray-50 dark:hover:bg-slate-900 transition-colors">
+            <div class="flex items-center gap-2.5 min-w-0">
+              <div [ngClass]="getAvatarClass(m.role)" class="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0">
+                {{ getInitials(m.fullName) }}
+              </div>
+              <div class="min-w-0">
+                <p class="text-xs font-bold text-gray-900 dark:text-white truncate">{{ m.fullName }}</p>
+                <p class="text-[10px] text-gray-400 font-mono truncate">{{ m.email }}</p>
+              </div>
+            </div>
+            <span [ngClass]="getRoleBadgeClass(m.role)" class="px-2 py-0.5 rounded text-[10px] font-bold ml-2 flex-shrink-0">{{ m.role }}</span>
+          </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="px-5 py-3 border-t border-gray-100 dark:border-slate-800 text-right">
+          <button (click)="selectDepartment(grp.departmentCode); setViewMode('table')"
+            class="text-xs text-blue-600 dark:text-blue-400 hover:underline font-semibold inline-flex items-center gap-1">
+            Xem chi tiết
+            <span class="material-symbols-outlined text-[14px]">arrow_forward</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Empty State -->
+  <div *ngIf="!isLoading() && filteredEmployees().length === 0"
+    class="bg-white dark:bg-slate-950 rounded-2xl p-16 border border-gray-100 dark:border-slate-800 text-center mt-4">
+    <span class="material-symbols-outlined text-[56px] text-gray-300 dark:text-slate-700 mb-3 block">person_search</span>
+    <h3 class="text-base font-bold text-gray-900 dark:text-white">Không tìm thấy nhân sự</h3>
+    <p class="text-xs text-gray-500 dark:text-slate-400 mt-1">Thử thay đổi bộ lọc phòng ban hoặc từ khóa tìm kiếm</p>
+    <button (click)="clearFilters()" class="mt-4 px-5 py-2 bg-blue-600 text-white rounded-xl text-xs font-semibold hover:bg-blue-700 transition-colors">
+      Xóa bộ lọc
+    </button>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       MODAL: THÊM NHÂN VIÊN MỚI
+  ═══════════════════════════════════════════════════════════════════════ -->
+  <div *ngIf="showModal()" class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+    <div class="bg-white dark:bg-slate-950 rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto border border-gray-200 dark:border-slate-800">
+      <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-slate-800 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20">
+        <h2 class="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
+          <span class="material-symbols-outlined text-blue-600">person_add</span>
+          Thêm nhân sự &amp; Phân bổ phòng ban
         </h2>
-        <button (click)="closeModal()"
-          class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
+        <button (click)="closeModal()" class="text-gray-400 hover:text-gray-600 dark:hover:text-slate-200 rounded-lg p-1 hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors">
           <span class="material-symbols-outlined">close</span>
         </button>
       </div>
 
-      <form [formGroup]="employeeForm" (ngSubmit)="onSubmit()">
-        <!-- Modal Body -->
-        <div class="p-6 space-y-4">
-          <!-- Full Name -->
-          <div>
-            <label for="fullName" class="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
-              Họ tên <span class="text-red-500">*</span>
-            </label>
-            <input type="text" id="fullName" formControlName="fullName" placeholder="Nguyễn Văn A"
-              [class.border-red-500]="hasError('fullName')"
-              class="w-full px-4 py-2 border border-gray-300 dark:border-slate-700 dark:bg-slate-900 dark:text-white rounded-lg focus:ring-2 focus:ring-primary focus:border-primary">
-            <span *ngIf="hasError('fullName')" class="text-red-500 text-xs mt-1">{{ getErrorMessage('fullName')
-              }}</span>
-          </div>
-
-          <!-- Email -->
-          <div>
-            <label for="email" class="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
-              Email <span class="text-red-500">*</span>
-            </label>
-            <input type="email" id="email" formControlName="email" placeholder="example@company.com"
-              [class.border-red-500]="hasError('email')"
-              class="w-full px-4 py-2 border border-gray-300 dark:border-slate-700 dark:bg-slate-900 dark:text-white rounded-lg focus:ring-2 focus:ring-primary focus:border-primary">
-            <span *ngIf="hasError('email')" class="text-red-500 text-xs mt-1">{{ getErrorMessage('email') }}</span>
-          </div>
-
-          <!-- Phone Number -->
-          <div>
-            <label for="phoneNumber" class="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
-              Số điện thoại <span class="text-red-500">*</span>
-            </label>
-            <input type="tel" id="phoneNumber" formControlName="phoneNumber" placeholder="0123456789"
-              [class.border-red-500]="hasError('phoneNumber')"
-              class="w-full px-4 py-2 border border-gray-300 dark:border-slate-700 dark:bg-slate-900 dark:text-white rounded-lg focus:ring-2 focus:ring-primary focus:border-primary">
-            <span *ngIf="hasError('phoneNumber')" class="text-red-500 text-xs mt-1">{{ getErrorMessage('phoneNumber')
-              }}</span>
-          </div>
-
-          <!-- Role -->
-          <div>
-            <label for="role" class="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
-              Vai trò <span class="text-red-500">*</span>
-            </label>
-            <select id="role" formControlName="role"
-              class="w-full px-4 py-2 border border-gray-300 dark:border-slate-700 dark:bg-slate-900 dark:text-white rounded-lg focus:ring-2 focus:ring-primary focus:border-primary">
-              <option value="HR">HR Manager</option>
-              <option value="INTERVIEWER">Interviewer</option>
-            </select>
-          </div>
-
-          <!-- Info Note -->
-          <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
-            <p class="text-sm text-blue-800 dark:text-blue-200 flex items-start gap-2">
-              <span class="material-symbols-outlined text-base mt-0.5">info</span>
-              <span>
-                Mật khẩu mặc định: <strong>123456</strong><br>
-                <small class="text-xs">Nhân viên nên đổi mật khẩu sau lần đăng nhập đầu tiên</small>
-              </span>
-            </p>
-          </div>
+      <form [formGroup]="employeeForm" (ngSubmit)="onSubmit()" class="p-6 space-y-4">
+        <!-- Alert lỗi -->
+        <div *ngIf="errorMessage()" class="p-3 rounded-xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/60 text-xs text-red-700 dark:text-red-300 flex items-center gap-2">
+          <span class="material-symbols-outlined text-[16px]">error</span>
+          {{ errorMessage() }}
+        </div>
+        <div *ngIf="successMessage()" class="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/60 text-xs text-emerald-700 dark:text-emerald-300 flex items-center gap-2">
+          <span class="material-symbols-outlined text-[16px]">check_circle</span>
+          {{ successMessage() }}
         </div>
 
-        <!-- Modal Footer -->
-        <div
-          class="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-200 dark:border-slate-800 bg-gray-50 dark:bg-slate-900/50">
-          <button type="button" (click)="closeModal()" [disabled]="isLoading()"
-            class="px-4 py-2 border border-gray-300 dark:border-slate-700 text-gray-700 dark:text-slate-300 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors font-medium disabled:opacity-50">
+        <div>
+          <label class="block text-xs font-bold text-gray-700 dark:text-slate-300 mb-1.5">Họ và tên <span class="text-red-500">*</span></label>
+          <input type="text" formControlName="fullName" placeholder="VD: Nguyễn Văn A"
+            class="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 dark:border-slate-700 dark:bg-slate-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+          <span *ngIf="hasError('fullName')" class="text-red-500 text-xs mt-1 block">{{ getErrorMessage('fullName') }}</span>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-gray-700 dark:text-slate-300 mb-1.5">Email cơ quan <span class="text-red-500">*</span></label>
+          <input type="email" formControlName="email" placeholder="example@factory.com"
+            class="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 dark:border-slate-700 dark:bg-slate-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+          <span *ngIf="hasError('email')" class="text-red-500 text-xs mt-1 block">{{ getErrorMessage('email') }}</span>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-gray-700 dark:text-slate-300 mb-1.5">Số điện thoại <span class="text-red-500">*</span></label>
+          <input type="tel" formControlName="phoneNumber" placeholder="0987654321"
+            class="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 dark:border-slate-700 dark:bg-slate-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+          <span *ngIf="hasError('phoneNumber')" class="text-red-500 text-xs mt-1 block">{{ getErrorMessage('phoneNumber') }}</span>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-gray-700 dark:text-slate-300 mb-1.5">Vai trò / Chức danh <span class="text-red-500">*</span></label>
+          <select formControlName="role"
+            class="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 dark:border-slate-700 dark:bg-slate-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500">
+            <option *ngIf="isSuperAdmin()" value="ADMIN">Ban Giám Đốc / Quản trị hệ thống (Toàn quyền)</option>
+            <option *ngIf="isSuperAdmin()" value="MANAGER">Trưởng Phòng / Quản lý bộ phận</option>
+            <option value="HR">Chuyên viên Nhân sự (HR / Staff)</option>
+            <option value="INTERVIEWER">Hội đồng Phỏng vấn (Interviewer / TeamLeader)</option>
+          </select>
+          <p *ngIf="isDepartmentManager()" class="text-[11px] text-slate-500 mt-1">
+            * Theo quy định ủy quyền, Trưởng phòng chỉ được cấp tài khoản cấp dưới (HR / Hội đồng PV).
+          </p>
+        </div>
+
+        <div>
+          <div class="flex justify-between items-center mb-1.5">
+            <label class="block text-xs font-bold text-gray-700 dark:text-slate-300">Phòng ban / Khu vực <span class="text-red-500">*</span></label>
+            <span *ngIf="isDepartmentManager()" class="text-[11px] text-amber-600 dark:text-amber-400 font-semibold flex items-center gap-1">
+              <span class="material-symbols-outlined text-[14px]">lock</span>
+              Tự động khóa theo phòng ban của bạn
+            </span>
+          </div>
+          <select formControlName="departmentId"
+            [class.bg-gray-100]="employeeForm.get('departmentId')?.disabled"
+            [class.cursor-not-allowed]="employeeForm.get('departmentId')?.disabled"
+            class="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 dark:border-slate-700 dark:bg-slate-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500">
+            <option value="">-- Chọn phòng ban --</option>
+            <option *ngFor="let d of departments()" [value]="d.departmentId">{{ d.departmentName }} ({{ d.departmentCode }})</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-gray-700 dark:text-slate-300 mb-1.5">Quản lý trực tiếp (Báo cáo cho ai)</label>
+          <select formControlName="managerId"
+            class="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 dark:border-slate-700 dark:bg-slate-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500">
+            <option value="">-- Cấp cao nhất / Không có --</option>
+            <option *ngFor="let m of managers()" [value]="m.userId">{{ m.fullName }} ({{ m.role }}) – {{ m.departmentName }}</option>
+          </select>
+        </div>
+
+        <div class="p-3 bg-blue-50 dark:bg-blue-950/40 rounded-xl border border-blue-200 dark:border-blue-900/60 text-xs text-blue-800 dark:text-blue-300 flex items-center gap-2">
+          <span class="material-symbols-outlined text-[16px]">info</span>
+          Mật khẩu khởi tạo mặc định: <strong>Password123!</strong>
+        </div>
+
+        <div class="flex items-center justify-end gap-3 pt-3 border-t border-gray-100 dark:border-slate-800">
+          <button type="button" (click)="closeModal()"
+            class="px-4 py-2 border border-gray-300 dark:border-slate-700 rounded-xl text-xs font-semibold text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors">
             Hủy
           </button>
           <button type="submit" [disabled]="isLoading()"
-            class="px-6 py-2 bg-primary hover:bg-blue-700 text-white rounded-lg transition-colors font-semibold flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
-            <span *ngIf="!isLoading()" class="material-symbols-outlined text-sm">save</span>
-            <span *ngIf="isLoading()" class="animate-spin">⏳</span>
-            {{ isLoading() ? 'Đang tạo...' : 'Tạo nhân viên' }}
+            class="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-sm transition-colors disabled:opacity-60 flex items-center gap-2">
+            <span *ngIf="isLoading()" class="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+            Tạo nhân viên
           </button>
         </div>
       </form>
     </div>
   </div>
 
-  <!-- View Employee Detail Modal -->
-  <div *ngIf="showEditModal()" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-    <div class="bg-white dark:bg-slate-950 rounded-2xl shadow-2xl w-full max-w-md">
-      <!-- Modal Header -->
-      <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-slate-800">
-        <h2 class="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-          <span class="material-symbols-outlined text-primary">badge</span>
-          Chi tiết nhân viên
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       MODAL: XEM & CHỈNH SỬA NHÂN VIÊN
+  ═══════════════════════════════════════════════════════════════════════ -->
+  <div *ngIf="showEditModal()" class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+    <div class="bg-white dark:bg-slate-950 rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto border border-gray-200 dark:border-slate-800">
+      <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-slate-800 bg-gradient-to-r from-indigo-50 to-blue-50 dark:from-indigo-950/20 dark:to-blue-950/20">
+        <h2 class="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
+          <span class="material-symbols-outlined text-indigo-600">manage_accounts</span>
+          Chỉnh sửa thông tin nhân sự
         </h2>
-        <button (click)="closeEditModal()"
-          class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
+        <button (click)="closeEditModal()" class="text-gray-400 hover:text-gray-600 dark:hover:text-slate-200 rounded-lg p-1 hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors">
           <span class="material-symbols-outlined">close</span>
         </button>
       </div>
 
-      <!-- Modal Body -->
-      <div class="p-6" *ngIf="selectedEmployee()">
+      <div class="p-6 space-y-4" *ngIf="selectedEmployee()">
+        <!-- Profile Preview -->
+        <div class="flex items-center gap-4 p-4 bg-gray-50 dark:bg-slate-900 rounded-xl border border-gray-100 dark:border-slate-800">
+          <div [ngClass]="getAvatarGradient(selectedEmployee()!.fullName)"
+            class="w-14 h-14 rounded-2xl flex items-center justify-center font-bold text-lg shadow-sm flex-shrink-0">
+            {{ getInitials(selectedEmployee()!.fullName) }}
+          </div>
+          <div>
+            <p class="text-sm font-extrabold text-gray-900 dark:text-white">{{ selectedEmployee()!.fullName }}</p>
+            <p class="text-xs text-gray-500 font-mono">{{ selectedEmployee()!.email }}</p>
+            <span [ngClass]="getRoleBadgeClass(selectedEmployee()!.role)" class="mt-1 inline-flex px-2 py-0.5 rounded text-[10px] font-bold">
+              {{ selectedEmployee()!.role }}
+            </span>
+          </div>
+        </div>
+
         <form [formGroup]="employeeForm" class="space-y-4">
-          <!-- Họ tên -->
           <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Họ tên <span class="text-red-500">*</span>
-            </label>
+            <label class="block text-xs font-bold text-gray-700 dark:text-slate-300 mb-1.5">Họ và tên *</label>
             <input formControlName="fullName" type="text"
-              class="w-full px-4 py-2 border border-gray-300 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary dark:bg-slate-900 dark:text-white transition-all"
-              [class.border-red-500]="hasError('fullName')" placeholder="Nguyễn Văn A" />
-            <span *ngIf="hasError('fullName')" class="text-red-500 text-xs mt-1">{{ getErrorMessage('fullName')
-              }}</span>
+              class="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 dark:border-slate-700 dark:bg-slate-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500">
           </div>
-
-          <!-- Email -->
           <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Email <span class="text-red-500">*</span>
-            </label>
+            <label class="block text-xs font-bold text-gray-700 dark:text-slate-300 mb-1.5">Email *</label>
             <input formControlName="email" type="email"
-              class="w-full px-4 py-2 border border-gray-300 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary dark:bg-slate-900 dark:text-white transition-all"
-              [class.border-red-500]="hasError('email')" placeholder="example@company.com" />
-            <span *ngIf="hasError('email')" class="text-red-500 text-xs mt-1">{{ getErrorMessage('email') }}</span>
+              class="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 dark:border-slate-700 dark:bg-slate-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500">
           </div>
-
-          <!-- Số điện thoại -->
           <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Số điện thoại <span class="text-red-500">*</span>
-            </label>
+            <label class="block text-xs font-bold text-gray-700 dark:text-slate-300 mb-1.5">Số điện thoại *</label>
             <input formControlName="phoneNumber" type="tel"
-              class="w-full px-4 py-2 border border-gray-300 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary dark:bg-slate-900 dark:text-white transition-all"
-              [class.border-red-500]="hasError('phoneNumber')" placeholder="0123456789" />
-            <span *ngIf="hasError('phoneNumber')" class="text-red-500 text-xs mt-1">{{ getErrorMessage('phoneNumber')
-              }}</span>
+              class="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 dark:border-slate-700 dark:bg-slate-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500">
           </div>
-
-          <!-- Vai trò -->
           <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Vai trò <span class="text-red-500">*</span>
-            </label>
+            <label class="block text-xs font-bold text-gray-700 dark:text-slate-300 mb-1.5">Vai trò / Chức danh *</label>
             <select formControlName="role"
-              class="w-full px-4 py-2 border border-gray-300 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary dark:bg-slate-900 dark:text-white transition-all">
-              <option value="HR">HR</option>
-              <option value="INTERVIEWER">INTERVIEWER</option>
+              class="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 dark:border-slate-700 dark:bg-slate-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500">
+              <option value="ADMIN">Ban Giám Đốc / Quản trị hệ thống</option>
+              <option value="MANAGER">Trưởng Phòng / Quản lý bộ phận</option>
+              <option value="HR">Chuyên viên Nhân sự</option>
+              <option value="INTERVIEWER">Hội đồng Phỏng vấn</option>
             </select>
           </div>
-        </form>
-      </div>
+          <div>
+            <label class="block text-xs font-bold text-gray-700 dark:text-slate-300 mb-1.5">Phòng ban trực thuộc</label>
+            <select formControlName="departmentId"
+              class="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 dark:border-slate-700 dark:bg-slate-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500">
+              <option value="">-- Chưa phân bổ --</option>
+              <option *ngFor="let d of departments()" [value]="d.departmentId">{{ d.departmentName }} ({{ d.departmentCode }})</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-gray-700 dark:text-slate-300 mb-1.5">Quản lý trực tiếp</label>
+            <select formControlName="managerId"
+              class="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 dark:border-slate-700 dark:bg-slate-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500">
+              <option value="">-- Cấp cao nhất / Không có --</option>
+              <option *ngFor="let m of managers()" [value]="m.userId">{{ m.fullName }} ({{ m.role }}) – {{ m.departmentName }}</option>
+            </select>
+          </div>
 
-      <!-- Modal Footer -->
-      <div
-        class="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-200 dark:border-slate-800 bg-gray-50 dark:bg-slate-900/50">
-        <button (click)="closeEditModal()"
-          class="px-4 py-2 border border-gray-300 dark:border-slate-700 text-gray-700 dark:text-slate-300 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors font-medium">
-          Đóng
-        </button>
-        <button (click)="updateEmployee()" [disabled]="isLoading()"
-          class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-bold shadow-lg shadow-blue-500/30 disabled:opacity-50 flex items-center gap-2">
-          <span class="material-symbols-outlined text-[20px]">edit</span>
-          {{ isLoading() ? 'Đang lưu...' : 'Sửa' }}
-        </button>
+          <div *ngIf="selectedEmployee()!.subordinatesCount > 0"
+            class="p-3 bg-indigo-50 dark:bg-indigo-950/40 rounded-xl border border-indigo-200 dark:border-indigo-900/60 text-xs text-indigo-800 dark:text-indigo-300 flex items-center justify-between gap-3">
+            <span class="flex items-center gap-1.5">
+              <span class="material-symbols-outlined text-[15px]">people</span>
+              Cán bộ này quản lý <strong>{{ selectedEmployee()!.subordinatesCount }}</strong> nhân sự cấp dưới.
+            </span>
+            <button type="button" (click)="closeEditModal(); filterSubordinatesOf(selectedEmployee()!.userId, selectedEmployee()!.fullName)"
+              class="text-xs font-bold text-indigo-600 hover:underline whitespace-nowrap">
+              Xem cấp dưới →
+            </button>
+          </div>
+        </form>
+
+        <div class="flex items-center justify-end gap-3 pt-4 border-t border-gray-100 dark:border-slate-800">
+          <button (click)="closeEditModal()"
+            class="px-4 py-2 border border-gray-300 dark:border-slate-700 rounded-xl text-xs font-semibold text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800">
+            Hủy
+          </button>
+          <button (click)="updateEmployee()" [disabled]="isLoading()"
+            class="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-sm transition-colors disabled:opacity-60 flex items-center gap-2">
+            <span *ngIf="isLoading()" class="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+            Lưu thay đổi
+          </button>
+        </div>
       </div>
     </div>
   </div>
+
 </div>
