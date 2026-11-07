@@ -9,15 +9,15 @@
         <div>
           <div class="flex items-center gap-2.5">
             <span class="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-              ONBOARDING & QUOTA GUARD
+              Tiếp nhận nhân sự
             </span>
-            <span class="text-xs text-slate-400 font-medium">• Kiểm soát Khám sức khỏe, CCCD, Cấp Mã NV & Dự bị tự động</span>
+            <span class="text-xs text-slate-400 font-medium">• Kiểm soát khám sức khỏe, CCCD, cấp mã nhân viên & dự bị</span>
           </div>
           <h1 class="mt-1.5 text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
-            Tiếp Nhận Nhân Sự Mới & Kiểm Soát Định Biên Xưởng
+            Tiếp Nhận Nhân Sự Mới & Kiểm Soát Định Biên
           </h1>
           <p class="text-sm text-slate-500 mt-0.5">
-            Ràng buộc điều kiện cứng (Đạt KSK + CCCD) trước khi sinh Mã nhân viên, khóa vượt trần định biên và xử lý No-Show ngày đầu.
+            Kiểm tra điều kiện bắt buộc (KSK và CCCD) trước khi cấp mã nhân viên, giới hạn định biên và xử lý trường hợp không nhận việc.
           </p>
         </div>
 
@@ -25,15 +25,17 @@
           <button
             type="button"
             (click)="showSelfServiceQrModal.set(true)"
-            class="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-lg border border-indigo-200 bg-indigo-50/70 hover:bg-indigo-100 text-indigo-700 text-xs sm:text-sm font-semibold transition cursor-pointer">
-            <span>🔗 Lấy QR/Link Tự Bổ Sung Hồ Sơ Trúng Tuyển</span>
+            class="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs sm:text-sm font-semibold transition cursor-pointer">
+            <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path></svg>
+            <span>Liên kết bổ sung hồ sơ</span>
           </button>
 
           <button
             type="button"
             (click)="exportBadgeAndBankExcel()"
             class="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs sm:text-sm font-semibold shadow-sm transition cursor-pointer">
-            <span>📥 Xuất Excel Làm Thẻ Từ & Ngân Hàng</span>
+            <svg class="w-4 h-4 text-emerald-100" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+            <span>Xuất danh sách làm thẻ & ngân hàng</span>
           </button>
         </div>
       </div>
@@ -47,29 +49,29 @@
       <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm relative overflow-hidden">
         <div class="flex items-start justify-between">
           <div>
-            <p class="text-xs font-semibold uppercase tracking-wider text-slate-500">Chỉ Tiêu Định Biên Xưởng</p>
+            <p class="text-xs font-semibold uppercase tracking-wider text-slate-500">Chỉ Tiêu Định Biên</p>
             <div class="mt-1.5 flex items-baseline gap-2">
               <span class="text-2xl font-extrabold text-slate-900">{{ hiredCount() }} / {{ targetQuantity() }}</span>
               <span class="text-xs font-semibold px-2 py-0.5 rounded-full"
-                [ngClass]="isQuotaFull() ? 'bg-red-100 text-red-700 border border-red-200' : 'bg-emerald-100 text-emerald-700'">
-                {{ isQuotaFull() ? '🔒 Đã chạm trần' : 'Còn trống ' + remainingQuota() + ' suất' }}
+                [ngClass]="isQuotaFull() ? 'bg-rose-100 text-rose-700 border border-rose-200' : 'bg-emerald-100 text-emerald-700'">
+                {{ isQuotaFull() ? 'Đã đủ định biên' : 'Còn trống ' + remainingQuota() + ' chỉ tiêu' }}
               </span>
             </div>
           </div>
-          <div class="w-10 h-10 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-sm">
+          <div class="w-10 h-10 rounded-lg bg-slate-100 text-slate-700 flex items-center justify-center font-bold text-sm">
             {{ quotaPercent() }}%
           </div>
         </div>
         <div class="mt-3 w-full bg-slate-100 h-2 rounded-full overflow-hidden">
           <div
             class="h-full transition-all duration-300 rounded-full"
-            [ngClass]="isQuotaFull() ? 'bg-red-600' : 'bg-blue-600'"
+            [ngClass]="isQuotaFull() ? 'bg-rose-600' : 'bg-emerald-600'"
             [style.width.%]="quotaPercent()">
           </div>
         </div>
         <p class="mt-2 text-[11px] text-slate-500">
           @if (isQuotaFull()) {
-            <span class="text-red-600 font-semibold">Khóa cấp Mã NV vượt trần — Tự động chuyển ứng viên đạt sang Dự bị!</span>
+            <span class="text-rose-600 font-semibold">Đã đạt định biên — Ứng viên đạt sau thời điểm này sẽ lưu danh sách dự bị.</span>
           } @else {
             <span>Tự động khóa khi đạt {{ targetQuantity() }}/{{ targetQuantity() }} nhân sự nhận việc thực tế.</span>
           }
@@ -85,33 +87,33 @@
             <p class="text-xs font-semibold uppercase tracking-wider text-slate-500">Chờ Khám Sức Khỏe & CCCD</p>
             <p class="mt-1.5 text-2xl font-extrabold text-amber-600">{{ tabCounts().pendingMedical }}</p>
           </div>
-          <span class="inline-flex items-center justify-center w-10 h-10 rounded-lg bg-amber-50 text-amber-600 text-lg">
-            🏥
+          <span class="inline-flex items-center justify-center w-10 h-10 rounded-lg bg-amber-50 text-amber-600">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-3-3v6m9-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
           </span>
         </div>
         <p class="mt-3 text-xs text-slate-500">
-          Chưa đủ điều kiện cứng (Logic 4) để sinh Mã nhân viên.
+          Cần hoàn tất KSK và số CCCD trước khi cấp mã nhân viên.
         </p>
       </div>
 
       <!-- Card 3: Danh sách Dự bị (Waitlist Pool - Buffer 15%) -->
       <div
         (click)="activeTab.set('WAITLIST')"
-        class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm hover:border-purple-300 transition cursor-pointer">
+        class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm hover:border-slate-300 transition cursor-pointer">
         <div class="flex items-start justify-between">
           <div>
             <p class="text-xs font-semibold uppercase tracking-wider text-slate-500">Danh Sách Dự Bị (Waitlist)</p>
             <div class="mt-1.5 flex items-baseline gap-2">
-              <span class="text-2xl font-extrabold text-purple-700">{{ tabCounts().waitlist }}</span>
-              <span class="text-xs text-slate-500">/ tối đa {{ maxWaitlistCap() }} ({{ waitlistBufferPercent() }}% buffer)</span>
+              <span class="text-2xl font-extrabold text-slate-800">{{ tabCounts().waitlist }}</span>
+              <span class="text-xs text-slate-500">/ tối đa {{ maxWaitlistCap() }} ({{ waitlistBufferPercent() }}% dự phòng)</span>
             </div>
           </div>
-          <span class="inline-flex items-center justify-center w-10 h-10 rounded-lg bg-purple-50 text-purple-600 text-lg">
-            ⏳
+          <span class="inline-flex items-center justify-center w-10 h-10 rounded-lg bg-slate-100 text-slate-700">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
           </span>
         </div>
         <p class="mt-3 text-xs text-slate-500">
-          Sẵn sàng đôn người điểm cao nhất lên ngay khi có công nhân No-Show.
+          Sẵn sàng đôn người điểm cao nhất lên thay thế khi phát sinh no-show.
         </p>
       </div>
 
@@ -121,15 +123,15 @@
         class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm hover:border-rose-300 transition cursor-pointer">
         <div class="flex items-start justify-between">
           <div>
-            <p class="text-xs font-semibold uppercase tracking-wider text-slate-500">Bỏ Việc Ngày Đầu (No-Show)</p>
+            <p class="text-xs font-semibold uppercase tracking-wider text-slate-500">Không Nhận Việc (No-Show)</p>
             <p class="mt-1.5 text-2xl font-extrabold text-rose-600">{{ tabCounts().noShow }}</p>
           </div>
-          <span class="inline-flex items-center justify-center w-10 h-10 rounded-lg bg-rose-50 text-rose-600 text-lg">
-            🚫
+          <span class="inline-flex items-center justify-center w-10 h-10 rounded-lg bg-rose-50 text-rose-600">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"></path></svg>
           </span>
         </div>
         <p class="mt-3 text-xs text-slate-500">
-          Đã thu hồi Mã NV & hoàn lại chỉ tiêu trống cho xưởng sản xuất.
+          Đã thu hồi mã nhân viên và hoàn lại chỉ tiêu tuyển dụng cho xưởng.
         </p>
       </div>
     </div>
@@ -145,7 +147,7 @@
           (click)="activeTab.set('ALL')"
           class="px-3.5 py-2 rounded-lg text-xs sm:text-sm font-semibold transition cursor-pointer flex items-center gap-2"
           [ngClass]="activeTab() === 'ALL' ? 'bg-slate-900 text-white shadow-xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'">
-          <span>Tất cả trúng tuyển</span>
+          <span>Tất cả hồ sơ</span>
           <span class="px-1.5 py-0.5 rounded-full text-[11px] bg-white/20">{{ tabCounts().all }}</span>
         </button>
 
@@ -154,7 +156,7 @@
           (click)="activeTab.set('PENDING_MEDICAL')"
           class="px-3.5 py-2 rounded-lg text-xs sm:text-sm font-semibold transition cursor-pointer flex items-center gap-2"
           [ngClass]="activeTab() === 'PENDING_MEDICAL' ? 'bg-amber-600 text-white shadow-xs' : 'bg-amber-50 text-amber-800 hover:bg-amber-100'">
-          <span>🏥 Chờ KSK & Bổ sung CCCD</span>
+          <span>Chờ KSK & Bổ sung CCCD</span>
           <span class="px-1.5 py-0.5 rounded-full text-[11px] bg-black/10">{{ tabCounts().pendingMedical }}</span>
         </button>
 
@@ -163,7 +165,7 @@
           (click)="activeTab.set('ELIGIBLE')"
           class="px-3.5 py-2 rounded-lg text-xs sm:text-sm font-semibold transition cursor-pointer flex items-center gap-2"
           [ngClass]="activeTab() === 'ELIGIBLE' ? 'bg-blue-600 text-white shadow-xs' : 'bg-blue-50 text-blue-700 hover:bg-blue-100'">
-          <span>✅ Đủ điều kiện cấp Mã NV</span>
+          <span>Đủ điều kiện cấp mã</span>
           <span class="px-1.5 py-0.5 rounded-full text-[11px] bg-black/10">{{ tabCounts().eligible }}</span>
         </button>
 
@@ -172,7 +174,7 @@
           (click)="activeTab.set('WAITLIST')"
           class="px-3.5 py-2 rounded-lg text-xs sm:text-sm font-semibold transition cursor-pointer flex items-center gap-2"
           [ngClass]="activeTab() === 'WAITLIST' ? 'bg-purple-600 text-white shadow-xs' : 'bg-purple-50 text-purple-700 hover:bg-purple-100'">
-          <span>⏳ Danh sách Dự bị (Waitlist)</span>
+          <span>Danh sách dự bị (Waitlist)</span>
           <span class="px-1.5 py-0.5 rounded-full text-[11px] bg-black/10">{{ tabCounts().waitlist }}</span>
         </button>
 
@@ -181,7 +183,7 @@
           (click)="activeTab.set('HIRED')"
           class="px-3.5 py-2 rounded-lg text-xs sm:text-sm font-semibold transition cursor-pointer flex items-center gap-2"
           [ngClass]="activeTab() === 'HIRED' ? 'bg-emerald-600 text-white shadow-xs' : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'">
-          <span>🎉 Đã cấp Mã NV</span>
+          <span>Đã cấp Mã NV</span>
           <span class="px-1.5 py-0.5 rounded-full text-[11px] bg-black/10">{{ tabCounts().hired }}</span>
         </button>
 
@@ -190,7 +192,7 @@
           (click)="activeTab.set('NO_SHOW')"
           class="px-3.5 py-2 rounded-lg text-xs sm:text-sm font-semibold transition cursor-pointer flex items-center gap-2"
           [ngClass]="activeTab() === 'NO_SHOW' ? 'bg-rose-600 text-white shadow-xs' : 'bg-rose-50 text-rose-700 hover:bg-rose-100'">
-          <span>🚫 Không nhận việc (No-Show)</span>
+          <span>Không nhận việc (No-Show)</span>
           <span class="px-1.5 py-0.5 rounded-full text-[11px] bg-black/10">{{ tabCounts().noShow }}</span>
         </button>
       </div>
@@ -224,9 +226,9 @@
             [ngModel]="selectedTrack()"
             (ngModelChange)="selectedTrack.set($event)"
             class="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm text-slate-700 bg-white">
-            <option value="ALL">Tất cả 2 luồng</option>
-            <option value="MASS_LABOR">👷 Công nhân xưởng</option>
-            <option value="PROFESSIONAL">👨‍💼 Kỹ sư / Văn phòng</option>
+            <option value="ALL">Tất cả các khối</option>
+            <option value="MASS_LABOR">Khối Sản xuất / Lao động</option>
+            <option value="PROFESSIONAL">Khối Kỹ thuật / Kỹ sư</option>
           </select>
         </div>
 
@@ -235,7 +237,7 @@
             type="button"
             (click)="toggleSelectAllEligible()"
             class="w-full px-3 py-2 rounded-lg border border-blue-200 bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-semibold transition cursor-pointer">
-            ☑️ Chọn tất cả đủ ĐK
+            Chọn tất cả đủ ĐK
           </button>
         </div>
       </div>
@@ -292,15 +294,15 @@
                           {{ item.aiMatchingScore }}đ
                         </span>
                       </div>
-                      <div class="text-xs text-slate-500 mt-0.5">📞 {{ item.phone }}</div>
+                      <div class="text-xs text-slate-500 mt-0.5 font-mono">{{ item.phone }}</div>
                       <div class="mt-1.5 flex items-center gap-1.5 flex-wrap">
                         @if (item.recruitmentTrack === 'PROFESSIONAL') {
-                          <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200">
-                            👨‍💼 Khối Kỹ sư / VP (PROFESSIONAL)
+                          <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium bg-slate-100 text-slate-700 border border-slate-200">
+                            Khối Kỹ thuật / Kỹ sư
                           </span>
                         } @else {
-                          <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-amber-50 text-amber-800 border border-amber-200">
-                            👷 Khối Công nhân xưởng (MASS_LABOR)
+                          <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium bg-slate-100 text-slate-700 border border-slate-200">
+                            Khối Sản xuất / Lao động
                           </span>
                         }
                       </div>
@@ -313,7 +315,7 @@
                   <div class="font-semibold text-slate-800 text-xs sm:text-sm line-clamp-1">{{ item.jobTitle }}</div>
                   <div class="text-xs text-slate-500 mt-0.5">{{ item.departmentName }} ({{ item.jobCode }})</div>
                   <div class="mt-1.5 inline-flex items-center gap-1 px-2 py-0.5 rounded bg-slate-100 text-slate-700 text-xs font-medium">
-                    <span>🏭 {{ item.lineAssignment }}</span>
+                    <span>{{ item.lineAssignment }}</span>
                   </div>
                 </td>
 
@@ -364,7 +366,7 @@
                       [disabled]="item.status === 'Hired' || item.status === 'No_Show_Cancelled'"
                       class="px-2 py-1 rounded-md text-[11px] font-semibold transition cursor-pointer"
                       [ngClass]="item.medicalCheckStatus === 'Pending' ? 'bg-amber-500 text-white shadow-xs' : 'text-slate-600 hover:bg-white'">
-                      ⏳ Chờ KSK
+                      Chờ KSK
                     </button>
                     <button
                       type="button"
@@ -372,7 +374,7 @@
                       [disabled]="item.status === 'Hired' || item.status === 'No_Show_Cancelled'"
                       class="px-2 py-1 rounded-md text-[11px] font-semibold transition cursor-pointer"
                       [ngClass]="item.medicalCheckStatus === 'Passed' ? 'bg-emerald-600 text-white shadow-xs' : 'text-slate-600 hover:bg-white'">
-                      ✅ Đạt KSK
+                      Đạt KSK
                     </button>
                     <button
                       type="button"
@@ -380,7 +382,7 @@
                       [disabled]="item.status === 'Hired' || item.status === 'No_Show_Cancelled'"
                       class="px-2 py-1 rounded-md text-[11px] font-semibold transition cursor-pointer"
                       [ngClass]="item.medicalCheckStatus === 'Failed' ? 'bg-rose-600 text-white shadow-xs' : 'text-slate-600 hover:bg-white'">
-                      ❌ Trượt KSK
+                      Không đạt
                     </button>
                   </div>
 
@@ -395,12 +397,12 @@
                     </div>
                   } @else {
                     <div class="mt-1.5 text-[11px] text-emerald-700 font-semibold">
-                      ✓ Đủ điều kiện cứng (Logic 4)
+                      Đủ điều kiện cấp mã
                     </div>
                   }
                 </td>
 
-                <!-- Checkbox [🔑 Cấp User ATS] (chỉ bật cho PROFESSIONAL, khóa với MASS_LABOR) -->
+                <!-- Checkbox [Cấp User ATS] (chỉ bật cho PROFESSIONAL, khóa với MASS_LABOR) -->
                 <td class="px-4 py-4 align-top text-center">
                   <label
                     class="inline-flex flex-col items-center gap-1"
@@ -410,9 +412,9 @@
                       [(ngModel)]="item.createSystemAccount"
                       [disabled]="item.recruitmentTrack === 'MASS_LABOR' || item.status === 'Hired' || item.status === 'No_Show_Cancelled'"
                       class="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed" />
-                    <span class="text-[11px] font-semibold"
+                    <span class="text-[11px] font-medium"
                       [ngClass]="item.recruitmentTrack === 'PROFESSIONAL' ? 'text-indigo-700' : 'text-slate-400'">
-                      🔑 Cấp User ATS
+                      Tạo tài khoản
                     </span>
                   </label>
                 </td>
@@ -421,30 +423,30 @@
                 <td class="px-4 py-4 align-top">
                   @if (item.status === 'Hired' || item.convertedEmployeeCode) {
                     <div class="space-y-1">
-                      <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 font-mono">
-                        🎉 {{ item.convertedEmployeeCode }}
+                      <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200 font-mono">
+                        {{ item.convertedEmployeeCode }}
                       </span>
                       @if (item.systemAccountCreated) {
-                        <div class="text-[11px] text-indigo-600 font-medium">✓ Đã tạo User đăng nhập</div>
+                        <div class="text-[11px] text-indigo-600 font-medium">Đã tạo tài khoản</div>
                       }
                       @if (item.probation30DayStatus === 'Passed_30Days') {
-                        <div class="text-[10px] text-teal-700 font-bold flex items-center gap-1">
-                          🏆 Đạt thử việc 30 ngày
+                        <div class="text-[10px] text-emerald-700 font-semibold flex items-center gap-1">
+                          Đạt thử việc (30 ngày)
                         </div>
                       } @else if (item.probation30DayStatus === 'Early_Resigned') {
-                        <div class="text-[10px] text-amber-700 font-bold flex items-center gap-1">
-                          📉 Nghỉ việc sớm (&lt;30 ngày)
+                        <div class="text-[10px] text-amber-700 font-semibold flex items-center gap-1">
+                          Nghỉ việc sớm (&lt;30 ngày)
                         </div>
                       }
                     </div>
                   } @else if (item.status === 'Waitlisted') {
-                    <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-bold bg-purple-100 text-purple-800 border border-purple-200">
-                      ⏳ Dự bị (Waitlisted)
+                    <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold bg-purple-50 text-purple-700 border border-purple-200">
+                      Dự bị (Waitlist)
                     </span>
-                    <div class="text-[11px] text-purple-600 mt-1">Chờ trống chỉ tiêu xưởng</div>
+                    <div class="text-[11px] text-purple-600 mt-1">Chờ trống chỉ tiêu</div>
                   } @else if (item.status === 'No_Show_Cancelled') {
-                    <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-bold bg-rose-100 text-rose-800 border border-rose-200">
-                      🚫 Bỏ việc ngày đầu (No-Show)
+                    <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200">
+                      Không nhận việc (No-Show)
                     </span>
                     @if (item.noShowReason) {
                       <div class="text-[11px] text-rose-600 mt-1 max-w-[200px] line-clamp-2">{{ item.noShowReason }}</div>
@@ -468,7 +470,7 @@
                         [ngClass]="isEligibleForEmployeeCode(item)
                           ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-xs'
                           : 'bg-slate-100 text-slate-400 cursor-not-allowed'">
-                        🎉 Cấp Mã NV
+                        Cấp mã NV
                       </button>
                     }
 
@@ -476,8 +478,8 @@
                       <button
                         type="button"
                         (click)="promoteWaitlistCandidate(item)"
-                        class="px-3 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-700 text-white text-xs font-semibold shadow-xs transition cursor-pointer">
-                        ⬆️ Đôn lên thay thế
+                        class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-900 text-white text-xs font-semibold shadow-xs transition cursor-pointer">
+                        Tiếp nhận thay thế
                       </button>
                     }
 
@@ -485,12 +487,12 @@
                       <!-- Hậu kiểm thử việc sau 30 ngày -->
                       <div class="mt-2 pt-1.5 border-t border-slate-100 dark:border-slate-800 flex flex-col items-end gap-1">
                         @if (item.probation30DayStatus === 'Passed_30Days') {
-                          <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-bold bg-teal-100 text-teal-800 border border-teal-300">
-                            🏆 Đạt thử việc 30 ngày
+                          <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">
+                            Đạt thử việc (30 ngày)
                           </span>
                         } @else if (item.probation30DayStatus === 'Early_Resigned') {
-                          <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-bold bg-amber-100 text-amber-800 border border-amber-300">
-                            📉 Nghỉ việc sớm (&lt;30 ngày)
+                          <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-semibold bg-amber-50 text-amber-800 border border-amber-200">
+                            Nghỉ việc sớm (&lt;30 ngày)
                           </span>
                         } @else {
                           <div class="text-[10px] text-slate-500 font-medium">Đánh giá thử việc 30 ngày:</div>
@@ -499,15 +501,15 @@
                               type="button"
                               (click)="updateProbationFeedback(item, 'Passed_30Days')"
                               title="Xác nhận đạt thử việc sau 30 ngày"
-                              class="px-2 py-1 rounded-md bg-teal-600 hover:bg-teal-700 text-white text-[11px] font-bold shadow-xs transition">
-                              🏆 Đạt thử việc
+                              class="px-2 py-1 rounded-md bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-medium shadow-xs transition cursor-pointer">
+                              Đạt thử việc
                             </button>
                             <button
                               type="button"
                               (click)="updateProbationFeedback(item, 'Early_Resigned')"
                               title="Ghi nhận nghỉ việc sớm trước 30 ngày"
-                              class="px-2 py-1 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-medium border border-slate-300 transition">
-                              📉 Nghỉ sớm
+                              class="px-2 py-1 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-medium border border-slate-300 transition cursor-pointer">
+                              Nghỉ sớm
                             </button>
                           </div>
                         }
@@ -518,8 +520,8 @@
                       <button
                         type="button"
                         (click)="openNoShowModal(item)"
-                        class="px-2.5 py-1 rounded-lg border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 text-[11px] font-semibold transition cursor-pointer">
-                        🚫 Báo vắng ngày đầu (No-Show)
+                        class="px-2.5 py-1 rounded-lg border border-slate-200 bg-white hover:bg-rose-50 hover:text-rose-700 hover:border-rose-200 text-slate-600 text-[11px] font-medium transition cursor-pointer">
+                        Ghi nhận No-Show
                       </button>
                     }
                   </div>
@@ -568,8 +570,8 @@
           type="button"
           [disabled]="isProcessingBulk()"
           (click)="bulkConvertSelected()"
-          class="px-4 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-xs sm:text-sm font-bold shadow-lg transition cursor-pointer">
-          {{ isProcessingBulk() ? '⏳ Đang sinh Mã NV...' : '🎉 Cấp Mã Nhân Viên Hàng Loạt' }}
+          class="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs sm:text-sm font-semibold shadow-sm transition cursor-pointer">
+          {{ isProcessingBulk() ? 'Đang cấp mã NV...' : 'Cấp mã nhân viên đã chọn' }}
         </button>
       </div>
     </div>
@@ -581,10 +583,9 @@
   @if (showNoShowModal() && noShowTarget(); as target) {
     <div class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
       <div class="bg-white rounded-2xl max-w-lg w-full border border-slate-200 shadow-2xl overflow-hidden">
-        <div class="bg-rose-600 text-white px-6 py-4 flex items-center justify-between">
+        <div class="bg-slate-900 text-white px-6 py-4 flex items-center justify-between">
           <div class="flex items-center gap-2">
-            <span class="text-xl">🚫</span>
-            <h3 class="font-bold text-base">Xử Lý Bỏ Việc Ngày Đầu (No-Show) & Đôn Dự Bị</h3>
+            <h3 class="font-bold text-base">Xử Lý Không Nhận Việc (No-Show) & Tiếp Nhận Thay Thế</h3>
           </div>
           <button type="button" (click)="closeNoShowModal()" class="text-white/80 hover:text-white text-lg cursor-pointer">✕</button>
         </div>
@@ -592,29 +593,29 @@
         <div class="p-6 space-y-4">
           @if (!noShowCompleted()) {
             <div class="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-sm text-rose-900 space-y-1">
-              <p class="font-bold">Xác nhận ứng viên không đến nhận việc ngày đầu:</p>
+              <p class="font-bold">Xác nhận ứng viên không đến nhận việc:</p>
               <p>• Họ và tên: <strong>{{ target.fullName }}</strong> ({{ target.phone }})</p>
               <p>• Mã nhân viên thu hồi: <strong class="font-mono">{{ target.convertedEmployeeCode || 'Chưa cấp mã' }}</strong></p>
               <p>• Tác động định biên: <strong>Hoàn lại +1 chỉ tiêu trống</strong> cho {{ target.departmentName }}</p>
             </div>
 
             <div>
-              <label class="block text-xs font-bold uppercase text-slate-600 mb-1">Ghi chú / Lý do No-Show:</label>
+              <label class="block text-xs font-bold uppercase text-slate-600 mb-1">Ghi chú / Lý do:</label>
               <textarea
                 rows="2"
                 [ngModel]="noShowReason()"
                 (ngModelChange)="noShowReason.set($event)"
-                class="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-rose-500"></textarea>
+                class="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-500"></textarea>
             </div>
 
             @if (topWaitlistCandidate(); as waitlistTop) {
-              <div class="p-4 rounded-xl bg-purple-50 border border-purple-200 space-y-2">
+              <div class="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
                 <div class="flex items-center justify-between">
-                  <span class="text-xs font-bold uppercase text-purple-800">⏳ Ứng viên Dự bị điểm cao nhất sẵn sàng thay thế:</span>
-                  <span class="px-2 py-0.5 rounded bg-purple-600 text-white text-xs font-bold">{{ waitlistTop.aiMatchingScore }} điểm</span>
+                  <span class="text-xs font-bold uppercase text-slate-700">Ứng viên dự bị điểm cao nhất:</span>
+                  <span class="px-2 py-0.5 rounded bg-slate-800 text-white text-xs font-semibold">{{ waitlistTop.aiMatchingScore }} điểm</span>
                 </div>
-                <p class="text-sm font-bold text-slate-900">{{ waitlistTop.fullName }} — 📞 {{ waitlistTop.phone }}</p>
-                <p class="text-xs text-slate-600">CCCD: {{ waitlistTop.citizenId || 'Đã xác thực' }} • KSK: ✅ {{ waitlistTop.medicalCheckStatus }}</p>
+                <p class="text-sm font-semibold text-slate-900">{{ waitlistTop.fullName }} — {{ waitlistTop.phone }}</p>
+                <p class="text-xs text-slate-600">CCCD: {{ waitlistTop.citizenId || 'Đã xác thực' }} • KSK: {{ waitlistTop.medicalCheckStatus }}</p>
               </div>
             }
 
@@ -629,20 +630,20 @@
                 type="button"
                 [disabled]="isProcessingNoShow()"
                 (click)="confirmMarkNoShow()"
-                class="px-4 py-2 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-sm cursor-pointer">
-                🚫 Xác nhận Thu hồi Mã NV & Hoàn 1 Chỉ tiêu
+                class="px-4 py-2 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold shadow-sm cursor-pointer">
+                Xác nhận thu hồi mã NV & Hoàn chỉ tiêu
               </button>
             </div>
           } @else {
             <div class="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-sm text-emerald-900 space-y-1">
-              <p class="font-bold">✅ Đã thu hồi mã {{ revokedCodeSnapshot() || 'NV' }} & hoàn lại 1 chỉ tiêu cho xưởng!</p>
-              <p>Định biên hiện tại của xưởng: <strong>{{ hiredCount() }} / {{ targetQuantity() }}</strong> (Đang trống {{ remainingQuota() }} suất).</p>
+              <p class="font-bold">Đã thu hồi mã {{ revokedCodeSnapshot() || 'NV' }} và hoàn lại 1 chỉ tiêu cho xưởng.</p>
+              <p>Định biên hiện tại: <strong>{{ hiredCount() }} / {{ targetQuantity() }}</strong> (Còn trống {{ remainingQuota() }} chỉ tiêu).</p>
             </div>
 
             @if (suggestedWaitlistCandidate(); as candidateToPromote) {
-              <div class="p-4 rounded-xl bg-purple-50 border border-purple-200 space-y-3">
+              <div class="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-3">
                 <div>
-                  <span class="text-xs font-bold uppercase text-purple-700">Đề xuất tự động từ Waitlist Pool:</span>
+                  <span class="text-xs font-bold uppercase text-slate-600">Đề xuất ứng viên thay thế:</span>
                   <h4 class="text-base font-bold text-slate-900 mt-0.5">
                     {{ candidateToPromote.fullName }} ({{ candidateToPromote.aiMatchingScore }} điểm)
                   </h4>
@@ -654,8 +655,8 @@
                 <button
                   type="button"
                   (click)="promoteWaitlistCandidate(candidateToPromote)"
-                  class="w-full py-2.5 px-4 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs sm:text-sm font-bold shadow-md transition cursor-pointer">
-                  ⬆️ Đôn ứng viên dự bị điểm cao nhất lên thay thế ngay
+                  class="w-full py-2.5 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm font-semibold shadow-sm transition cursor-pointer">
+                  Tiếp nhận ứng viên dự bị thay thế
                 </button>
               </div>
             } @else {
@@ -682,18 +683,18 @@
   @if (showSelfServiceQrModal()) {
     <div class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
       <div class="bg-white rounded-2xl max-w-md w-full border border-slate-200 shadow-2xl overflow-hidden">
-        <div class="bg-indigo-600 text-white px-6 py-4 flex items-center justify-between">
-          <h3 class="font-bold text-sm sm:text-base">🔗 Cổng Tự Bổ Sung Hồ Sơ Trúng Tuyển</h3>
+        <div class="bg-slate-900 text-white px-6 py-4 flex items-center justify-between">
+          <h3 class="font-bold text-sm sm:text-base">Cổng Tự Bổ Sung Hồ Sơ Trúng Tuyển</h3>
           <button type="button" (click)="showSelfServiceQrModal.set(false)" class="text-white/80 hover:text-white cursor-pointer">✕</button>
         </div>
         <div class="p-6 space-y-4 text-center">
           <p class="text-xs text-slate-600">
-            Gửi đường link hoặc đặt mã QR tại phòng Y tế / cổng Bảo vệ để công nhân trúng tuyển tự nhập <strong>Số CCCD 12 số</strong> và <strong>Số Tài Khoản Ngân Hàng</strong>:
+            Gửi đường link hoặc đặt mã QR tại phòng y tế / bảo vệ để ứng viên trúng tuyển tự nhập <strong>Số CCCD</strong> và <strong>Số tài khoản ngân hàng</strong>:
           </p>
-          <div class="mx-auto w-44 h-44 rounded-xl border-2 border-dashed border-indigo-200 bg-indigo-50/40 flex flex-col items-center justify-center p-3">
-            <div class="text-4xl">📱</div>
-            <p class="text-xs font-bold text-indigo-900 mt-2">QR ONBOARDING KCN</p>
-            <p class="text-[11px] text-indigo-600">Quét bằng Zalo / Camera</p>
+          <div class="mx-auto w-44 h-44 rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 flex flex-col items-center justify-center p-3">
+            <svg class="w-12 h-12 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"></path></svg>
+            <p class="text-xs font-semibold text-slate-700 mt-2">Mã QR Tiếp Nhận</p>
+            <p class="text-[11px] text-slate-500">Quét bằng camera hoặc Zalo</p>
           </div>
           <div class="flex items-center gap-2">
             <input
@@ -704,7 +705,7 @@
             <button
               type="button"
               (click)="copySelfServiceLink()"
-              class="px-3 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold shrink-0 cursor-pointer">
+              class="px-3 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shrink-0 cursor-pointer">
               Sao chép
             </button>
           </div>

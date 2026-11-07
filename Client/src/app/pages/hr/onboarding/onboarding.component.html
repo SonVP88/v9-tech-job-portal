@@ -18,11 +18,11 @@
       <div class="relative">
         <select [(ngModel)]="selectedDepartment" (change)="onDepartmentFilterChange()"
                 class="text-xs font-semibold bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 pr-8 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500">
-          <option value="ALL">🏢 Toàn bộ Nhà máy</option>
-          <option value="PROD_LINE">🏭 Xưởng Sản Xuất</option>
-          <option value="WH_LOGS">📦 Kho & Logistics</option>
-          <option value="QA_QC">🔍 Quản Lý Chất Lượng (QA/QC)</option>
-          <option value="TECH_MNT">⚙️ Kỹ Thuật & Bảo Trì</option>
+          <option value="ALL">Toàn bộ nhà máy</option>
+          <option value="PROD_LINE">Xưởng Sản Xuất</option>
+          <option value="WH_LOGS">Kho & Logistics</option>
+          <option value="QA_QC">Quản Lý Chất Lượng (QA/QC)</option>
+          <option value="TECH_MNT">Kỹ Thuật & Bảo Trì</option>
         </select>
       </div>
 
@@ -156,7 +156,7 @@
                 <div>
                   <p class="font-bold text-slate-900 dark:text-white text-xs">{{ item.fullName }}</p>
                   <p class="text-[11px] font-medium text-emerald-600 dark:text-emerald-400">{{ item.jobTitle }}</p>
-                  <p class="text-[10px] text-slate-400 mt-0.5">📞 {{ item.phone }} | ✉️ {{ item.email }}</p>
+                  <p class="text-[10px] text-slate-400 mt-0.5">{{ item.phone }} | {{ item.email }}</p>
                 </div>
               </div>
             </td>
@@ -174,9 +174,9 @@
               <div class="inline-block">
                 <select [(ngModel)]="item.healthCheckStatus" (change)="saveChecklist(item)"
                         [class]="'text-[11px] font-bold rounded-lg px-2.5 py-1 border focus:outline-none transition-colors ' + getHealthStatusClass(item.healthCheckStatus)">
-                  <option value="PASSED">✅ Đạt sức khỏe loại 1-2</option>
-                  <option value="PENDING">⏳ Chờ kết quả BV Đa khoa</option>
-                  <option value="FAILED">❌ Không đủ điều kiện</option>
+                  <option value="PASSED">Đạt sức khỏe loại 1-2</option>
+                  <option value="PENDING">Chờ kết quả BV Đa khoa</option>
+                  <option value="FAILED">Không đủ điều kiện</option>
                 </select>
               </div>
             </td>

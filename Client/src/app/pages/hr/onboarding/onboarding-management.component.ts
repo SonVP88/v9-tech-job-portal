@@ -292,7 +292,7 @@ export class OnboardingManagementComponent implements OnInit {
     }
 
     this.persistQuickUpdate(item.applicationId, { medicalCheckStatus: status });
-    const label = status === 'Passed' ? '✅ Đạt KSK' : status === 'Failed' ? '❌ Trượt KSK' : '⏳ Chờ KSK';
+    const label = status === 'Passed' ? 'Đạt KSK' : status === 'Failed' ? 'Không đạt KSK' : 'Chờ KSK';
     this.toast.success('Cập nhật KSK', `${item.fullName}: ${label}`);
   }
 
@@ -481,19 +481,19 @@ export class OnboardingManagementComponent implements OnInit {
 
     if (convertedCount > 0 && waitlistedCount > 0) {
       this.toast.warning(
-        'Khóa chỉ tiêu định biên (Logic 5)',
-        `Đã cấp mã NV cho ${convertedCount} người. Do xưởng đã chạm trần ${currentHired}/${targetQty} chỉ tiêu, ${waitlistedCount} ứng viên còn lại đã tự động được đưa vào Danh sách Dự bị (Waitlisted)!`
+        'Giới hạn định biên',
+        `Đã cấp mã NV cho ${convertedCount} nhân sự. Xưởng đã đủ ${currentHired}/${targetQty} chỉ tiêu, ${waitlistedCount} ứng viên còn lại đã được chuyển sang danh sách dự bị.`
       );
     } else if (convertedCount === 0 && waitlistedCount > 0) {
       this.toast.warning(
-        'Đã chạm trần định biên xưởng!',
-        `Chỉ tiêu đã đầy (${currentHired}/${targetQty}). Đã tự động chuyển ${waitlistedCount} ứng viên đạt yêu cầu sang Danh sách Dự bị (Waitlist 15%).`
+        'Đã đủ định biên',
+        `Chỉ tiêu đã đầy (${currentHired}/${targetQty}). Đã chuyển ${waitlistedCount} ứng viên sang danh sách dự bị.`
       );
     } else if (convertedCount > 0) {
-      const userMsg = accountsCreated > 0 ? ` (Đã tự động cấp ${accountsCreated} tài khoản hệ thống cho khối Kỹ sư/VP)` : '';
+      const userMsg = accountsCreated > 0 ? ` (Đã tạo ${accountsCreated} tài khoản hệ thống cho khối Kỹ sư/Văn phòng)` : '';
       this.toast.success(
-        '🎉 Cấp Mã Nhân Viên Thành Công',
-        `Đã cấp mã nhân viên chính thức cho ${convertedCount} ứng viên${userMsg}. Định biên hiện tại: ${currentHired}/${targetQty}.`
+        'Cấp mã nhân viên thành công',
+        `Đã cấp mã nhân viên cho ${convertedCount} ứng viên${userMsg}. Định biên hiện tại: ${currentHired}/${targetQty}.`
       );
     }
   }
@@ -575,7 +575,7 @@ export class OnboardingManagementComponent implements OnInit {
     this.noShowCompleted.set(true);
 
     this.toast.warning(
-      '🚫 Đã ghi nhận No-Show & Hoàn chỉ tiêu',
+      'Đã ghi nhận No-Show',
       `Đã thu hồi mã NV ${oldCode || ''} của "${target.fullName}" và hoàn lại 1 chỉ tiêu cho xưởng (${this.hiredCount()}/${this.targetQuantity()}).`
     );
   }
@@ -616,13 +616,13 @@ export class OnboardingManagementComponent implements OnInit {
     if (canAutoIssueCode) {
       this.hiredCount.update(c => c + 1);
       this.toast.success(
-        '⬆️ Đôn Dự Bị & Cấp Mã NV Thành Công!',
-        `Đã đôn ứng viên dự bị điểm cao nhất "${waitlistItem.fullName}" (${waitlistItem.aiMatchingScore} điểm) lên thay thế và cấp mã ${newEmpCode}!`
+        'Đã tiếp nhận ứng viên thay thế',
+        `Đã tiếp nhận ứng viên "${waitlistItem.fullName}" (${waitlistItem.aiMatchingScore} điểm) và cấp mã ${newEmpCode}.`
       );
     } else {
       this.toast.success(
-        '⬆️ Đã đôn ứng viên Dự bị lên Chính thức',
-        `Ứng viên "${waitlistItem.fullName}" đã được chuyển sang danh sách chờ cấp Mã nhân viên.`
+        'Đã đôn ứng viên lên danh sách chính thức',
+        `Ứng viên "${waitlistItem.fullName}" đã được chuyển sang danh sách chờ cấp mã nhân viên.`
       );
     }
 
@@ -717,8 +717,8 @@ export class OnboardingManagementComponent implements OnInit {
     URL.revokeObjectURL(url);
 
     this.toast.success(
-      '📥 Đã xuất file Excel (CSV)',
-      `Đã xuất ${exportList.length} hồ sơ phục vụ in thẻ từ chấm công & mở tài khoản ngân hàng.`
+      'Xuất file thành công',
+      `Đã xuất ${exportList.length} hồ sơ phục vụ làm thẻ từ chấm công & mở tài khoản ngân hàng.`
     );
   }
 

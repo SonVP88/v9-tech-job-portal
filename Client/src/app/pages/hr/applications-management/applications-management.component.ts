@@ -754,7 +754,7 @@ export class ApplicationsManagementComponent implements OnInit {
         );
         this.selectedIds.set(new Set());
         const splitText = ids.length > 50 ? `(Đã tự động chia làm ${Math.ceil(ids.length / 50)} ca)` : '';
-        this.toast.success('Xếp ca thành công (Demo)', `Đã xếp ${ids.length} ứng viên vào ca phỏng vấn ${splitText}!`);
+        this.toast.success('Xếp ca thành công', `Đã xếp ${ids.length} ứng viên vào ca phỏng vấn ${splitText}.`);
       }, 400);
     }
   }
@@ -793,9 +793,9 @@ export class ApplicationsManagementComponent implements OnInit {
     }
 
     if (targetStatus === 'InterviewPassed') {
-      this.toast.success('ĐẠT PHỎNG VẤN MIỆNG', `Đã duyệt ĐẠT công nhân ${app.candidateName} (${app.phone}) -> Chuyển sang Tiếp Nhận & Onboarding!`);
+      this.toast.success('Duyệt phỏng vấn thành công', `Đã chuyển ứng viên ${app.candidateName} (${app.phone}) sang giai đoạn tiếp nhận.`);
     } else {
-      this.toast.warning('Đã loại hồ sơ', `Đã đánh dấu LOẠI ứng viên ${app.candidateName}.`);
+      this.toast.warning('Từ chối hồ sơ', `Đã từ chối ứng viên ${app.candidateName}.`);
     }
   }
 
@@ -838,16 +838,16 @@ export class ApplicationsManagementComponent implements OnInit {
       skillMatchPercent: checklist.handEyePass ? 92 : 45,
       experienceMatchPercent: 85,
       shiftHealthPercent: checklist.shift12hConfirmed && checklist.visionPass ? 98 : 50,
-      aiSummary: `Tiếp nhận trực tiếp tại cổng bảo vệ nhà máy (Walk-in). Kết quả kiểm tra nhanh: Tay chân ${checklist.handEyePass ? 'Linh hoạt' : 'Chưa đạt'}, Thị lực ${checklist.visionPass ? '10/10' : 'Kém'}, Ca đêm 12h ${checklist.shift12hConfirmed ? 'Sẵn sàng' : 'Không'}.`,
+      aiSummary: `Tiếp nhận trực tiếp tại bàn sơ tuyển nhà máy. Kết quả kiểm tra: Tay chân ${checklist.handEyePass ? 'Linh hoạt' : 'Chưa đạt'}, Thị lực ${checklist.visionPass ? '10/10' : 'Kém'}, Ca đêm 12h ${checklist.shift12hConfirmed ? 'Sẵn sàng' : 'Không'}.`,
       tags: [
-        checklist.shift12hConfirmed ? '✅ Xoay ca 12h' : '⚠️ Không làm ca đêm',
-        checklist.visionPass ? '✅ Thị lực 10/10' : '⚠️ Thị lực yếu',
-        '🚶 Phỏng vấn tại cổng'
+        checklist.shift12hConfirmed ? 'Xoay ca 12h' : 'Không làm ca đêm',
+        checklist.visionPass ? 'Thị lực 10/10' : 'Thị lực yếu',
+        'Phỏng vấn trực tiếp'
       ],
       shift12hReady: checklist.shift12hConfirmed,
       isRuleRejected: calcScore < 60,
       cvFileUrl: null,
-      rawResumeText: `PHIẾU TIẾP NHẬN CÔNG NHÂN TRỰC TIẾP TẠI CỔNG (WALK-IN)\n- Họ và tên: ${this.walkInForm.fullName}\n- SĐT: ${this.walkInForm.phone}\n- Năm sinh: ${this.walkInForm.yearOfBirth}\n- CCCD: ${this.walkInForm.cccd}\n- Quê quán: ${this.walkInForm.hometown}\n- Học vấn: ${this.walkInForm.educationLevel}\n- Kinh nghiệm: ${this.walkInForm.experienceSummary}\n- Ghi chú PV miệng: ${this.walkInForm.quickNote}`,
+      rawResumeText: `PHIẾU TIẾP NHẬN CÔNG NHÂN TRỰC TIẾP (WALK-IN)\n- Họ và tên: ${this.walkInForm.fullName}\n- SĐT: ${this.walkInForm.phone}\n- Năm sinh: ${this.walkInForm.yearOfBirth}\n- CCCD: ${this.walkInForm.cccd}\n- Quê quán: ${this.walkInForm.hometown}\n- Học vấn: ${this.walkInForm.educationLevel}\n- Kinh nghiệm: ${this.walkInForm.experienceSummary}\n- Ghi chú: ${this.walkInForm.quickNote}`,
       oralChecklist: checklist,
       status: 'InterviewPassed',
       appliedAt: new Date().toISOString()
@@ -871,13 +871,13 @@ export class ApplicationsManagementComponent implements OnInit {
         this.applications.update(list => [newWalkIn, ...list]);
         this.isSavingWalkIn.set(false);
         this.showWalkInModal.set(false);
-        this.toast.success('Tiếp nhận Walk-in thành công', `Đã tạo hồ sơ & duyệt ĐẠT công nhân ${newWalkIn.candidateName}!`);
+        this.toast.success('Tiếp nhận thành công', `Đã tạo hồ sơ và duyệt ứng viên ${newWalkIn.candidateName}.`);
       },
       error: () => {
         this.applications.update(list => [newWalkIn, ...list]);
         this.isSavingWalkIn.set(false);
         this.showWalkInModal.set(false);
-        this.toast.success('Tiếp nhận Walk-in thành công', `Đã thêm công nhân ${newWalkIn.candidateName} vào danh sách Đạt phỏng vấn!`);
+        this.toast.success('Tiếp nhận thành công', `Đã thêm ứng viên ${newWalkIn.candidateName} vào danh sách phỏng vấn đạt.`);
       }
     });
   }
@@ -982,6 +982,16 @@ export class ApplicationsManagementComponent implements OnInit {
     return { isShiftReady, expBadge };
   }
 
+  getTagClass(tag: string): string {
+    if (tag.includes('Không') || tag.includes('yếu') || tag.includes('Cận') || tag.includes('Chưa') || tag.includes('Trượt')) {
+      return 'bg-rose-50 text-rose-700 border border-rose-200 dark:bg-rose-950/40 dark:text-rose-300';
+    }
+    if (tag.includes('Xoay ca') || tag.includes('Thị lực') || tag.includes('chứng chỉ') || tag.includes('Nhân viên cũ') || tag.includes('Tay nghề')) {
+      return 'bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300';
+    }
+    return 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700';
+  }
+
   printWorkerCard(): void {
     window.print();
   }
@@ -1023,8 +1033,8 @@ export class ApplicationsManagementComponent implements OnInit {
         skillMatchPercent: 98,
         experienceMatchPercent: 100,
         shiftHealthPercent: 96,
-        aiSummary: 'Nhận diện nhân viên cũ tái ứng tuyển (NV-2024-0412). Nghỉ việc đúng quy trình tháng 11/2024. Đã tự động cộng +15 điểm ưu tiên kinh nghiệm đứng máy mounter SMT.',
-        tags: ['⭐ Nhân viên cũ tái ứng tuyển', 'Tay nghề cao SMT', '✅ Xoay ca 12h'],
+        aiSummary: 'Nhận diện nhân viên cũ tái ứng tuyển (NV-2024-0412). Nghỉ việc đúng quy trình tháng 11/2024. Đã tự động cộng điểm ưu tiên kinh nghiệm vận hành máy mounter SMT.',
+        tags: ['Nhân viên cũ tái ứng tuyển', 'Tay nghề cao SMT', 'Xoay ca 12h'],
         shift12hReady: true,
         isRuleRejected: false,
         cvFileUrl: null,
@@ -1064,7 +1074,7 @@ export class ApplicationsManagementComponent implements OnInit {
         experienceMatchPercent: 92,
         shiftHealthPercent: 95,
         aiSummary: 'Hồ sơ đạt sơ loại xuất sắc nhưng chiến dịch trước đã đủ chỉ tiêu (Closed_Quota_Full). Đã tự động bảo lưu vào Kho ứng viên tiềm năng (Talent Pool) sẵn sàng điều chuyển.',
-        tags: ['💎 Bảo lưu Talent Pool', '✅ Xoay ca 12h', 'Sẵn sàng điều chuyển'],
+        tags: ['Bảo lưu Talent Pool', 'Xoay ca 12h', 'Sẵn sàng điều chuyển'],
         shift12hReady: true,
         isRuleRejected: false,
         cvFileUrl: null,
@@ -1102,8 +1112,8 @@ export class ApplicationsManagementComponent implements OnInit {
         skillMatchPercent: 95,
         experienceMatchPercent: 92,
         shiftHealthPercent: 90,
-        aiSummary: 'Ứng viên có 5 năm kinh nghiệm lập trình PLC Mitsubishi FX/Q-Series, biến tần Inverter và bảo trì dây chuyền SMT Panasonic tại KCN VSIP. Rất phù hợp gửi Quản đốc xưởng Kỹ thuật duyệt phỏng vấn.',
-        tags: ['PLC Mitsubishi', 'SCADA / HMI', 'Bảo trì SMT', 'AutoCAD Electrical', 'Tiếng Anh đọc tài liệu'],
+        aiSummary: 'Ứng viên có 5 năm kinh nghiệm lập trình PLC Mitsubishi FX/Q-Series, biến tần Inverter và bảo trì dây chuyền SMT Panasonic tại KCN VSIP. Phù hợp chuyển Quản đốc xưởng Kỹ thuật duyệt phỏng vấn.',
+        tags: ['PLC Mitsubishi', 'SCADA / HMI', 'Bảo trì SMT', 'AutoCAD Electrical', 'Tiếng Anh chuyên ngành'],
         shift12hReady: true,
         isRuleRejected: false,
         cvFileUrl: '/uploads/sample-cv-engineer.pdf',
@@ -1140,7 +1150,7 @@ export class ApplicationsManagementComponent implements OnInit {
         skillMatchPercent: 88,
         experienceMatchPercent: 85,
         shiftHealthPercent: 84,
-        aiSummary: 'Nắm vững 7 QC Tools, báo cáo 8D Report, FMEA và kiểm soát lỗi ngoại quan linh kiện điện tử. Đã làm 3 năm tại nhà máy vệ tinh Samsung.',
+        aiSummary: 'Nắm vững 7 công cụ QC, báo cáo 8D, FMEA và kiểm soát lỗi ngoại quan linh kiện điện tử. Đã làm 3 năm tại nhà máy vệ tinh Samsung.',
         tags: ['ISO 9001:2015', 'IATF 16949', '8D Report / 5 Why', '7 QC Tools', 'Tiếng Hàn TOPIK 3'],
         shift12hReady: true,
         isRuleRejected: false,
@@ -1178,8 +1188,8 @@ export class ApplicationsManagementComponent implements OnInit {
         skillMatchPercent: 95,
         experienceMatchPercent: 90,
         shiftHealthPercent: 100,
-        aiSummary: 'Rule Engine (Tự động): Đạt 100% tiêu chí cứng. Độ tuổi 23 (trong khung 18-38), từng đứng chuyền SMT 1.5 năm tại KCN Quế Võ, cam kết làm xoay ca 12h (ngày/đêm) và thị lực tốt.',
-        tags: ['✅ Xoay ca 12h', '✅ Thị lực 10/10', 'Đã làm KCN 1.5 năm', 'Hàn chì cơ bản'],
+        aiSummary: 'Đạt tiêu chuẩn sơ tuyển: Độ tuổi 23 (trong khung 18-38), từng đứng chuyền SMT 1.5 năm tại KCN Quế Võ, cam kết làm xoay ca 12h (ngày/đêm) và thị lực tốt.',
+        tags: ['Xoay ca 12h', 'Thị lực 10/10', 'Đã làm KCN 1.5 năm', 'Hàn chì cơ bản'],
         shift12hReady: true,
         isRuleRejected: false,
         cvFileUrl: null,
@@ -1225,8 +1235,8 @@ export class ApplicationsManagementComponent implements OnInit {
         skillMatchPercent: 85,
         experienceMatchPercent: 80,
         shiftHealthPercent: 98,
-        aiSummary: 'Rule Engine (Tự động): Đạt điều kiện sức khỏe phòng sạch, quen soi kính hiển vi kiểm tra bo mạch PCB, xác nhận làm xoay 2 ca 12h.',
-        tags: ['✅ Xoay ca 12h', '✅ Thị lực 10/10', 'Soi kính hiển vi PCB', 'Đã làm phòng sạch'],
+        aiSummary: 'Đạt điều kiện sức khỏe phòng sạch, quen soi kính hiển vi kiểm tra bo mạch PCB, xác nhận làm xoay 2 ca 12h.',
+        tags: ['Xoay ca 12h', 'Thị lực 10/10', 'Soi kính hiển vi PCB', 'Đã làm phòng sạch'],
         shift12hReady: true,
         isRuleRejected: false,
         cvFileUrl: null,
@@ -1271,14 +1281,14 @@ export class ApplicationsManagementComponent implements OnInit {
         skillMatchPercent: 92,
         experienceMatchPercent: 90,
         shiftHealthPercent: 88,
-        aiSummary: 'Walk-in tại cổng: Có chứng chỉ vận hành xe nâng Reach Truck 2.5 tấn, 3 năm làm kho linh kiện điện tử, sức khỏe tốt.',
-        tags: ['✅ Có chứng chỉ xe nâng', '✅ Xoay ca 12h', '🚶 Tiếp nhận tại cổng', 'Đã làm KCN 3 năm'],
+        aiSummary: 'Tiếp nhận trực tiếp: Có chứng chỉ vận hành xe nâng Reach Truck 2.5 tấn, 3 năm làm kho linh kiện điện tử, sức khỏe tốt.',
+        tags: ['Chứng chỉ xe nâng', 'Xoay ca 12h', 'Tiếp nhận tại cổng', 'Đã làm KCN 3 năm'],
         shift12hReady: true,
         isRuleRejected: false,
         cvFileUrl: null,
         rawResumeText: 'Ứng viên đến trực tiếp cổng bảo vệ số 2. Có sẵn chứng chỉ vận hành xe nâng điện đứng lái Reach Truck.',
         customFormFields: {
-          'Hình thức tiếp nhận': 'Walk-in trực tiếp tại cổng bảo vệ nhà máy',
+          'Hình thức tiếp nhận': 'Walk-in trực tiếp tại bàn tuyển dụng',
           'Chứng chỉ nghề': 'Chứng chỉ vận hành xe nâng Reach Truck (Còn hạn)',
           'Kinh nghiệm': '3 năm soạn hàng FIFO & quét mã vạch WMS tại kho linh kiện',
           'Cam kết làm ca đêm': 'Sẵn sàng xoay ca 12h'
@@ -1315,8 +1325,8 @@ export class ApplicationsManagementComponent implements OnInit {
         skillMatchPercent: 60,
         experienceMatchPercent: 50,
         shiftHealthPercent: 15,
-        aiSummary: 'Rule Engine (Tự động loại): Ứng viên tích chọn "Không làm được ca đêm 12h" và cận thị nặng 5.5 diop không phù hợp đứng chuyền gắn chip SMT.',
-        tags: ['❌ Không làm ca đêm', '⚠️ Thị lực 4/10 (Cận nặng)', 'Chưa có kinh nghiệm KCN'],
+        aiSummary: 'Không đạt tiêu chuẩn sơ tuyển: Ứng viên chọn "Không làm được ca đêm 12h" và cận thị nặng 5.5 diop không phù hợp đứng chuyền gắn chip SMT.',
+        tags: ['Không làm ca đêm', 'Thị lực dưới chuẩn (Cận nặng)', 'Chưa có kinh nghiệm KCN'],
         shift12hReady: false,
         isRuleRejected: true,
         ruleRejectReason: 'Từ chối làm xoay ca đêm 12h & Thị lực dưới chuẩn dây chuyền SMT',
