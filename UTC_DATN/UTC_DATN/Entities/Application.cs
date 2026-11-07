@@ -40,6 +40,21 @@ public partial class Application
     /// </summary>
     public string? ContactPhone { get; set; }
 
+    /// <summary>Nguồn tiếp nhận: 'PDF_UPLOAD' | 'GOOGLE_FORM_QR' | 'WALK_IN'</summary>
+    public string? ApplicationSource { get; set; }
+
+    /// <summary>Phương thức chấm điểm: 'GEMINI_AI' | 'RULE_ENGINE'</summary>
+    public string? ScoringMethod { get; set; }
+
+    /// <summary>Đường dẫn file CV PDF (null nếu công nhân nộp qua QR Form hoặc Walk-in tại cổng)</summary>
+    public string? CvFileUrl { get; set; }
+
+    /// <summary>Nội dung text bóc từ PDF hoặc thông tin tờ khai công nhân từ Google Form</summary>
+    public string? RawResumeText { get; set; }
+
+    /// <summary>JSON kết quả phỏng vấn miệng nhanh: HandEyePass, VisionPass, Shift12hConfirmed, AttitudePass, QuickNote</summary>
+    public string? OralInterviewChecklistJson { get; set; }
+
     public virtual ICollection<ApplicationAiScore> ApplicationAiScores { get; set; } = new List<ApplicationAiScore>();
 
     public virtual ICollection<ApplicationNote> ApplicationNotes { get; set; } = new List<ApplicationNote>();

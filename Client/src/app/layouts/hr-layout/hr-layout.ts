@@ -37,7 +37,7 @@ export class HrLayout implements OnInit, OnDestroy {
   // Dev Role Switcher
   devAccounts = DEV_ACCOUNTS;
   isDevDropdownOpen = false;
-  isDevMode = true;
+  isDevMode = false;
 
   // Modal Đề xuất tuyển dụng (Dành cho Quản đốc phân xưởng)
   isHiringModalOpen = signal<boolean>(false);

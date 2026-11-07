@@ -58,48 +58,6 @@
         }
     </nav>
 
-    <!-- Dev Role Switcher Widget (Dành cho kiểm thử & bảo vệ đồ án) -->
-    @if (isDevMode) {
-        <div class="px-3 pb-2">
-            <div class="relative">
-                <button (click)="toggleDevDropdown()" type="button"
-                    class="w-full flex items-center justify-between px-3 py-2 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 rounded-xl text-amber-800 dark:text-amber-300 text-xs font-semibold hover:bg-amber-100 dark:hover:bg-amber-900/50 transition-colors shadow-sm">
-                    <div class="flex items-center gap-2 truncate">
-                        <span class="material-symbols-outlined text-[16px] text-amber-600">switch_account</span>
-                        <span class="truncate">Role Test: {{ authService.currentUser()?.roleDisplayName || 'Chọn' }}</span>
-                    </div>
-                    <span class="material-symbols-outlined text-[16px] transition-transform" [class.rotate-180]="isDevDropdownOpen">expand_more</span>
-                </button>
-
-                @if (isDevDropdownOpen) {
-                    <div class="absolute bottom-full left-0 right-0 mb-2 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-xl shadow-2xl p-2 z-50 text-xs space-y-1 backdrop-blur-md">
-                        <div class="px-2 py-1 font-bold text-gray-400 uppercase tracking-wider text-[10px]">
-                            Chuyển ngữ cảnh tài khoản:
-                        </div>
-                        @for (acc of devAccounts; track acc.id) {
-                            <button (click)="onSelectDevAccount(acc)" type="button"
-                                [class.bg-blue-50]="authService.currentUser()?.id === acc.id"
-                                [class.text-blue-700]="authService.currentUser()?.id === acc.id"
-                                class="w-full text-left px-2.5 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors flex flex-col">
-                                <div class="font-bold text-slate-800 dark:text-white flex items-center justify-between">
-                                    <span>{{ acc.fullName }}</span>
-                                    <span class="text-[9px] px-1.5 py-0.5 rounded bg-gray-100 dark:bg-slate-800 font-mono text-gray-600 dark:text-gray-300">{{ acc.departmentCode }}</span>
-                                </div>
-                                <span class="text-[11px] text-gray-500 dark:text-gray-400">{{ acc.roleDisplayName }}</span>
-                            </button>
-                        }
-                        <div class="border-t border-gray-100 dark:border-slate-800 my-1"></div>
-                        <button (click)="onRestoreRealAccount()" type="button"
-                            class="w-full text-left px-2.5 py-1.5 rounded-lg text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 flex items-center gap-1.5 font-medium transition-colors">
-                            <span class="material-symbols-outlined text-[14px]">refresh</span>
-                            <span>Khôi phục tài khoản thật</span>
-                        </button>
-                    </div>
-                }
-            </div>
-        </div>
-    }
-
     <!-- Profile Area at Bottom Left -->
     <div class="p-3.5 border-t border-gray-100 dark:border-slate-800 bg-white dark:bg-slate-950">
         <div routerLink="/hr/settings"

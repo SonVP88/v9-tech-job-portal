@@ -41,7 +41,7 @@ export interface AiCodeReview {
   providedIn: 'root'
 })
 export class AiCodeAssessmentService {
-  private apiUrl = 'http://localhost:7181/api/v2/aicode-assessment';
+  private apiUrl = '/api/v2/aicode-assessment';
 
   constructor(private http: HttpClient) {}
 

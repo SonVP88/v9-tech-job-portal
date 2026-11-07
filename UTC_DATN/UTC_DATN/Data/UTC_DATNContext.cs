@@ -588,6 +588,7 @@ public partial class UTC_DATNContext : DbContext
             entity.Property(e => e.Sender)
                 .IsRequired()
                 .HasMaxLength(20);
+            entity.Property(e => e.IntentConfidence).HasColumnType("decimal(18, 2)");
 
             entity.HasOne(d => d.ChatSession).WithMany(p => p.ChatMessages)
                 .HasForeignKey(d => d.ChatSessionId)
@@ -903,6 +904,11 @@ public partial class UTC_DATNContext : DbContext
             entity.Property(e => e.Title)
                 .IsRequired()
                 .HasMaxLength(300);
+            entity.Property(e => e.CampaignFormSource).HasMaxLength(30);
+            entity.Property(e => e.GoogleFormId).HasMaxLength(128);
+            entity.Property(e => e.GoogleFormPublicUrl).HasMaxLength(1000);
+            entity.Property(e => e.GoogleFormEditUrl).HasMaxLength(1000);
+            entity.Property(e => e.QrCodeImagePath).HasMaxLength(500);
 
             entity.HasOne(d => d.CreatedByNavigation).WithMany(p => p.Jobs)
                 .HasForeignKey(d => d.CreatedBy)
@@ -1120,6 +1126,14 @@ public partial class UTC_DATNContext : DbContext
                 .IsRequired()
                 .HasMaxLength(500);
             entity.Property(e => e.Phone).HasMaxLength(50);
+            entity.Property(e => e.FullName).HasMaxLength(200);
+            entity.Property(e => e.AuthProvider).HasMaxLength(50).HasDefaultValue("Local");
+            entity.Property(e => e.LockedByName).HasMaxLength(255);
+            entity.Property(e => e.LockReason).HasMaxLength(500);
+            entity.Property(e => e.CompanyName).HasMaxLength(255);
+            entity.Property(e => e.CompanyWebsite).HasMaxLength(500);
+            entity.Property(e => e.CompanyIndustry).HasMaxLength(200);
+            entity.Property(e => e.CompanyAddress).HasMaxLength(500);
 
             // Self-referencing FK: ManagerId -> UserId (Cấp trên trực tiếp)
             entity.HasOne(u => u.Manager)

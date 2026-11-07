@@ -10,6 +10,10 @@ public class JobHomeDto
     public string Title { get; set; } = string.Empty;
     
     public string CompanyName { get; set; } = string.Empty; 
+
+    public Guid? DepartmentId { get; set; }
+
+    public string? DepartmentName { get; set; }
     
     public string? CreatedByName { get; set; } 
     
@@ -45,4 +49,8 @@ public class JobHomeDto
     // Candidate Application Status (chỉ populate khi user đã đăng nhập)
     public bool HasApplied { get; set; } = false; // Có phải đã ứng tuyển công việc này không?
     public DateTime? AppliedAt { get; set; } // Thời gian ứng tuyển (nếu đã ứng tuyển)
+
+    public string? CampaignFormSource { get; set; }
+    public string? GoogleFormPublicUrl { get; set; }
+    public string? QrCodeImagePath { get; set; }
 }

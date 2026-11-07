@@ -5,7 +5,9 @@ namespace UTC_DATN.Services.Interfaces;
 
 public interface IJobService
 {
-    Task<bool> CreateJobAsync(CreateJobRequest request, Guid userId);
+    Task<CreateJobResultDto> CreateJobAsync(CreateJobRequest request, Guid userId);
+    Task<CampaignQrDto?> GetCampaignQrAsync(Guid jobId, string? customApiBase = null, string? customClientBase = null);
+    Task<CampaignQrDto> EnsureCampaignQrAsync(Guid jobId, bool forceRecreate = false, string? customApiBase = null, string? customClientBase = null);
     
     Task<List<JobHomeDto>> GetLatestJobsAsync(int count, string? keyword = null, string? location = null);
     Task<List<JobHomeDto>> GetAllJobsAsync();

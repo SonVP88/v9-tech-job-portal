@@ -31,5 +31,11 @@ namespace UTC_DATN.Services.Interfaces
         /// <param name="provinceCode">Mã tỉnh</param>
         /// <returns>Danh sách Phường/Xã</returns>
         Task<List<UTC_DATN.Models.WardDto>> GetWardsAsync(int provinceCode);
+
+        /// <summary>
+        /// Lấy danh sách các Phân xưởng / Phòng ban đang hoạt động
+        /// </summary>
+        /// <returns>Danh sách phòng ban/phân xưởng</returns>
+        Task<List<UTC_DATN.DTOs.Employee.DepartmentLookupDto>> GetDepartmentsAsync();
     }
 }

@@ -7,6 +7,8 @@ public class UpdateJobRequest
     [Required(ErrorMessage = "Title không được để trống")]
     public string Title { get; set; } = string.Empty;
 
+    public Guid? DepartmentId { get; set; }
+
     public string? Description { get; set; }
 
     public string? Requirements { get; set; }

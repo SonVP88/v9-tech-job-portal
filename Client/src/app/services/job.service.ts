@@ -6,6 +6,7 @@ import { tap, filter, take, map, concatMap, finalize } from 'rxjs/operators';
 // Interface cho CreateJobRequest
 export interface CreateJobRequest {
     title: string;
+    departmentId?: string;
     description?: string;
     requirements?: string;
     benefits?: string;
@@ -18,10 +19,32 @@ export interface CreateJobRequest {
     seniorityLevel?: string;
     deadline?: string; // ISO date string
     skillIds: string[];
+    createCampaignQr?: boolean;
+}
+
+export interface CampaignQrDto {
+    jobId: string;
+    jobTitle: string;
+    source: string;
+    googleFormId?: string;
+    formUrl: string;
+    formEditUrl?: string;
+    qrCodeDataUrl: string;
+    qrCodePath?: string;
+    warning?: string;
+    appsScript?: string;
+    publicApiBaseUrl?: string;
+    publicClientBaseUrl?: string;
+    webhookUrl?: string;
+    webhookSecret?: string;
+    isUsingPublicUrl?: boolean;
 }
 
 export interface CreateJobResponse {
+    success?: boolean;
+    jobId?: string;
     message: string;
+    campaign?: CampaignQrDto;
 }
 
 export interface AiGenerateJdRequest {
@@ -42,6 +65,8 @@ export interface AiGenerateJdResult {
 export interface JobDto {
     jobId: string;
     title: string;
+    departmentId?: string;
+    departmentName?: string;
     companyName?: string;
     createdByName?: string;
     createdByRole?: string;
@@ -63,6 +88,9 @@ export interface JobDto {
     // Candidate Application Status (NEW)
     hasApplied?: boolean;
     appliedAt?: string;
+    campaignFormSource?: string;
+    googleFormPublicUrl?: string;
+    qrCodeImagePath?: string;
 }
 
 export interface JobDetailDto extends JobDto {
@@ -195,5 +223,27 @@ export class JobService {
      */
     generateJd(request: AiGenerateJdRequest): Observable<AiGenerateJdResult> {
         return this.http.post<AiGenerateJdResult>(`${this.apiUrl}/jobs/ai-generate-jd`, request);
+    }
+
+    getCampaignQr(jobId: string, publicApiUrl?: string, publicClientUrl?: string): Observable<CampaignQrDto> {
+        let params = new HttpParams();
+        if (publicApiUrl) params = params.set('publicApiUrl', publicApiUrl);
+        if (publicClientUrl) params = params.set('publicClientUrl', publicClientUrl);
+        return this.http.get<CampaignQrDto>(`${this.apiUrl}/jobs/${jobId}/campaign-qr`, { params });
+    }
+
+    ensureCampaignQr(jobId: string, force = false, publicApiUrl?: string, publicClientUrl?: string): Observable<CampaignQrDto> {
+        let params = new HttpParams().set('force', String(force));
+        if (publicApiUrl) params = params.set('publicApiUrl', publicApiUrl);
+        if (publicClientUrl) params = params.set('publicClientUrl', publicClientUrl);
+        return this.http.post<CampaignQrDto>(`${this.apiUrl}/jobs/${jobId}/campaign-qr`, {}, { params });
+    }
+
+    updateCampaignPublicConfig(jobId: string, config: { publicApiBaseUrl?: string; publicClientBaseUrl?: string; webhookSecret?: string }): Observable<CampaignQrDto> {
+        return this.http.put<CampaignQrDto>(`${this.apiUrl}/jobs/${jobId}/campaign-qr/public-config`, config);
+    }
+
+    updateCustomFormUrl(jobId: string, formUrl: string): Observable<CampaignQrDto> {
+        return this.http.put<CampaignQrDto>(`${this.apiUrl}/jobs/${jobId}/campaign-qr/custom-form`, { formUrl });
     }
 }

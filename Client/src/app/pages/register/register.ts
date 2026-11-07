@@ -62,7 +62,7 @@ export class Register {
         password: this.registerForm.value.password
       };
 
-      this.http.post('https://localhost:7181/api/auth/register', payload)
+      this.http.post('/api/auth/register', payload)
         .subscribe({
           next: () => {
             this.toast.success('Đăng ký thành công!');

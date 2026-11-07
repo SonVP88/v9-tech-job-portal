@@ -29,5 +29,16 @@ public class ApplicationDto
     public string? JobStatus { get; set; }
     public int? JobNumberOfPositions { get; set; }
     public int JobTotalHired { get; set; }
+
+    // ── Industrial ATS Extensions (Dual-Track: PROFESSIONAL & MASS_LABOR) ──
+    public string? RecruitmentTrack { get; set; }
+    public string? ApplicationSource { get; set; }
+    public string? ScoringMethod { get; set; }
+    public string? CvFileUrl { get; set; }
+    public string? RawResumeText { get; set; }
+    public string? OralInterviewChecklistJson { get; set; }
+    public Guid? DepartmentId { get; set; }
+    public string? DepartmentName { get; set; }
+    public string? DepartmentCode { get; set; }
 }
 

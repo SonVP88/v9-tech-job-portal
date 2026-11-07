@@ -6,37 +6,43 @@ import { ActivatedRoute, Router } from '@angular/router';
 
 import { BehaviorSubject, forkJoin } from 'rxjs';
 
-import { MasterDataService, JobType, Skill, Province, Ward } from '../../../services/master-data.service';
-import { JobService, CreateJobRequest, AiGenerateJdRequest } from '../../../services/job.service';
+import { MasterDataService, JobType, Skill, Province, Ward, DepartmentLookup } from '../../../services/master-data.service';
+import { JobService, CreateJobRequest, AiGenerateJdRequest, CampaignQrDto } from '../../../services/job.service';
 import { ToastService } from '../../../services/toast.service';
 import { PopupService } from '../../../services/popup.service';
+import { CampaignQrModalComponent } from '../../../components/hr/campaign-qr-modal/campaign-qr-modal';
 
 @Component({
   selector: 'app-post-job',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, FormsModule],
+  imports: [CommonModule, ReactiveFormsModule, FormsModule, CampaignQrModalComponent],
   templateUrl: './post-job.html',
   styleUrl: './post-job.scss',
 })
 export class PostJob implements OnInit {
   jobForm!: FormGroup;
   jobTypes: JobType[] = [];
+  departments: DepartmentLookup[] = [];
   skills: Skill[] = [];
-  readonly experienceOptions: string[] = [
-    'Không yêu cầu',
-    'Dưới 1 năm',
-    '1-2 năm',
-    '3-5 năm',
-    'Trên 5 năm'
+  readonly employmentTypeOptions = [
+    { value: 'full-time', label: 'Toàn thời gian' },
+    { value: 'shift', label: 'Theo ca' },
+    { value: 'seasonal', label: 'Thời vụ' },
+    { value: 'contract', label: 'Hợp đồng ngắn hạn' }
   ];
-  readonly seniorityOptions: string[] = [
-    'Intern',
-    'Fresher',
-    'Junior',
-    'Middle',
-    'Senior',
-    'Lead',
-    'Manager'
+  readonly experienceOptions: string[] = [
+    'Chưa có kinh nghiệm',
+    'Dưới 6 tháng',
+    '6-12 tháng',
+    '1-2 năm',
+    'Trên 2 năm'
+  ];
+  readonly shiftOptions: string[] = [
+    'Ca hành chính',
+    'Ca sáng',
+    'Ca chiều',
+    'Ca đêm',
+    'Xoay 3 ca'
   ];
 
   // Sử dụng BehaviorSubject để lưu state và support AsyncPipe
@@ -49,9 +55,12 @@ export class PostJob implements OnInit {
   isGeneratingJd = false;
   skillsError = false;
   keyRequirements = '';
+  showAdvancedFields = false;
 
   isEditMode = false;
   jobId: string | null = null;
+  campaignQr: CampaignQrDto | null = null;
+  regeneratingQr = false;
 
   constructor(
     private fb: FormBuilder,
@@ -83,12 +92,17 @@ export class PostJob implements OnInit {
     }
   }
 
+  toggleAdvancedFields(): void {
+    this.showAdvancedFields = !this.showAdvancedFields;
+  }
+
   /**
    * Khởi tạo Reactive Form với các validators
    */
   private initForm(): void {
     this.jobForm = this.fb.group({
       title: ['', [Validators.required, Validators.minLength(10), Validators.maxLength(200)]],
+      departmentId: ['', Validators.required],
       employmentType: ['', Validators.required],
       experienceLevel: ['', Validators.required],
       seniorityLevel: ['', Validators.required],
@@ -100,7 +114,8 @@ export class PostJob implements OnInit {
       description: ['', [Validators.required, Validators.minLength(50), Validators.maxLength(4000)]],
       requirements: ['', [Validators.maxLength(4000)]],
       benefits: ['', [Validators.maxLength(4000)]],
-      numberOfPositions: [null, [Validators.min(1)]]
+      numberOfPositions: [null, [Validators.min(1)]],
+      createCampaignQr: [true]
     }, { validators: this.salaryRangeValidator });
   }
 
@@ -149,9 +164,10 @@ export class PostJob implements OnInit {
         // Patch form values
         this.jobForm.patchValue({
           title: job.title,
+          departmentId: job.departmentId || '',
           employmentType: job.employmentType,
           experienceLevel: job.experienceLevel || this.extractExperienceLevel(job.requirements),
-          seniorityLevel: job.seniorityLevel || this.extractSeniorityFromTitle(job.title),
+          seniorityLevel: job.seniorityLevel || this.extractShiftFromRequirements(job.requirements) || this.extractSeniorityFromTitle(job.title),
           salaryMin: job.salaryMin,
           salaryMax: job.salaryMax,
           description: job.description,
@@ -210,6 +226,7 @@ export class PostJob implements OnInit {
       // Load tất cả data song song bằng forkJoin
       forkJoin({
         jobTypes: this.masterDataService.getJobTypes(),
+        departments: this.masterDataService.getDepartments(),
         skills: this.masterDataService.getSkills(),
         provinces: this.masterDataService.getProvinces()
       }).subscribe({
@@ -217,6 +234,7 @@ export class PostJob implements OnInit {
           // Cập nhật data trong Angular zone (trigger CD 1 lần duy nhất)
           this.ngZone.run(() => {
             this.jobTypes = result.jobTypes;
+            this.departments = result.departments;
             this.skills = result.skills;
             this.provinces$.next(result.provinces);
             this.cdr.detectChanges();
@@ -227,6 +245,7 @@ export class PostJob implements OnInit {
           // Fallback: Set empty arrays
           this.ngZone.run(() => {
             this.jobTypes = [];
+            this.departments = [];
             this.skills = [];
             this.provinces$.next([]);
             this.cdr.detectChanges();
@@ -325,6 +344,7 @@ export class PostJob implements OnInit {
 
     const jobData: CreateJobRequest = {
       title: formValue.title,
+      departmentId: formValue.departmentId || undefined,
       description: formValue.description,
       requirements: formValue.requirements,
       benefits: formValue.benefits,
@@ -336,7 +356,8 @@ export class PostJob implements OnInit {
       experienceLevel: formValue.experienceLevel,
       seniorityLevel: formValue.seniorityLevel,
       deadline: formValue.deadline ? `${formValue.deadline}T12:00:00Z` : undefined,
-      skillIds: this.selectedSkillIds
+      skillIds: this.selectedSkillIds,
+      createCampaignQr: formValue.createCampaignQr !== false
     };
 
     this.isSubmitting = true;
@@ -361,10 +382,10 @@ export class PostJob implements OnInit {
     } else {
       // Create
       this.jobService.createJob(jobData).subscribe({
-        next: () => {
+        next: (res) => {
           this.toast.success('Thành công', 'Đăng tin tuyển dụng thành công!');
-
-          // Reset form và selected skills
+          this.campaignQr = res.campaign || null;
+          this.jobId = res.jobId || this.jobId;
           this.resetForm();
         },
         error: (error) => {
@@ -420,6 +441,34 @@ export class PostJob implements OnInit {
   /**
    * Reset form về trạng thái ban đầu
    */
+  closeCampaignQr(): void {
+    this.campaignQr = null;
+  }
+
+  regenerateCampaignQr(): void {
+    const id = this.campaignQr?.jobId || this.jobId;
+    if (!id) return;
+    this.regeneratingQr = true;
+    this.jobService.ensureCampaignQr(id, true).subscribe({
+      next: (campaign) => {
+        this.campaignQr = campaign;
+        this.regeneratingQr = false;
+      },
+      error: (err) => {
+        this.toast.error('Không tạo được QR', err.error?.message || 'Vui lòng thử lại.');
+        this.regeneratingQr = false;
+      }
+    });
+  }
+
+  openExistingCampaignQr(): void {
+    if (!this.jobId) return;
+    this.jobService.getCampaignQr(this.jobId).subscribe({
+      next: (campaign) => (this.campaignQr = campaign),
+      error: (err) => this.toast.error('Không tải được QR', err.error?.message || 'Vui lòng thử lại.')
+    });
+  }
+
   resetForm(): void {
     this.jobForm.reset();
     this.selectedSkillIds = [];
@@ -427,11 +476,13 @@ export class PostJob implements OnInit {
 
     // Reset về giá trị mặc định cho các select
     this.jobForm.patchValue({
+      departmentId: '',
       employmentType: '',
       experienceLevel: '',
       seniorityLevel: '',
       province: null,
-      ward: null
+      ward: null,
+      createCampaignQr: true
     });
   }
 
@@ -492,5 +543,20 @@ export class PostJob implements OnInit {
     if (normalized.includes('manager')) return 'Manager';
     if (normalized.includes('mid')) return 'Middle';
     return '';
+  }
+
+  private extractShiftFromRequirements(requirements?: string | null): string {
+    if (!requirements) return '';
+
+    const lines = requirements
+      .split('\n')
+      .map(line => line.trim())
+      .filter(Boolean);
+
+    const shiftLine = lines.find(line => /^Ca\s*làm\s*việc\s*:/i.test(line));
+    if (!shiftLine) return '';
+
+    const value = shiftLine.replace(/^Ca\s*làm\s*việc\s*:/i, '').trim();
+    return this.shiftOptions.includes(value) ? value : '';
   }
 }

@@ -1,0 +1,863 @@
+<div class="min-h-screen bg-slate-50 dark:bg-slate-950 p-4 md:p-6 pb-28 space-y-5">
+
+  <!-- ==================== 1. THANH HEADER & SUB-TABS PHÂN LOẠI NGUỒN ==================== -->
+  <div class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs p-5 space-y-4">
+    <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+      <div>
+        <div class="flex items-center gap-2 text-xs text-slate-500 font-medium mb-1">
+          <span>Tuyển dụng</span>
+          <span>/</span>
+          <span class="text-slate-800 dark:text-slate-200 font-semibold">Hồ sơ ứng tuyển</span>
+        </div>
+        <h1 class="text-xl md:text-2xl font-bold text-slate-900 dark:text-white tracking-tight">
+          Quản Lý Hồ Sơ Ứng Tuyển
+        </h1>
+        <p class="text-xs md:text-sm text-slate-500 dark:text-slate-400 mt-0.5">
+          Theo dõi và điều phối hồ sơ ứng viên Khối Kỹ thuật / Văn phòng và Khối Công nhân xưởng.
+        </p>
+      </div>
+
+      <!-- Nút hành động góc phải -->
+      <div class="flex flex-wrap items-center gap-2.5">
+        <button type="button" (click)="showSyncModal.set(true)"
+          class="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-200 text-xs font-semibold transition shadow-2xs">
+          <span>🔄 Đồng bộ Google Form</span>
+        </button>
+
+        <button type="button" (click)="showWalkInModal.set(true)"
+          class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold transition shadow-xs">
+          <span>➕ Tiếp nhận tại cổng (Walk-in)</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Thanh Sub-Tabs Lọc Nhanh Kèm Số Lượng Badge -->
+    <div class="flex flex-wrap items-center gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
+      <button type="button" (click)="setTab('ALL')"
+        class="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition"
+        [class]="activeTab() === 'ALL' ? 'bg-indigo-600 text-white shadow-sm' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200'">
+        <span>Tất cả hồ sơ</span>
+        <span class="px-2 py-0.5 rounded-full text-[11px]"
+          [class]="activeTab() === 'ALL' ? 'bg-white/20 text-white' : 'bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200'">
+          {{ counts().all }}
+        </span>
+      </button>
+
+      <button type="button" (click)="setTab('PROFESSIONAL')"
+        class="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition"
+        [class]="activeTab() === 'PROFESSIONAL' ? 'bg-blue-600 text-white shadow-sm' : 'bg-blue-50/70 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300 hover:bg-blue-100'">
+        <span>🔧 Khối Kỹ thuật / Văn phòng (Có CV PDF)</span>
+        <span class="px-2 py-0.5 rounded-full text-[11px]"
+          [class]="activeTab() === 'PROFESSIONAL' ? 'bg-white/20 text-white' : 'bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200'">
+          {{ counts().professional }}
+        </span>
+      </button>
+
+      <button type="button" (click)="setTab('MASS_LABOR')"
+        class="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition"
+        [class]="activeTab() === 'MASS_LABOR' ? 'bg-violet-600 text-white shadow-sm' : 'bg-violet-50/70 dark:bg-violet-950/30 text-violet-700 dark:text-violet-300 hover:bg-violet-100'">
+        <span>🏭 Khối Công nhân xưởng (QR Form / PV Miệng)</span>
+        <span class="px-2 py-0.5 rounded-full text-[11px]"
+          [class]="activeTab() === 'MASS_LABOR' ? 'bg-white/20 text-white' : 'bg-violet-100 dark:bg-violet-900 text-violet-800 dark:text-violet-200'">
+          {{ counts().massLabor }}
+        </span>
+      </button>
+
+      <button type="button" (click)="setTab('FAST_TRACK')"
+        class="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition"
+        [class]="activeTab() === 'FAST_TRACK' ? 'bg-amber-500 text-slate-950 shadow-sm' : 'bg-amber-50 dark:bg-amber-950/30 text-amber-800 dark:text-amber-300 hover:bg-amber-100'">
+        <span>⚡ Chế độ Bàn Phỏng Vấn Miệng Nhanh (Fast-Track Desk)</span>
+        <span class="px-2 py-0.5 rounded-full text-[11px]"
+          [class]="activeTab() === 'FAST_TRACK' ? 'bg-slate-950/15 text-slate-950' : 'bg-amber-200/70 dark:bg-amber-900 text-amber-900 dark:text-amber-200'">
+          {{ counts().fastTrack }}
+        </span>
+      </button>
+
+      <button type="button" (click)="setTab('RULE_REJECTED')"
+        class="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition"
+        [class]="activeTab() === 'RULE_REJECTED' ? 'bg-rose-600 text-white shadow-sm' : 'bg-rose-50 dark:bg-rose-950/30 text-rose-700 dark:text-rose-300 hover:bg-rose-100'">
+        <span>⚠️ Không đạt tiêu chí cứng (Rule Rejected)</span>
+        <span class="px-2 py-0.5 rounded-full text-[11px]"
+          [class]="activeTab() === 'RULE_REJECTED' ? 'bg-white/20 text-white' : 'bg-rose-100 dark:bg-rose-900 text-rose-800 dark:text-rose-200'">
+          {{ counts().ruleRejected }}
+        </span>
+      </button>
+    </div>
+  </div>
+
+  <!-- ==================== 2. BỘ LỌC THÔNG MINH & NÚT CHỌN NHANH LÔ LỚN ==================== -->
+  <div class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs p-4">
+    <div class="grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
+      <!-- Ô tìm kiếm Tên / SĐT / CCCD -->
+      <div class="md:col-span-4 relative">
+        <span class="material-symbols-outlined absolute left-3 top-2.5 text-slate-400 text-lg">search</span>
+        <input type="text"
+          [ngModel]="searchKeyword()"
+          (ngModelChange)="searchKeyword.set($event)"
+          [placeholder]="activeTab() === 'FAST_TRACK' ? 'Gõ SĐT hoặc tên công nhân đang đứng trước bàn...' : 'Tìm theo Tên, SĐT, CCCD hoặc Quê quán...'"
+          class="w-full pl-9 pr-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
+      </div>
+
+      <!-- Lọc Chiến dịch việc làm -->
+      <div class="md:col-span-3">
+        <select [ngModel]="selectedJobId()" (ngModelChange)="selectedJobId.set($event)"
+          class="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+          <option value="ALL">📋 Tất cả chiến dịch tuyển dụng</option>
+          @for (job of jobCampaigns(); track job.id) {
+          <option [value]="job.id">[{{ job.code }}] {{ job.title }}</option>
+          }
+        </select>
+      </div>
+
+      <!-- Lọc theo Phòng ban / Phân xưởng -->
+      <div class="md:col-span-2">
+        <select [ngModel]="selectedDepartment()" (ngModelChange)="selectedDepartment.set($event)"
+          class="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+          <option value="ALL">🏭 Tất cả Phân xưởng</option>
+          <option value="PROD_LINE">PROD_LINE — Xưởng Sản Xuất SMT</option>
+          <option value="TECH_MNT">TECH_MNT — Kỹ Thuật & Bảo Trì</option>
+          <option value="WH_LOGS">WH_LOGS — Kho Vận & Xe Nâng</option>
+          <option value="QA_QC">QA_QC — Quản Lý Chất Lượng</option>
+        </select>
+      </div>
+
+      <!-- Nút chọn nhanh ứng viên Điểm >= 75 & Đạt Ca Kíp -->
+      <div class="md:col-span-3 flex justify-end">
+        <button type="button" (click)="selectHighScoreAndShiftReady()"
+          class="w-full inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 text-xs font-bold transition">
+          <span>☑️ Chọn tất cả Điểm &ge; 75 &amp; Đạt Ca Kíp</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== 3. BẢNG DỮ LIỆU THÔNG MINH & CHẾ ĐỘ BÀN PV MIỆNG ==================== -->
+  @if (activeTab() !== 'FAST_TRACK') {
+  <!-- CHẾ ĐỘ 3A: XEM DANH SÁCH CHUẨN (SMART DATA TABLE) -->
+  <div class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="w-full text-left border-collapse">
+        <thead>
+          <tr class="bg-slate-50/90 dark:bg-slate-800/70 border-b border-slate-200 dark:border-slate-800 text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+            <th class="p-3.5 w-10 text-center">
+              <input type="checkbox"
+                [checked]="selectedCount() > 0 && selectedCount() === filteredApplications().length"
+                (change)="toggleSelectAllVisible($event)"
+                class="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" />
+            </th>
+            <th class="p-3.5">Ứng viên &amp; Nguồn hồ sơ</th>
+            <th class="p-3.5">Vị trí &amp; Phân xưởng</th>
+            <th class="p-3.5 text-center">Điểm số &amp; Nguồn chấm</th>
+            <th class="p-3.5">Kỹ năng / Cam kết nhà máy</th>
+            <th class="p-3.5 text-right">Trạng thái &amp; Hành động</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100 dark:divide-slate-800 text-xs">
+          @for (app of filteredApplications(); track app.applicationId) {
+          <tr (click)="openDrawer(app)"
+            class="hover:bg-indigo-50/40 dark:hover:bg-slate-800/50 transition cursor-pointer">
+            <!-- Checkbox -->
+            <td class="p-3.5 text-center" (click)="$event.stopPropagation()">
+              <input type="checkbox"
+                [checked]="selectedIds().has(app.applicationId)"
+                (change)="toggleSelection(app.applicationId, $event)"
+                class="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" />
+            </td>
+
+            <!-- Cột Ứng viên: Họ tên, SĐT, Năm sinh + Badge nguồn -->
+            <td class="p-3.5">
+              <div class="flex items-start gap-3">
+                <div class="w-9 h-9 rounded-xl flex items-center justify-center font-bold text-xs shrink-0"
+                  [class]="app.recruitmentTrack === 'PROFESSIONAL' ? 'bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300' : 'bg-violet-100 text-violet-700 dark:bg-violet-950 dark:text-violet-300'">
+                  {{ app.candidateName.charAt(0) }}
+                </div>
+                <div class="space-y-1">
+                  <div class="flex flex-wrap items-center gap-1.5">
+                    <span class="font-bold text-slate-900 dark:text-white text-sm">{{ app.candidateName }}</span>
+                    @if (app.applicationSource === 'PDF_UPLOAD') {
+                    <span class="px-2 py-0.5 rounded-md bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300 font-semibold text-[10px]">
+                      📄 PDF CV
+                    </span>
+                    } @else if (app.applicationSource === 'GOOGLE_FORM_QR') {
+                    <span class="px-2 py-0.5 rounded-md bg-violet-100 text-violet-700 dark:bg-violet-950 dark:text-violet-300 font-semibold text-[10px]">
+                      📱 QR Form
+                    </span>
+                    } @else {
+                    <span class="px-2 py-0.5 rounded-md bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 font-semibold text-[10px]">
+                      🚶 Trực tiếp
+                    </span>
+                    }
+                  </div>
+                  <div class="text-slate-500 dark:text-slate-400 flex flex-wrap items-center gap-2 text-[11px]">
+                    <span class="font-mono font-semibold text-slate-700 dark:text-slate-300">{{ app.phone }}</span>
+                    <span>•</span>
+                    <span>NS: {{ app.yearOfBirth }}</span>
+                    <span>•</span>
+                    <span>{{ app.hometown }}</span>
+                  </div>
+                </div>
+              </div>
+            </td>
+
+            <!-- Cột Vị trí & Phân xưởng -->
+            <td class="p-3.5">
+              <div class="font-bold text-slate-800 dark:text-slate-200 line-clamp-1">{{ app.jobTitle }}</div>
+              <div class="flex items-center gap-1.5 mt-1">
+                <span class="px-2 py-0.5 rounded bg-indigo-50 dark:bg-indigo-950/70 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 font-mono font-bold text-[10px]">
+                  {{ app.departmentCode }}
+                </span>
+                <span class="text-[11px] text-slate-500 truncate">{{ app.departmentName }}</span>
+              </div>
+            </td>
+
+            <!-- Cột Điểm số & Nguồn chấm -->
+            <td class="p-3.5 text-center">
+              <div class="inline-flex flex-col items-center gap-1">
+                <div class="w-11 h-11 rounded-full flex items-center justify-center font-extrabold text-xs border-2"
+                  [class]="app.aiMatchingScore >= 80 ? 'border-emerald-500 text-emerald-700 bg-emerald-50 dark:bg-emerald-950/40 dark:text-emerald-300' : (app.aiMatchingScore >= 65 ? 'border-amber-500 text-amber-700 bg-amber-50' : 'border-rose-500 text-rose-700 bg-rose-50')">
+                  {{ app.aiMatchingScore }}%
+                </div>
+                @if (app.scoringMethod === 'GEMINI_AI') {
+                <span class="px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300 text-[10px] font-bold">
+                  ✨ AI
+                </span>
+                } @else {
+                <span class="px-2 py-0.5 rounded-full bg-violet-100 text-violet-700 dark:bg-violet-950 dark:text-violet-300 text-[10px] font-bold">
+                  ⚡ Tự động - Rule
+                </span>
+                }
+              </div>
+            </td>
+
+            <!-- Cột Kỹ năng / Cam kết -->
+            <td class="p-3.5">
+              <div class="flex flex-wrap gap-1 max-w-xs">
+                @for (tag of app.tags; track tag) {
+                <span class="px-2 py-0.5 rounded-md text-[11px] font-medium"
+                  [class]="tag.startsWith('✅') ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300' : (tag.startsWith('❌') || tag.startsWith('⚠️') ? 'bg-rose-50 text-rose-700 border border-rose-200' : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300')">
+                  {{ tag }}
+                </span>
+                }
+              </div>
+            </td>
+
+            <!-- Cột Trạng thái & Hành động -->
+            <td class="p-3.5 text-right" (click)="$event.stopPropagation()">
+              <div class="flex flex-col items-end gap-1.5">
+                <span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold"
+                  [class]="app.status === 'InterviewPassed' ? 'bg-emerald-100 text-emerald-800' : (app.status === 'SentToManager' ? 'bg-blue-100 text-blue-800' : (app.status === 'ScheduledInterview' ? 'bg-indigo-100 text-indigo-800' : (app.status === 'Rejected' ? 'bg-rose-100 text-rose-800' : 'bg-amber-100 text-amber-800')))">
+                  @if (app.status === 'InterviewPassed') { ✅ Đạt PV -> Onboarding }
+                  @else if (app.status === 'SentToManager') { ➡️ Chờ Quản đốc duyệt }
+                  @else if (app.status === 'ScheduledInterview') { 📅 Đã xếp ca PV }
+                  @else if (app.status === 'Rejected') { ❌ Đã từ chối }
+                  @else { ⏳ Mới tiếp nhận }
+                </span>
+
+                <div class="flex items-center gap-1.5">
+                  <button type="button" (click)="openDrawer(app)"
+                    class="px-2.5 py-1 rounded-lg border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 text-[11px] font-semibold">
+                    Chi tiết
+                  </button>
+                  @if (app.status !== 'InterviewPassed') {
+                  <button type="button" (click)="evaluateOralQuick(app, 'InterviewPassed', $event)"
+                    class="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold">
+                    Duyệt nhanh
+                  </button>
+                  }
+                </div>
+              </div>
+            </td>
+          </tr>
+          } @empty {
+          <tr>
+            <td colspan="6" class="p-10 text-center text-slate-500">
+              Không tìm thấy hồ sơ ứng viên nào khớp với bộ lọc hiện tại.
+            </td>
+          </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
+  } @else {
+  <!-- CHẾ ĐỘ 3B: BÀN PHỎNG VẤN MIỆNG NHANH (FAST-TRACK ORAL INTERVIEW DESK) -->
+  <div class="space-y-3">
+    <!-- Banner Tinh gọn Bàn Phỏng vấn -->
+    <div class="bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent border border-amber-200 dark:border-amber-800/60 rounded-2xl p-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-400 to-amber-600 text-white flex items-center justify-center font-black text-lg shadow-xs">
+          ⚡
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h3 class="text-sm font-extrabold text-slate-900 dark:text-white">
+              Bàn Phỏng Vấn Miệng Nhanh (Fast-Track Oral Desk)
+            </h3>
+            <span class="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 text-[10px] font-bold">
+              Công nhân xưởng • 1-Click
+            </span>
+          </div>
+          <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+            Gõ SĐT tìm ứng viên tại bàn, tích 4 tiêu chuẩn thao tác (Tay chân 25đ, Thị lực 25đ, Ca 12h 30đ, Thái độ 20đ) và chốt Đạt/Loại tức thì.
+          </p>
+        </div>
+      </div>
+      <div class="flex items-center gap-3 shrink-0 text-xs">
+        <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-medium shadow-2xs">
+          <span class="w-2 h-2 rounded-full bg-amber-500"></span>
+          <span>Đang chờ PV: <b class="text-amber-600">{{ counts().fastTrack }}</b></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bảng Tinh Gọn Bàn Phỏng Vấn Miệng -->
+    <div class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs overflow-hidden">
+      <div class="overflow-x-auto">
+        <table class="w-full text-left border-collapse">
+          <thead>
+            <tr class="bg-slate-50/80 dark:bg-slate-800/70 text-slate-600 dark:text-slate-300 text-[11px] font-bold uppercase tracking-wider border-b border-slate-200 dark:border-slate-700">
+              <th class="p-3.5 pl-4">Ứng viên tại bàn</th>
+              <th class="p-3.5">Chiến dịch &amp; Thông tin Form</th>
+              <th class="p-3.5 text-center">4 Tiêu chí phỏng vấn miệng (Tổng 100đ)</th>
+              <th class="p-3.5">Ghi chú nhanh</th>
+              <th class="p-3.5 pr-4 text-right">Quyết định 1-Click</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-100 dark:divide-slate-800 text-xs">
+            @for (app of filteredApplications(); track app.applicationId) {
+            <tr class="hover:bg-amber-50/20 dark:hover:bg-slate-800/40 transition">
+              <!-- Cột 1: Thông tin ứng viên -->
+              <td class="p-3.5 pl-4">
+                <div class="flex items-center gap-2.5">
+                  <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-400 to-amber-600 text-white flex items-center justify-center font-black text-xs shadow-xs shrink-0">
+                    {{ app.candidateName.charAt(0).toUpperCase() }}
+                  </div>
+                  <div>
+                    <div class="flex items-center gap-2">
+                      <span class="font-extrabold text-sm text-slate-900 dark:text-white">{{ app.candidateName }}</span>
+                      <span class="px-2 py-0.5 rounded-md bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 font-mono font-bold text-xs border border-amber-200 dark:border-amber-800">
+                        {{ app.phone }}
+                      </span>
+                    </div>
+                    <div class="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-1.5 mt-0.5">
+                      <span>Năm sinh: <b>{{ app.yearOfBirth }}</b></span>
+                      <span>•</span>
+                      <span>{{ app.hometown }}</span>
+                    </div>
+                  </div>
+                </div>
+              </td>
+
+              <!-- Cột 2: Phân xưởng & Tóm tắt Form -->
+              <td class="p-3.5 max-w-[210px]">
+                <div class="font-bold text-slate-800 dark:text-slate-200 text-xs truncate">{{ app.jobTitle }}</div>
+                <div class="flex flex-wrap items-center gap-1.5 mt-1">
+                  <span class="px-1.5 py-0.5 rounded bg-violet-50 text-violet-700 dark:bg-violet-950 dark:text-violet-300 font-mono font-bold text-[10px] border border-violet-200 dark:border-violet-800">
+                    {{ app.departmentCode }}
+                  </span>
+                  <span class="px-1.5 py-0.5 rounded text-[10px] font-semibold"
+                    [class]="parseWorkerBrief(app.rawResumeText).isShiftReady ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-rose-50 text-rose-700 border border-rose-200'">
+                    {{ parseWorkerBrief(app.rawResumeText).isShiftReady ? '✅ Sẵn sàng xoay ca' : '⚠️ Không xoay ca' }}
+                  </span>
+                  <span class="px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 text-[10px]">
+                    KN: {{ parseWorkerBrief(app.rawResumeText).expBadge }}
+                  </span>
+                </div>
+              </td>
+
+              <!-- Cột 3: 4 Chip Checklist phỏng vấn miệng siêu gọn -->
+              <td class="p-3.5 text-center">
+                <div class="inline-flex items-center gap-1.5 bg-slate-50 dark:bg-slate-800/80 p-1.5 rounded-2xl border border-slate-200 dark:border-slate-700/60">
+                  <!-- 1. Tay chân (25đ) -->
+                  <button type="button"
+                    (click)="app.oralChecklist.handEyePass = !app.oralChecklist.handEyePass"
+                    class="px-2.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1"
+                    [class]="app.oralChecklist.handEyePass ? 'bg-emerald-600 text-white shadow-xs' : 'bg-white dark:bg-slate-700 text-slate-400 hover:text-slate-600'">
+                    <span>{{ app.oralChecklist.handEyePass ? '✓' : '○' }} Tay chân</span>
+                    <span class="text-[10px] opacity-80">(25đ)</span>
+                  </button>
+
+                  <!-- 2. Thị lực (25đ) -->
+                  <button type="button"
+                    (click)="app.oralChecklist.visionPass = !app.oralChecklist.visionPass"
+                    class="px-2.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1"
+                    [class]="app.oralChecklist.visionPass ? 'bg-emerald-600 text-white shadow-xs' : 'bg-white dark:bg-slate-700 text-slate-400 hover:text-slate-600'">
+                    <span>{{ app.oralChecklist.visionPass ? '✓' : '○' }} Thị lực</span>
+                    <span class="text-[10px] opacity-80">(25đ)</span>
+                  </button>
+
+                  <!-- 3. Ca đêm 12h (30đ) -->
+                  <button type="button"
+                    (click)="app.oralChecklist.shift12hConfirmed = !app.oralChecklist.shift12hConfirmed"
+                    class="px-2.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1"
+                    [class]="app.oralChecklist.shift12hConfirmed ? 'bg-indigo-600 text-white shadow-xs' : 'bg-white dark:bg-slate-700 text-slate-400 hover:text-slate-600'">
+                    <span>{{ app.oralChecklist.shift12hConfirmed ? '✓' : '○' }} Ca 12h</span>
+                    <span class="text-[10px] opacity-80">(30đ)</span>
+                  </button>
+
+                  <!-- 4. Thái độ (20đ) -->
+                  <button type="button"
+                    (click)="app.oralChecklist.attitudePass = !app.oralChecklist.attitudePass"
+                    class="px-2.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1"
+                    [class]="app.oralChecklist.attitudePass ? 'bg-emerald-600 text-white shadow-xs' : 'bg-white dark:bg-slate-700 text-slate-400 hover:text-slate-600'">
+                    <span>{{ app.oralChecklist.attitudePass ? '✓' : '○' }} Thái độ</span>
+                    <span class="text-[10px] opacity-80">(20đ)</span>
+                  </button>
+                </div>
+              </td>
+
+              <!-- Cột 4: Ghi chú nhanh -->
+              <td class="p-3.5 max-w-[160px]">
+                <input type="text" [(ngModel)]="app.oralChecklist.quickNote"
+                  placeholder="Ghi chú nhanh..."
+                  class="w-full px-2.5 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs focus:ring-1 focus:ring-amber-500 focus:bg-white transition" />
+              </td>
+
+              <!-- Cột 5: Điểm live & Quyết định 1-Click -->
+              <td class="p-3.5 pr-4 text-right">
+                <div class="inline-flex items-center gap-2">
+                  <span class="px-2 py-1 rounded-lg font-mono font-black text-xs border"
+                    [class]="calculateChecklistScore(app.oralChecklist) >= 75 ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : (calculateChecklistScore(app.oralChecklist) >= 50 ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-rose-50 text-rose-700 border-rose-200')">
+                    {{ calculateChecklistScore(app.oralChecklist) }}đ
+                  </span>
+
+                  @if (app.status === 'InterviewPassed') {
+                  <span class="px-3 py-1.5 rounded-xl bg-emerald-100 text-emerald-800 font-bold text-xs flex items-center gap-1">
+                    <span>✅</span> ĐÃ DUYỆT ĐẠT
+                  </span>
+                  } @else {
+                  <button type="button" (click)="evaluateOralQuick(app, 'InterviewPassed', $event)"
+                    class="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs shadow-xs transition active:scale-95">
+                    ✓ ĐẠT NGAY
+                  </button>
+                  <button type="button" (click)="evaluateOralQuick(app, 'Rejected', $event)"
+                    class="px-2.5 py-1.5 rounded-xl border border-rose-200 hover:bg-rose-50 text-rose-600 font-bold text-xs transition">
+                    ✕ LOẠI
+                  </button>
+                  }
+                </div>
+              </td>
+            </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  }
+
+  <!-- ==================== FLOATING BULK ACTION BAR (Ở ĐÁY MÀN HÌNH) ==================== -->
+  @if (selectedCount() > 0) {
+  <div class="fixed bottom-5 left-1/2 -translate-x-1/2 z-40 w-[95%] max-w-5xl bg-slate-900/95 backdrop-blur-md text-white rounded-2xl px-5 py-3.5 shadow-2xl border border-indigo-500/40 flex flex-wrap items-center justify-between gap-3">
+    <div class="flex items-center gap-3">
+      <span class="px-3 py-1 rounded-full bg-indigo-600 font-extrabold text-xs">
+        Đã chọn: {{ selectedCount() }} ứng viên
+      </span>
+      <button type="button" (click)="clearSelection()" class="text-xs text-slate-400 hover:text-white underline">
+        Bỏ chọn
+      </button>
+    </div>
+
+    <div class="flex flex-wrap items-center gap-2">
+      <button type="button" [disabled]="isProcessingBulk()" (click)="executeBulkAction('SentToManager')"
+        class="px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition disabled:opacity-50">
+        ➡️ Chuyển Quản đốc xưởng duyệt
+      </button>
+
+      <button type="button" [disabled]="isProcessingBulk()" (click)="executeBulkAction('ScheduledInterview')"
+        class="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition disabled:opacity-50">
+        📅 Xếp ca phỏng vấn hàng loạt
+      </button>
+
+      <button type="button" [disabled]="isProcessingBulk()" (click)="executeBulkAction('InterviewPassed')"
+        class="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition disabled:opacity-50">
+        ✅ Duyệt Đạt PV -&gt; Chuyển Onboarding
+      </button>
+
+      <button type="button" [disabled]="isProcessingBulk()" (click)="executeBulkAction('Rejected')"
+        class="px-3.5 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition disabled:opacity-50">
+        ❌ Từ chối hàng loạt
+      </button>
+    </div>
+  </div>
+  }
+
+  <!-- ==================== 4. ADAPTIVE SLIDE-OVER DRAWER (2 CỘT) ==================== -->
+  @if (isDrawerOpen() && selectedApp(); as detail) {
+  <div class="fixed inset-0 z-50 flex justify-end bg-slate-950/60 backdrop-blur-xs" (click)="closeDrawer()">
+    <div class="w-full max-w-6xl bg-white dark:bg-slate-900 h-full shadow-2xl flex flex-col overflow-hidden" (click)="$event.stopPropagation()">
+
+      <!-- Drawer Header -->
+      <div class="px-6 py-4 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 flex items-center justify-center font-bold text-base border border-slate-200 dark:border-slate-700">
+            {{ detail.candidateName.charAt(0) }}
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <h2 class="text-lg font-bold text-slate-900 dark:text-white">{{ detail.candidateName }}</h2>
+              <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                {{ detail.recruitmentTrack === 'PROFESSIONAL' ? 'Khối Kỹ Thuật / Văn Phòng' : 'Khối Công Nhân Xưởng' }}
+              </span>
+            </div>
+            <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              SĐT: {{ detail.phone }} • Năm sinh: {{ detail.yearOfBirth }} • Quê quán: {{ detail.hometown }} • Vị trí: {{ detail.jobTitle }}
+            </p>
+          </div>
+        </div>
+
+        <button type="button" (click)="closeDrawer()"
+          class="p-2 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+
+      <!-- Drawer Body: Chia 2 Cột -->
+      <div class="flex-1 grid grid-cols-1 lg:grid-cols-12 overflow-y-auto divide-y lg:divide-y-0 lg:divide-x divide-slate-200 dark:divide-slate-800">
+
+        <!-- CỘT TRÁI (5/12): ĐÁNH GIÁ & PHÊ DUYỆT -->
+        <div class="lg:col-span-5 p-6 space-y-5 overflow-y-auto">
+          <!-- Điểm tổng & 3 thanh phần trăm thành phần -->
+          <div class="p-4 rounded-2xl bg-indigo-50/60 dark:bg-slate-800/70 border border-indigo-100 dark:border-slate-700 space-y-4">
+            <div class="flex items-center justify-between">
+              <div>
+                <div class="text-xs font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
+                  {{ detail.scoringMethod === 'GEMINI_AI' ? '✨ Đánh giá độ phù hợp (AI)' : '⚡ Chấm tự động bằng C# Rule Engine' }}
+                </div>
+                <div class="text-sm font-bold text-slate-800 dark:text-slate-200 mt-0.5">Tổng điểm phù hợp chiến dịch</div>
+              </div>
+              <div class="text-3xl font-black text-indigo-700 dark:text-indigo-300">{{ detail.aiMatchingScore }}/100</div>
+            </div>
+
+            <!-- 3 Thanh phần trăm thành phần -->
+            <div class="space-y-2.5 text-xs">
+              <div>
+                <div class="flex justify-between font-semibold mb-1">
+                  <span>1. Khớp Kỹ Năng / Tay Nghề</span>
+                  <span class="font-bold text-indigo-600">{{ detail.skillMatchPercent }}%</span>
+                </div>
+                <div class="w-full h-2 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden">
+                  <div class="h-full bg-indigo-600 rounded-full" [style.width.%]="detail.skillMatchPercent"></div>
+                </div>
+              </div>
+
+              <div>
+                <div class="flex justify-between font-semibold mb-1">
+                  <span>2. Kinh Nghiệm Dây Chuyền / Nhà Máy</span>
+                  <span class="font-bold text-violet-600">{{ detail.experienceMatchPercent }}%</span>
+                </div>
+                <div class="w-full h-2 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden">
+                  <div class="h-full bg-violet-600 rounded-full" [style.width.%]="detail.experienceMatchPercent"></div>
+                </div>
+              </div>
+
+              <div>
+                <div class="flex justify-between font-semibold mb-1">
+                  <span>3. Sức Khỏe &amp; Đáp Ứng Làm Ca Kíp (12h)</span>
+                  <span class="font-bold text-emerald-600">{{ detail.shiftHealthPercent }}%</span>
+                </div>
+                <div class="w-full h-2 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden">
+                  <div class="h-full bg-emerald-600 rounded-full" [style.width.%]="detail.shiftHealthPercent"></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Nhận xét của AI / Rule Engine -->
+            <div class="p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs text-slate-700 dark:text-slate-300 leading-relaxed">
+              <b>Nhận xét đánh giá:</b> {{ cleanAiSummary(detail.aiSummary) }}
+            </div>
+          </div>
+
+          <!-- Khung Checklist Phỏng Vấn Miệng -->
+          <div class="p-4 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-3">
+            <h3 class="text-xs font-extrabold uppercase tracking-wider text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+              <span class="material-symbols-outlined text-base text-amber-500">fact_check</span>
+              Checklist Phỏng Vấn Miệng Nhanh (Oral Interview)
+            </h3>
+
+            <div class="grid grid-cols-2 gap-2.5 text-xs">
+              <label class="flex items-center gap-2 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 cursor-pointer">
+                <input type="checkbox" [(ngModel)]="detail.oralChecklist.handEyePass" class="rounded text-indigo-600" />
+                <span class="font-semibold">Tay chân linh hoạt</span>
+              </label>
+
+              <label class="flex items-center gap-2 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 cursor-pointer">
+                <input type="checkbox" [(ngModel)]="detail.oralChecklist.visionPass" class="rounded text-indigo-600" />
+                <span class="font-semibold">Thị lực tốt (10/10)</span>
+              </label>
+
+              <label class="flex items-center gap-2 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 cursor-pointer">
+                <input type="checkbox" [(ngModel)]="detail.oralChecklist.shift12hConfirmed" class="rounded text-indigo-600" />
+                <span class="font-semibold">Cam kết xoay ca 12h</span>
+              </label>
+
+              <label class="flex items-center gap-2 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 cursor-pointer">
+                <input type="checkbox" [(ngModel)]="detail.oralChecklist.attitudePass" class="rounded text-indigo-600" />
+                <span class="font-semibold">Thái độ kỷ luật tốt</span>
+              </label>
+            </div>
+
+            <div>
+              <label class="text-[11px] font-bold text-slate-500 block mb-1">Ghi chú người phỏng vấn:</label>
+              <textarea rows="2" [(ngModel)]="detail.oralChecklist.quickNote"
+                class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 p-2.5 text-xs"></textarea>
+            </div>
+
+            <div class="flex flex-wrap gap-2 pt-2">
+              <button type="button" (click)="evaluateOralQuick(detail, 'InterviewPassed')"
+                class="flex-1 py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold transition">
+                ✅ Duyệt Đạt PV -&gt; Chuyển Onboarding
+              </button>
+              <button type="button" (click)="evaluateOralQuick(detail, 'Rejected')"
+                class="py-2.5 px-4 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-extrabold transition">
+                ❌ Từ chối
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- CỘT PHẢI (7/12): ADAPTIVE VIEWER (TỰ ĐỘNG RẼ NHÁNH THEO cvFileUrl) -->
+        <div class="lg:col-span-7 p-6 bg-slate-50 dark:bg-slate-950/60 overflow-y-auto">
+          @if (detail.cvFileUrl !== null) {
+          <!-- NHÁNH 1: KHỐI KỸ THUẬT / VĂN PHÒNG -> HIỂN THỊ KHUNG XEM FILE PDF GỐC -->
+          <div class="h-full flex flex-col space-y-3">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <div class="flex items-center gap-2">
+                <span class="px-2.5 py-1 rounded-lg bg-blue-100 text-blue-800 text-xs font-bold">📄 Trình xem CV PDF Gốc</span>
+                <span class="text-xs text-slate-500 font-mono truncate max-w-xs">{{ detail.cvFileUrl }}</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <button type="button" (click)="openCvInNewTab(detail.cvFileUrl)"
+                  class="px-3 py-1.5 rounded-lg bg-indigo-600 text-white text-xs font-bold hover:bg-indigo-700 transition">
+                  📖 Mở toàn màn hình
+                </button>
+                <button type="button" (click)="downloadCvFile(detail.cvFileUrl, detail.candidateName)"
+                  class="px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-bold hover:bg-slate-50 transition">
+                  ⬇️ Tải file CV
+                </button>
+              </div>
+            </div>
+
+            <div class="flex-1 min-h-[580px] rounded-2xl border border-slate-300 dark:border-slate-700 bg-white overflow-hidden shadow-inner flex flex-col">
+              <object [data]="getSafePdfUrl(detail.cvFileUrl)" type="application/pdf" class="w-full h-[580px] flex-1">
+                <iframe [src]="getSafePdfUrl(detail.cvFileUrl)" class="w-full h-full border-0">
+                  <div class="p-6 text-center text-slate-500">
+                    Trình duyệt không hỗ trợ nhúng trực tiếp PDF. 
+                    <button type="button" (click)="openCvInNewTab(detail.cvFileUrl)" class="text-indigo-600 font-bold underline ml-1">Bấm vào đây để mở xem file CV</button>
+                  </div>
+                </iframe>
+              </object>
+            </div>
+          </div>
+          } @else {
+          <!-- NHÁNH 2: CÔNG NHÂN TỪ QR GOOGLE FORM / WALK-IN -> PHIẾU TỜ KHAI ỨNG TUYỂN ĐIỆN TỬ (DIGITAL WORKER CARD) -->
+          <div class="bg-white dark:bg-slate-900 rounded-2xl border-2 border-violet-200 dark:border-violet-900 shadow-sm p-6 space-y-5">
+            <div class="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-slate-200 dark:border-slate-800">
+              <div>
+                <span class="px-2.5 py-1 rounded-full bg-violet-100 text-violet-800 text-[11px] font-extrabold">
+                  🪪 PHIẾU TỜ KHAI ỨNG TUYỂN ĐIỆN TỬ (DIGITAL WORKER CARD)
+                </span>
+                <h3 class="text-base font-extrabold text-slate-900 dark:text-white mt-1.5">
+                  Hồ Sơ Công Nhân Sản Xuất — {{ detail.candidateName }}
+                </h3>
+                <p class="text-xs text-slate-500">
+                  Nguồn tiếp nhận: {{ detail.applicationSource === 'GOOGLE_FORM_QR' ? 'Quét mã QR Google Form chiến dịch' : 'Tiếp nhận trực tiếp tại cổng nhà máy (Walk-in)' }}
+                </p>
+              </div>
+
+              <!-- Nút [🖨️ In phiếu] và [📎 Đính kèm bổ sung ảnh CCCD/CV] -->
+              <div class="flex items-center gap-2">
+                <button type="button" (click)="printWorkerCard()"
+                  class="px-3.5 py-2 rounded-xl border border-slate-300 dark:border-slate-700 hover:bg-slate-100 text-xs font-bold text-slate-700 dark:text-slate-200">
+                  🖨️ In phiếu
+                </button>
+                <label class="px-3.5 py-2 rounded-xl bg-violet-600 hover:bg-violet-700 text-white text-xs font-bold cursor-pointer">
+                  📎 Đính kèm bổ sung ảnh CCCD/CV
+                  <input type="file" class="hidden" (change)="attachSupplementalDoc($event)" />
+                </label>
+              </div>
+            </div>
+
+            <!-- Thông tin cá nhân & Trình độ -->
+            <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
+              <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/70">
+                <div class="text-slate-400 text-[11px]">Họ và tên công nhân</div>
+                <div class="font-bold text-slate-900 dark:text-white mt-0.5">{{ detail.candidateName }}</div>
+              </div>
+              <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/70">
+                <div class="text-slate-400 text-[11px]">Số điện thoại</div>
+                <div class="font-mono font-bold text-indigo-600 mt-0.5">{{ detail.phone }}</div>
+              </div>
+              <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/70">
+                <div class="text-slate-400 text-[11px]">Năm sinh</div>
+                <div class="font-bold text-slate-900 dark:text-white mt-0.5">{{ detail.yearOfBirth }}</div>
+              </div>
+              <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/70">
+                <div class="text-slate-400 text-[11px]">Số CCCD / Định danh</div>
+                <div class="font-mono font-bold text-slate-800 dark:text-slate-200 mt-0.5">{{ detail.cccd }}</div>
+              </div>
+              <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/70">
+                <div class="text-slate-400 text-[11px]">Quê quán / Thường trú</div>
+                <div class="font-bold text-slate-900 dark:text-white mt-0.5">{{ detail.hometown }}</div>
+              </div>
+              <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/70">
+                <div class="text-slate-400 text-[11px]">Trình độ học vấn</div>
+                <div class="font-bold text-slate-900 dark:text-white mt-0.5">{{ detail.educationLevel }}</div>
+              </div>
+            </div>
+
+            <!-- Cam kết làm ca đêm 12h & Sức khỏe -->
+            <div class="p-4 rounded-xl border border-emerald-200 bg-emerald-50/50 dark:bg-emerald-950/20 flex items-center justify-between">
+              <div>
+                <div class="text-xs font-bold text-emerald-900 dark:text-emerald-300">Cam kết vận hành nhà máy &amp; Làm xoay ca 12h</div>
+                <div class="text-xs text-slate-600 dark:text-slate-400 mt-0.5">
+                  {{ detail.shift12hReady ? '✅ Xác nhận sẵn sàng làm xoay 2 ca (Ngày/Đêm 12h) và tăng ca theo kế hoạch xưởng.' : '❌ Chỉ đăng ký làm hành chính, không làm ca đêm.' }}
+                </div>
+              </div>
+              <span class="px-3 py-1 rounded-full text-xs font-extrabold"
+                [class]="detail.shift12hReady ? 'bg-emerald-600 text-white' : 'bg-rose-600 text-white'">
+                {{ detail.shift12hReady ? 'ĐẠT CA KÍP' : 'KHÔNG ĐẠT' }}
+              </span>
+            </div>
+
+            <!-- Câu trả lời chi tiết từ Google Form / Tờ khai -->
+            <div class="space-y-2">
+              <div class="text-xs font-bold uppercase tracking-wider text-slate-500">
+                Nội dung câu trả lời kinh nghiệm nhà máy &amp; Tờ khai chi tiết:
+              </div>
+              @if (detail.customFormFields) {
+              <div class="divide-y divide-slate-100 dark:divide-slate-800 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden text-xs">
+                @for (item of detail.customFormFields | keyvalue; track item.key) {
+                <div class="p-3 flex flex-col sm:flex-row sm:justify-between gap-1 bg-white dark:bg-slate-900">
+                  <span class="text-slate-500 font-medium">{{ item.key }}:</span>
+                  <span class="font-bold text-slate-900 dark:text-white sm:text-right">{{ item.value }}</span>
+                </div>
+                }
+              </div>
+              }
+              <pre class="p-3.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-xs whitespace-pre-wrap font-sans text-slate-700 dark:text-slate-300">{{ detail.rawResumeText }}</pre>
+            </div>
+          </div>
+          }
+        </div>
+      </div>
+    </div>
+  </div>
+  }
+
+  <!-- ==================== MODAL 1: TIẾP NHẬN NHANH TẠI CỔNG (WALK-IN) ==================== -->
+  @if (showWalkInModal()) {
+  <div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-xs p-4" (click)="showWalkInModal.set(false)">
+    <div class="w-full max-w-xl bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden" (click)="$event.stopPropagation()">
+      <div class="px-6 py-4 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white flex items-center justify-between">
+        <div>
+          <h3 class="text-base font-bold text-slate-900 dark:text-white">Tiếp Nhận Công Nhân Tại Cổng (Walk-in)</h3>
+          <p class="text-xs text-slate-500 dark:text-slate-400">Nhập thông tin và đánh giá trực tiếp tại bàn</p>
+        </div>
+        <button type="button" (click)="showWalkInModal.set(false)" class="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800">
+          <span class="material-symbols-outlined text-[20px]">close</span>
+        </button>
+      </div>
+
+      <div class="p-6 space-y-4 text-xs">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="font-bold text-slate-700 dark:text-slate-300 block mb-1">Họ và tên công nhân (*)</label>
+            <input type="text" [(ngModel)]="walkInForm.fullName" placeholder="VD: Nguyễn Văn Nam"
+              class="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800" />
+          </div>
+          <div>
+            <label class="font-bold text-slate-700 dark:text-slate-300 block mb-1">Số điện thoại (*)</label>
+            <input type="text" [(ngModel)]="walkInForm.phone" placeholder="VD: 0978123456"
+              class="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800" />
+          </div>
+          <div>
+            <label class="font-bold text-slate-700 dark:text-slate-300 block mb-1">Năm sinh</label>
+            <input type="text" [(ngModel)]="walkInForm.yearOfBirth"
+              class="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800" />
+          </div>
+          <div>
+            <label class="font-bold text-slate-700 dark:text-slate-300 block mb-1">Số CCCD</label>
+            <input type="text" [(ngModel)]="walkInForm.cccd" placeholder="02720100..."
+              class="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800" />
+          </div>
+          <div>
+            <label class="font-bold text-slate-700 dark:text-slate-300 block mb-1">Quê quán</label>
+            <input type="text" [(ngModel)]="walkInForm.hometown"
+              class="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800" />
+          </div>
+          <div>
+            <label class="font-bold text-slate-700 dark:text-slate-300 block mb-1">Trình độ</label>
+            <input type="text" [(ngModel)]="walkInForm.educationLevel"
+              class="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800" />
+          </div>
+        </div>
+
+        <div>
+          <label class="font-bold text-slate-700 dark:text-slate-300 block mb-1">Kinh nghiệm làm việc nhà máy</label>
+          <input type="text" [(ngModel)]="walkInForm.experienceSummary"
+            class="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800" />
+        </div>
+
+        <div class="p-3.5 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 space-y-2">
+          <div class="font-bold text-amber-900 dark:text-amber-300">Checklist Phỏng Vấn Miệng Tại Cổng:</div>
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            <label class="flex items-center gap-1.5 font-semibold">
+              <input type="checkbox" [(ngModel)]="walkInForm.handEyePass" /> ☑️ Tay chân
+            </label>
+            <label class="flex items-center gap-1.5 font-semibold">
+              <input type="checkbox" [(ngModel)]="walkInForm.visionPass" /> ☑️ Thị lực
+            </label>
+            <label class="flex items-center gap-1.5 font-semibold">
+              <input type="checkbox" [(ngModel)]="walkInForm.shift12hConfirmed" /> ☑️ Ca đêm 12h
+            </label>
+            <label class="flex items-center gap-1.5 font-semibold">
+              <input type="checkbox" [(ngModel)]="walkInForm.attitudePass" /> ☑️ Thái độ
+            </label>
+          </div>
+        </div>
+
+        <div class="flex justify-end gap-2 pt-2">
+          <button type="button" (click)="showWalkInModal.set(false)"
+            class="px-4 py-2 rounded-xl border border-slate-300 text-slate-600 font-bold">
+            Hủy
+          </button>
+          <button type="button" [disabled]="isSavingWalkIn()" (click)="submitWalkInCandidate()"
+            class="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold shadow-md">
+            {{ isSavingWalkIn() ? 'Đang lưu...' : '✅ Lưu & Duyệt Đạt Ngay' }}
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+  }
+
+  <!-- ==================== MODAL 2: ĐỒNG BỘ GOOGLE FORM / GOOGLE SHEET ==================== -->
+  @if (showSyncModal()) {
+  <div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-xs p-4" (click)="showSyncModal.set(false)">
+    <div class="w-full max-w-lg bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden" (click)="$event.stopPropagation()">
+      <div class="px-6 py-4 bg-violet-700 text-white flex items-center justify-between">
+        <h3 class="text-base font-extrabold">🔄 Đồng Bộ Hồ Sơ Công Nhân Từ Google Form / Sheet</h3>
+        <button type="button" (click)="showSyncModal.set(false)" class="text-white/80 hover:text-white">✕</button>
+      </div>
+      <div class="p-6 space-y-4 text-xs">
+        <p class="text-slate-600 dark:text-slate-400">
+          Dán đường link file Google Sheet (Trang tính câu trả lời của Google Form) đã bật quyền <b>Viewer</b> để kéo toàn bộ danh sách công nhân về hệ thống và tự động chấm bằng Rule Engine:
+        </p>
+        <input type="text" [ngModel]="sheetUrlInput()" (ngModelChange)="sheetUrlInput.set($event)"
+          placeholder="https://docs.google.com/spreadsheets/d/1.../edit"
+          class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 font-mono" />
+        <div class="flex justify-end gap-2">
+          <button type="button" (click)="showSyncModal.set(false)" class="px-4 py-2 rounded-xl border border-slate-300 font-bold">Đóng</button>
+          <button type="button" [disabled]="isSyncingSheet()" (click)="syncFromGoogleFormSheet()"
+            class="px-5 py-2 rounded-xl bg-violet-600 hover:bg-violet-700 text-white font-extrabold">
+            {{ isSyncingSheet() ? 'Đang đồng bộ...' : '🔄 Đồng Bộ Ngay' }}
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+  }
+
+</div>
+

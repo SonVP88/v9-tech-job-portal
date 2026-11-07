@@ -59,17 +59,14 @@ public class JobsController : ControllerBase
                 return Unauthorized(new { message = "Không thể xác thực người dùng" });
             }
 
-            // Gọi service
             var result = await _jobService.CreateJobAsync(request, userId);
 
-            if (result)
+            if (result.Success)
             {
-                return Ok(new { message = "Đăng tin tuyển dụng thành công" });
+                return Ok(result);
             }
-            else
-            {
-                return BadRequest(new { message = "Đăng tin tuyển dụng thất bại" });
-            }
+
+            return BadRequest(new { message = result.Message ?? "Đăng tin tuyển dụng thất bại" });
         }
         catch (Exception ex)
         {
@@ -179,6 +176,102 @@ public class JobsController : ControllerBase
             {
                 return BadRequest(new { message = "Thao tác thất bại hoặc không tìm thấy tin tuyển dụng" });
             }
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { message = $"Lỗi: {ex.Message}" });
+        }
+    }
+
+    /// <summary>
+    /// Lấy Google Form + mã QR của chiến dịch
+    /// </summary>
+    [HttpGet("{id}/campaign-qr")]
+    public async Task<IActionResult> GetCampaignQr(Guid id, [FromQuery] string? publicApiUrl = null, [FromQuery] string? publicClientUrl = null)
+    {
+        try
+        {
+            var campaign = await _jobService.GetCampaignQrAsync(id, publicApiUrl, publicClientUrl);
+            if (campaign == null)
+                return NotFound(new { message = "Không tìm thấy tin tuyển dụng." });
+            return Ok(campaign);
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { message = $"Lỗi: {ex.Message}" });
+        }
+    }
+
+    /// <summary>
+    /// Tạo hoặc làm mới Google Form + QR cho chiến dịch đã có
+    /// </summary>
+    [HttpPost("{id}/campaign-qr")]
+    public async Task<IActionResult> EnsureCampaignQr(
+        Guid id,
+        [FromQuery] bool force = false,
+        [FromQuery] string? publicApiUrl = null,
+        [FromQuery] string? publicClientUrl = null)
+    {
+        try
+        {
+            var campaign = await _jobService.EnsureCampaignQrAsync(id, force, publicApiUrl, publicClientUrl);
+            return Ok(campaign);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { message = $"Lỗi: {ex.Message}" });
+        }
+    }
+
+    /// <summary>
+    /// Cập nhật cấu hình Public / ngrok URL toàn hệ thống và sinh lại link / Apps Script cho Job
+    /// </summary>
+    [HttpPut("{id}/campaign-qr/public-config")]
+    public async Task<IActionResult> UpdatePublicConfig(Guid id, [FromBody] UpdatePublicIntegrationConfigRequest request)
+    {
+        try
+        {
+            var campaign = await _jobService.EnsureCampaignQrAsync(id, forceRecreate: false, request.PublicApiBaseUrl, request.PublicClientBaseUrl);
+            return Ok(campaign);
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { message = $"Lỗi: {ex.Message}" });
+        }
+    }
+
+    /// <summary>
+    /// Gán đường link Google Form có sẵn (hoặc form tùy chọn) vào Job và sinh lại mã QR ngay trên web
+    /// </summary>
+    [HttpPut("{id}/campaign-qr/custom-form")]
+    public async Task<IActionResult> UpdateCustomFormUrl(Guid id, [FromBody] UpdateCustomFormUrlRequest request)
+    {
+        try
+        {
+            var job = await _context.Jobs.FirstOrDefaultAsync(j => j.JobId == id && !j.IsDeleted);
+            if (job == null) return NotFound(new { message = "Không tìm thấy tin tuyển dụng." });
+
+            if (string.IsNullOrWhiteSpace(request.FormUrl))
+            {
+                // Reset về form nội bộ
+                job.GoogleFormPublicUrl = null;
+                job.GoogleFormId = null;
+                job.GoogleFormEditUrl = null;
+                job.CampaignFormSource = "INTERNAL";
+            }
+            else
+            {
+                job.GoogleFormPublicUrl = request.FormUrl.Trim();
+                job.CampaignFormSource = "GOOGLE_FORM";
+            }
+
+            await _context.SaveChangesAsync();
+            var campaign = await _jobService.EnsureCampaignQrAsync(id, forceRecreate: false);
+            return Ok(campaign);
         }
         catch (Exception ex)
         {

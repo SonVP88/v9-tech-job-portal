@@ -42,9 +42,9 @@ export const SIDEBAR_MENU_GROUPS: MenuGroup[] = [
         canAccess: () => true
       },
       {
-        label: 'AI Sàng Lọc Hồ Sơ',
+        label: 'Sàng Lọc Hồ Sơ',
         route: '/hr/ai-screening',
-        icon: 'auto_awesome',
+        icon: 'fact_check',
         canAccess: (user) => {
           if (!user) return false;
           const isSuper = user.role === 'SuperAdmin' || user.role === 'ADMIN' || user.departmentCode === 'ADMIN_SYS';
@@ -53,8 +53,8 @@ export const SIDEBAR_MENU_GROUPS: MenuGroup[] = [
         },
         badge: {
           type: 'ai',
-          text: 'AI ✨',
-          cssClass: 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-sm font-bold text-[10px] px-2 py-0.5 rounded-full ring-1 ring-white/20'
+          text: 'Tự động',
+          cssClass: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 font-semibold text-[10px] px-2 py-0.5 rounded-md border border-slate-200 dark:border-slate-700'
         }
       }
     ]
@@ -149,7 +149,7 @@ export const SIDEBAR_MENU_GROUPS: MenuGroup[] = [
         }
       },
       {
-        label: 'Tiêu Chí Kỹ Năng (AI)',
+        label: 'Tiêu Chuẩn Kỹ Năng',
         route: '/hr/skills',
         icon: 'psychology',
         canAccess: (user) => {

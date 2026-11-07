@@ -2,14 +2,15 @@ import { Component, OnInit, inject, signal, ChangeDetectorRef } from '@angular/c
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
-import { JobService, JobDto } from '../../../services/job.service';
+import { JobService, JobDto, CampaignQrDto } from '../../../services/job.service';
 import { ToastService } from '../../../services/toast.service';
 import { PopupService } from '../../../services/popup.service';
+import { CampaignQrModalComponent } from '../../../components/hr/campaign-qr-modal/campaign-qr-modal';
 
 @Component({
     selector: 'app-job-list',
     standalone: true,
-    imports: [CommonModule, RouterModule, FormsModule],
+    imports: [CommonModule, RouterModule, FormsModule, CampaignQrModalComponent],
     templateUrl: './job-list.html'
 })
 export class JobListComponent implements OnInit {
@@ -30,6 +31,9 @@ export class JobListComponent implements OnInit {
     // Pagination
     currentPage = signal(1);
     itemsPerPage = 6;
+
+    campaignQr: CampaignQrDto | null = null;
+    regeneratingQr = false;
 
     // Expose Math for template
     Math = Math;
@@ -120,6 +124,37 @@ export class JobListComponent implements OnInit {
             day: '2-digit',
             hour: '2-digit',
             minute: '2-digit'
+        });
+    }
+
+    openCampaignQr(job: JobDto): void {
+        this.jobService.getCampaignQr(job.jobId).subscribe({
+            next: (campaign) => {
+                this.campaignQr = campaign;
+                this.cdr.detectChanges();
+            },
+            error: () => this.toast.error('Không tải được QR', 'Vui lòng thử tạo lại form cho chiến dịch này.')
+        });
+    }
+
+    closeCampaignQr(): void {
+        this.campaignQr = null;
+    }
+
+    regenerateCampaignQr(): void {
+        const id = this.campaignQr?.jobId;
+        if (!id) return;
+        this.regeneratingQr = true;
+        this.jobService.ensureCampaignQr(id, true).subscribe({
+            next: (campaign) => {
+                this.campaignQr = campaign;
+                this.regeneratingQr = false;
+                this.cdr.detectChanges();
+            },
+            error: (err: any) => {
+                this.regeneratingQr = false;
+                this.toast.error('Tạo lại thất bại', err.error?.message || 'Không tạo được Google Form / QR.');
+            }
         });
     }
 

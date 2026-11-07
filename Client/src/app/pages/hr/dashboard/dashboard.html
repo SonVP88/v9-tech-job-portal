@@ -16,37 +16,36 @@
   </div>
 </div>
 
-<!-- AI Screening Performance Banner -->
-<div class="mb-8 p-5 rounded-2xl bg-gradient-to-r from-indigo-900 via-blue-900 to-indigo-950 text-white shadow-lg relative overflow-hidden border border-indigo-700/50">
-  <div class="absolute -right-8 -bottom-8 w-48 h-48 bg-blue-500/10 rounded-full blur-2xl"></div>
-  <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 relative z-10">
-    <div class="flex items-start gap-4">
-      <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-400 to-blue-600 flex items-center justify-center text-white shadow-md shrink-0">
-        <span class="material-symbols-outlined text-2xl">neurology</span>
+<!-- Sàng lọc & Đánh giá hồ sơ Summary -->
+<div class="mb-8 p-5 rounded-2xl bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 shadow-xs border border-slate-200 dark:border-slate-800">
+  <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div class="flex items-start gap-3.5">
+      <div class="w-11 h-11 rounded-xl bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-400 flex items-center justify-center shrink-0 border border-indigo-100 dark:border-indigo-900/50">
+        <span class="material-symbols-outlined text-2xl">analytics</span>
       </div>
       <div>
         <div class="flex items-center gap-2">
-          <h3 class="text-base font-black tracking-tight text-white">Hiệu Suất Sàng Lọc AI (Gemini 2.5 Flash ATS)</h3>
-          <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">Trực Tuyến</span>
+          <h3 class="text-base font-bold tracking-tight text-slate-900 dark:text-white">Tổng Quan Hiệu Suất Sàng Lọc Hồ Sơ</h3>
+          <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">Đang hoạt động</span>
         </div>
-        <p class="text-xs text-indigo-200/90 mt-1 max-w-2xl leading-relaxed">
-          Hệ thống AI tự động phân tích CV hàng loạt, trích xuất kỹ năng sản xuất, đối chiếu tiêu chí và tính điểm tương thích ma trận.
+        <p class="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-2xl leading-relaxed">
+          Tự động trích xuất kỹ năng ứng viên, đối chiếu với tiêu chí sản xuất của phân xưởng và tính điểm tương thích theo từng chiến dịch.
         </p>
       </div>
     </div>
 
-    <div class="grid grid-cols-3 gap-4 border-t md:border-t-0 md:border-l border-indigo-700/60 pt-3 md:pt-0 md:pl-6 text-center">
+    <div class="grid grid-cols-3 gap-6 border-t md:border-t-0 md:border-l border-slate-200 dark:border-slate-800 pt-3 md:pt-0 md:pl-6 text-center">
       <div>
-        <p class="text-2xl font-black text-white">{{ aiPerformance.totalScreened | number }}</p>
-        <p class="text-[11px] text-indigo-300 font-medium">Hồ sơ đã chấm</p>
+        <p class="text-2xl font-black text-slate-900 dark:text-white">{{ aiPerformance.totalScreened | number }}</p>
+        <p class="text-[11px] text-slate-500 dark:text-slate-400 font-medium">Hồ sơ đã chấm</p>
       </div>
       <div>
-        <p class="text-2xl font-black text-emerald-400">{{ aiPerformance.avgMatchScore }}%</p>
-        <p class="text-[11px] text-indigo-300 font-medium">Điểm khớp TB</p>
+        <p class="text-2xl font-black text-emerald-600">{{ aiPerformance.avgMatchScore }}%</p>
+        <p class="text-[11px] text-slate-500 dark:text-slate-400 font-medium">Điểm khớp TB</p>
       </div>
       <div>
-        <p class="text-2xl font-black text-amber-300">{{ aiPerformance.savedHours }}h</p>
-        <p class="text-[11px] text-indigo-300 font-medium">Tiết kiệm thời gian</p>
+        <p class="text-2xl font-black text-slate-900 dark:text-white">{{ aiPerformance.savedHours }}h</p>
+        <p class="text-[11px] text-slate-500 dark:text-slate-400 font-medium">Thời gian tiết kiệm</p>
       </div>
     </div>
   </div>

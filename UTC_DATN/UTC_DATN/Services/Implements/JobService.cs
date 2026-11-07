@@ -10,13 +10,17 @@ namespace UTC_DATN.Services.Implements;
 public class JobService : IJobService
 {
     private readonly UTC_DATNContext _context;
+    private readonly ICampaignQrService _campaignQrService;
+    private readonly ILogger<JobService> _logger;
 
-    public JobService(UTC_DATNContext context)
+    public JobService(UTC_DATNContext context, ICampaignQrService campaignQrService, ILogger<JobService> logger)
     {
         _context = context;
+        _campaignQrService = campaignQrService;
+        _logger = logger;
     }
 
-    public async Task<bool> CreateJobAsync(CreateJobRequest request, Guid userId)
+    public async Task<CreateJobResultDto> CreateJobAsync(CreateJobRequest request, Guid userId)
     {
         using var transaction = await _context.Database.BeginTransactionAsync();
         try
@@ -24,12 +28,23 @@ public class JobService : IJobService
             // Tạo mã Code duy nhất
             var jobCode = await GenerateUniqueJobCodeAsync();
 
+            // Lấy tên phòng ban nếu có DepartmentId
+            string? deptName = null;
+            if (request.DepartmentId.HasValue)
+            {
+                var dept = await _context.Departments.FindAsync(request.DepartmentId.Value);
+                deptName = dept?.DepartmentName;
+            }
+
             // Tạo object Job mới
             var job = new Job
             {
                 JobId = Guid.NewGuid(),
                 Code = jobCode,
                 Title = request.Title,
+                DepartmentId = request.DepartmentId,
+                Department = deptName,
+                Currency = "VND",
                 Description = request.Description,
                 Requirements = request.Requirements,
                 Benefits = request.Benefits,
@@ -65,11 +80,29 @@ public class JobService : IJobService
             // Lưu vào DB
             _context.Jobs.Add(job);
             await _context.SaveChangesAsync();
-
-            // Commit transaction
             await transaction.CommitAsync();
 
-            return true;
+            CampaignQrDto? campaign = null;
+            if (request.CreateCampaignQr)
+            {
+                try
+                {
+                    campaign = await _campaignQrService.CreateForJobAsync(job);
+                    await _context.SaveChangesAsync();
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Tạo Google Form/QR thất bại sau khi đã lưu Job {JobId}", job.JobId);
+                }
+            }
+
+            return new CreateJobResultDto
+            {
+                Success = true,
+                JobId = job.JobId,
+                Message = "Đăng tin tuyển dụng thành công",
+                Campaign = campaign
+            };
         }
         catch (Exception)
         {
@@ -77,6 +110,58 @@ public class JobService : IJobService
             await transaction.RollbackAsync();
             throw;
         }
+    }
+
+    public async Task<CampaignQrDto?> GetCampaignQrAsync(Guid jobId, string? customApiBase = null, string? customClientBase = null)
+    {
+        var job = await _context.Jobs.FirstOrDefaultAsync(j => j.JobId == jobId && !j.IsDeleted);
+        if (job == null) return null;
+
+        if (string.IsNullOrWhiteSpace(job.GoogleFormPublicUrl) || (!string.IsNullOrWhiteSpace(customClientBase) && job.CampaignFormSource == "INTERNAL"))
+            return await EnsureCampaignQrAsync(jobId, forceRecreate: false, customApiBase, customClientBase);
+
+        var (apiBase, clientBase, secret) = _campaignQrService.GetPublicConfig();
+        if (!string.IsNullOrWhiteSpace(customApiBase)) apiBase = customApiBase.Trim().TrimEnd('/');
+        if (!string.IsNullOrWhiteSpace(customClientBase)) clientBase = customClientBase.Trim().TrimEnd('/');
+
+        var png = _campaignQrService.GeneratePngBytes(job.GoogleFormPublicUrl);
+        var webhookUrl = $"{apiBase}/api/applications/webhook-google-form";
+        var isPublic = !apiBase.Contains("localhost", StringComparison.OrdinalIgnoreCase)
+                       && !apiBase.Contains("127.0.0.1", StringComparison.OrdinalIgnoreCase);
+
+        return new CampaignQrDto
+        {
+            JobId = job.JobId,
+            JobTitle = job.Title,
+            Source = job.CampaignFormSource ?? "INTERNAL",
+            GoogleFormId = job.GoogleFormId,
+            FormUrl = job.GoogleFormPublicUrl,
+            FormEditUrl = job.GoogleFormEditUrl,
+            QrCodeDataUrl = "data:image/png;base64," + Convert.ToBase64String(png),
+            QrCodePath = job.QrCodeImagePath,
+            AppsScript = _campaignQrService.BuildWebhookAppsScript(job.JobId, apiBase),
+            PublicApiBaseUrl = apiBase,
+            PublicClientBaseUrl = clientBase,
+            WebhookUrl = webhookUrl,
+            WebhookSecret = secret,
+            IsUsingPublicUrl = isPublic
+        };
+    }
+
+    public async Task<CampaignQrDto> EnsureCampaignQrAsync(Guid jobId, bool forceRecreate = false, string? customApiBase = null, string? customClientBase = null)
+    {
+        var job = await _context.Jobs.FirstOrDefaultAsync(j => j.JobId == jobId && !j.IsDeleted)
+            ?? throw new KeyNotFoundException("Không tìm thấy tin tuyển dụng.");
+
+        var campaign = await _campaignQrService.CreateForJobAsync(job, forceRecreate, customApiBase, customClientBase);
+        await _context.SaveChangesAsync();
+        return campaign;
+    }
+
+    public async Task<CampaignQrDto> UpdatePublicConfigAndRegenerateAsync(Guid jobId, string? publicApiBaseUrl, string? publicClientBaseUrl, string? webhookSecret = null)
+    {
+        _campaignQrService.SetRuntimePublicConfig(publicApiBaseUrl, publicClientBaseUrl, webhookSecret);
+        return await EnsureCampaignQrAsync(jobId, forceRecreate: false, publicApiBaseUrl, publicClientBaseUrl);
     }
 
     /// <summary>
@@ -99,6 +184,15 @@ public class JobService : IJobService
             // Update 
             job.Title = request.Title;
             job.Description = request.Description;
+            if (request.DepartmentId.HasValue)
+            {
+                job.DepartmentId = request.DepartmentId;
+                var dept = await _context.Departments.FindAsync(request.DepartmentId.Value);
+                if (dept != null)
+                {
+                    job.Department = dept.DepartmentName;
+                }
+            }
             // 1. Kiểm tra không cho phép giảm số lượng cần tuyển xuống bé hơn số người đã HIRED
             if (request.NumberOfPositions.HasValue)
             {
@@ -326,6 +420,8 @@ public class JobService : IJobService
             JobId = j.JobId,
             Title = j.Title,
             CompanyName = sysCompanyName,
+            DepartmentId = j.DepartmentId,
+            DepartmentName = j.Department,
             SalaryMin = j.SalaryMin,
             SalaryMax = j.SalaryMax,
             Location = j.Location,
@@ -388,6 +484,8 @@ public class JobService : IJobService
         {
             JobId = job.JobId,
             Title = job.Title,
+            DepartmentId = job.DepartmentId,
+            DepartmentName = job.Department,
             CompanyName = sysCompanyName,
             SalaryMin = job.SalaryMin,
             SalaryMax = job.SalaryMax,
@@ -395,6 +493,7 @@ public class JobService : IJobService
             EmploymentType = job.EmploymentType,
             ExperienceLevel = job.ExperienceLevel,
             SeniorityLevel = job.SeniorityLevel,
+            Status = job.Status,
             Deadline = job.Deadline,
             CreatedDate = job.CreatedAt,
             Skills = job.JobSkillMaps.Select(jsm => jsm.Skill.Name).ToList(),
@@ -405,7 +504,12 @@ public class JobService : IJobService
             Requirements = job.Requirements,
             Benefits = job.Benefits,
             ContactEmail = job.CreatedByNavigation?.Email,
-            NumberOfPositions = job.NumberOfPositions
+            NumberOfPositions = job.NumberOfPositions,
+            CampaignFormSource = job.CampaignFormSource,
+            GoogleFormId = job.GoogleFormId,
+            GoogleFormPublicUrl = job.GoogleFormPublicUrl,
+            GoogleFormEditUrl = job.GoogleFormEditUrl,
+            QrCodeImagePath = job.QrCodeImagePath
         };
 
         Console.WriteLine($"[DEBUG] Returning DTO for job: {result.Title}");
@@ -527,6 +631,8 @@ public class JobService : IJobService
                 JobId = j.JobId,
                 Title = j.Title,
                 CompanyName = sysCompanyName,
+                DepartmentId = j.DepartmentId,
+                DepartmentName = j.Department,
                 CreatedByName = j.CreatedByNavigation != null ? j.CreatedByNavigation.FullName : null,
                 CreatedByRole = j.CreatedByNavigation != null && j.CreatedByNavigation.UserRoles.Any()
                     ? j.CreatedByNavigation.UserRoles.FirstOrDefault().Role.Name
@@ -545,7 +651,10 @@ public class JobService : IJobService
                 Skills = j.JobSkillMaps.Select(jsm => jsm.Skill.Name).ToList(),
                 // Audit Trail
                 ClosedByName = j.ClosedByName,
-                ClosedAt = j.ClosedAt
+                ClosedAt = j.ClosedAt,
+                CampaignFormSource = j.CampaignFormSource,
+                GoogleFormPublicUrl = j.GoogleFormPublicUrl,
+                QrCodeImagePath = j.QrCodeImagePath
             })
             .ToListAsync();
 

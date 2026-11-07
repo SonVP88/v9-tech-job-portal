@@ -15,6 +15,9 @@ GO
 
 USE [UTC_DATN];
 GO
+SET ANSI_NULLS ON;
+SET QUOTED_IDENTIFIER ON;
+GO
 
 -- 2. DỌN DẸP BẢNG CŨ THEO THỨ TỰ RÀNG BUỘC KHÓA NGOẠI (NẾU CẦN RESET TOÀN BỘ)
 -- Chạy khối này nếu bạn muốn khởi tạo lại sạch sẽ hoàn toàn từ đầu:
@@ -1239,6 +1242,12 @@ BEGIN
     ('20000000-0000-0000-0000-000000000005', 'CANDIDATE', N'Ứng Viên (Candidate)', SYSUTCDATETIME());
     PRINT N'✓ Đã nạp 5 Roles hệ thống';
 END
+ELSE IF NOT EXISTS (SELECT 1 FROM [dbo].[Roles] WHERE [Code] = 'CANDIDATE')
+BEGIN
+    INSERT INTO [dbo].[Roles] ([RoleId], [Code], [Name], [CreatedAt])
+    VALUES ('20000000-0000-0000-0000-000000000005', 'CANDIDATE', N'Ứng Viên (Candidate)', SYSUTCDATETIME());
+    PRINT N'✓ Đã nạp bổ sung Role CANDIDATE';
+END
 GO
 
 -- 11.3. Seed 5 Vòng tuyển dụng mặc định (PipelineStages)
@@ -1271,6 +1280,9 @@ END
 GO
 
 -- 11.5. Seed Kỹ năng chuẩn công nghiệp & CNTT (Skills)
+SET ANSI_NULLS ON;
+SET QUOTED_IDENTIFIER ON;
+GO
 IF NOT EXISTS (SELECT 1 FROM [dbo].[Skills])
 BEGIN
     INSERT INTO [dbo].[Skills] ([SkillId], [Name], [CreatedAt], [IsDeleted])
@@ -1308,6 +1320,9 @@ END
 GO
 
 -- 11.6. Seed Thẻ nhãn công việc (JobTags)
+SET ANSI_NULLS ON;
+SET QUOTED_IDENTIFIER ON;
+GO
 IF NOT EXISTS (SELECT 1 FROM [dbo].[JobTags])
 BEGIN
     INSERT INTO [dbo].[JobTags] ([TagId], [Name], [CreatedAt])
@@ -1381,6 +1396,22 @@ BEGIN
     ('30000000-0000-0000-0000-000000000062', 'kt.pv2@factory.com', @DefaultHash, N'Thái Văn Kỹ Sư Cơ Khí 2', '0901000062', 1, '10000000-0000-0000-0000-000000000007', '30000000-0000-0000-0000-000000000060', 'Local', SYSUTCDATETIME());
 
     PRINT N'✓ Đã nạp danh sách Users phân cấp';
+END
+GO
+
+-- Đảm bảo có tài khoản Super Admin admin@gmail.com
+IF NOT EXISTS (SELECT 1 FROM [dbo].[Users] WHERE [UserId] = '30000000-0000-0000-0000-000000000099')
+BEGIN
+    DECLARE @DefaultHashAdmin NVARCHAR(500) = N'$2a$11$A.p0vvc9334BjbAdCvkXIO883CvKFTO9G0.cs3Tjhgd.RxSpbZ6lu';
+    INSERT INTO [dbo].[Users] ([UserId], [Email], [PasswordHash], [FullName], [Phone], [IsActive], [DepartmentId], [ManagerId], [AuthProvider], [CreatedAt])
+    VALUES ('30000000-0000-0000-0000-000000000099', 'admin@gmail.com', @DefaultHashAdmin, N'Võ Văn Sơn (Super Admin)', '0965376312', 1, '10000000-0000-0000-0000-000000000001', NULL, 'Local', SYSUTCDATETIME());
+
+    IF NOT EXISTS (SELECT 1 FROM [dbo].[UserRoles] WHERE [UserId] = '30000000-0000-0000-0000-000000000099')
+    BEGIN
+        INSERT INTO [dbo].[UserRoles] ([UserId], [RoleId], [CreatedAt])
+        VALUES ('30000000-0000-0000-0000-000000000099', '20000000-0000-0000-0000-000000000001', SYSUTCDATETIME());
+    END
+    PRINT N'✓ Đã nạp bổ sung Super Admin admin@gmail.com';
 END
 GO
 
@@ -1511,7 +1542,22 @@ BEGIN
 END
 GO
 
+-- Đảm bảo constraint DEFAULT 0 cho IsDeleted
+IF NOT EXISTS (SELECT 1 FROM sys.default_constraints WHERE parent_object_id = OBJECT_ID('Jobs') AND col_name(parent_object_id, parent_column_id) = 'IsDeleted')
+BEGIN
+    ALTER TABLE [dbo].[Jobs] ADD CONSTRAINT [DF_Jobs_IsDeleted] DEFAULT (0) FOR [IsDeleted];
+END
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.default_constraints WHERE parent_object_id = OBJECT_ID('Candidates') AND col_name(parent_object_id, parent_column_id) = 'IsDeleted')
+BEGIN
+    ALTER TABLE [dbo].[Candidates] ADD CONSTRAINT [DF_Candidates_IsDeleted] DEFAULT (0) FOR [IsDeleted];
+END
+GO
+
 -- 11.11. Seed Một số Tin tuyển dụng mẫu thực tế (Jobs)
+SET ANSI_NULLS ON;
+SET QUOTED_IDENTIFIER ON;
+GO
 IF NOT EXISTS (SELECT 1 FROM [dbo].[Jobs])
 BEGIN
     DECLARE @uAdmin UNIQUEIDENTIFIER = '30000000-0000-0000-0000-000000000099';
@@ -1524,7 +1570,7 @@ BEGIN
     (
         [JobId], [Code], [Title], [Department], [DepartmentId], [Location], [EmploymentType],
         [ExperienceLevel], [SeniorityLevel], [SalaryMin], [SalaryMax], [Currency],
-        [Description], [Requirements], [Benefits], [NumberOfPositions], [Status], [CreatedBy], [CreatedAt]
+        [Description], [Requirements], [Benefits], [NumberOfPositions], [Status], [CreatedBy], [CreatedAt], [IsDeleted]
     )
     VALUES
     (
@@ -1546,7 +1592,8 @@ BEGIN
         3,
         N'OPEN',
         @uAdmin,
-        SYSUTCDATETIME()
+        SYSUTCDATETIME(),
+        0
     ),
     (
         '50000000-0000-0000-0000-000000000002',
@@ -1567,7 +1614,8 @@ BEGIN
         5,
         N'OPEN',
         @uAdmin,
-        SYSUTCDATETIME()
+        SYSUTCDATETIME(),
+        0
     ),
     (
         '50000000-0000-0000-0000-000000000003',
@@ -1588,7 +1636,8 @@ BEGIN
         15,
         N'OPEN',
         @uAdmin,
-        SYSUTCDATETIME()
+        SYSUTCDATETIME(),
+        0
     );
     PRINT N'✓ Đã nạp các Jobs mẫu';
 END

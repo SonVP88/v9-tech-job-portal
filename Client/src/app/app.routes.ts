@@ -7,6 +7,7 @@ import { MyApplications } from './pages/candidate/my-applications/my-application
 import { Dashboard } from './pages/hr/dashboard/dashboard';
 import { HrLayout } from './layouts/hr-layout/hr-layout';
 import { ManageApplications } from './pages/hr/manage-applications/manage-applications';
+import { ApplicationsManagementComponent } from './pages/hr/applications-management/applications-management.component';
 import { EmployeeManagement } from './pages/admin/employee-management/employee-management';
 import { ForbiddenComponent } from './pages/forbidden/forbidden.component';
 import { roleGuard } from './guards/role.guard';
@@ -113,11 +114,16 @@ export const routes: Routes = [
       // Hỗ trợ cả 2 route /applications và /manage-applications
       {
         path: 'applications',
-        component: ManageApplications,
+        component: ApplicationsManagementComponent,
         canActivate: [roleAccessGuard]
       },
       {
         path: 'applications/:jobId',
+        component: ApplicationsManagementComponent,
+        canActivate: [roleAccessGuard]
+      },
+      {
+        path: 'applications-legacy',
         component: ManageApplications,
         canActivate: [roleAccessGuard]
       },
@@ -217,6 +223,10 @@ export const routes: Routes = [
       },
       { path: '', redirectTo: 'dashboard', pathMatch: 'full' }
     ]
+  },
+  {
+    path: 'apply/:jobId',
+    loadComponent: () => import('./pages/public/qr-apply/qr-apply').then(m => m.QrApplyComponent)
   },
   { path: '', redirectTo: 'candidate/home', pathMatch: 'full' },
   { path: '**', redirectTo: 'candidate/home' }

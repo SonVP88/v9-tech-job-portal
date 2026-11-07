@@ -961,7 +961,7 @@ namespace UTC_DATN.Migrations
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<decimal?>("IntentConfidence")
-                        .HasColumnType("decimal(18,2)");
+                        .HasColumnType("decimal(18, 2)");
 
                     b.Property<string>("Message")
                         .IsRequired()
@@ -1618,6 +1618,10 @@ namespace UTC_DATN.Migrations
                     b.Property<string>("Benefits")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<string>("CampaignFormSource")
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
                     b.Property<DateTime?>("ClosedAt")
                         .HasColumnType("datetime2");
 
@@ -1666,6 +1670,18 @@ namespace UTC_DATN.Migrations
                     b.Property<string>("ExperienceLevel")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<string>("GoogleFormEditUrl")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<string>("GoogleFormId")
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<string>("GoogleFormPublicUrl")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
 
@@ -1675,6 +1691,10 @@ namespace UTC_DATN.Migrations
 
                     b.Property<int?>("NumberOfPositions")
                         .HasColumnType("int");
+
+                    b.Property<string>("QrCodeImagePath")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
 
                     b.Property<string>("Requirements")
                         .HasColumnType("nvarchar(max)");
@@ -2202,28 +2222,35 @@ namespace UTC_DATN.Migrations
                         .HasDefaultValueSql("(newid())");
 
                     b.Property<string>("AuthProvider")
-                        .HasColumnType("nvarchar(max)");
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasDefaultValue("Local");
 
                     b.Property<string>("AvatarUrl")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("CompanyAddress")
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
 
                     b.Property<string>("CompanyDescription")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("CompanyIndustry")
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
 
                     b.Property<string>("CompanyLogoUrl")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("CompanyName")
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
 
                     b.Property<string>("CompanyWebsite")
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
 
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
@@ -2248,7 +2275,8 @@ namespace UTC_DATN.Migrations
                         .HasDefaultValue(true);
 
                     b.Property<string>("LockReason")
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
 
                     b.Property<DateTime?>("LockedAt")
                         .HasColumnType("datetime2");
@@ -2257,7 +2285,8 @@ namespace UTC_DATN.Migrations
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("LockedByName")
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
 
                     b.Property<Guid?>("ManagerId")
                         .HasColumnType("uniqueidentifier");

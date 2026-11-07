@@ -1,4 +1,6 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using UTC_DATN.DTOs.Application;
 using UTC_DATN.DTOs.Job;
 using UTC_DATN.DTOs.Common;
 using UTC_DATN.Services.Interfaces;
@@ -10,10 +12,12 @@ namespace UTC_DATN.Controllers
     public class PublicJobsController : ControllerBase
     {
         private readonly IJobService _jobService;
+        private readonly IApplicationService _applicationService;
 
-        public PublicJobsController(IJobService jobService)
+        public PublicJobsController(IJobService jobService, IApplicationService applicationService)
         {
             _jobService = jobService;
+            _applicationService = applicationService;
         }
 
         /// <summary>
@@ -42,6 +46,52 @@ namespace UTC_DATN.Controllers
                 return StatusCode(500, new { message = "Lỗi hệ thống khi tìm kiếm việc làm", error = ex.Message });
             }
         }
+        [HttpGet("{id:guid}/qr-campaign")]
+        [AllowAnonymous]
+        public async Task<IActionResult> GetQrCampaignInfo(Guid id)
+        {
+            var job = await _jobService.GetJobByIdAsync(id);
+            if (job == null)
+                return NotFound(new { message = "Không tìm thấy chiến dịch tuyển dụng." });
+
+            return Ok(new PublicCampaignInfoDto
+            {
+                JobId = job.JobId,
+                Title = job.Title,
+                DepartmentName = job.DepartmentName,
+                Location = job.Location,
+                Deadline = job.Deadline,
+                IsOpen = string.Equals(job.Status, "OPEN", StringComparison.OrdinalIgnoreCase)
+            });
+        }
+
+        [HttpPost("{id:guid}/qr-apply")]
+        [AllowAnonymous]
+        public async Task<IActionResult> QrApply(Guid id, [FromBody] GoogleFormWebhookRequest request)
+        {
+            try
+            {
+            request.JobId = id;
+            var result = await _applicationService.ProcessGoogleFormWebhookAsync(request);
+            if (!result.Success)
+            {
+                if (result.IsDuplicate)
+                    return Conflict(new { success = false, message = result.Message, data = result });
+                return BadRequest(new { success = false, message = result.Message, data = result });
+            }
+
+            return Ok(new { success = true, message = result.Message, data = result });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { success = false, message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { success = false, message = "Không nhận được hồ sơ từ form QR.", detail = ex.Message });
+            }
+        }
+
         [HttpGet("stats")]
         public async Task<IActionResult> GetSystemStats()
         {

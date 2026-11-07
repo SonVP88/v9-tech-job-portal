@@ -10,10 +10,10 @@ namespace UTC_DATN.DTOs.Application;
 /// </summary>
 public class GoogleSheetCandidateDto
 {
-    [Required(ErrorMessage = "Họ và tên là bắt buộc")]
+    // Cho phép trích xuất động từ bất kỳ tên cột nào của Form/Sheet
     public string FullName { get; set; } = string.Empty;
 
-    [Required(ErrorMessage = "Số điện thoại là bắt buộc")]
+    // Cho phép trích xuất động SĐT hoặc dùng Email/định danh thay thế nếu Form không hỏi SĐT
     public string Phone { get; set; } = string.Empty;
 
     /// <summary>
@@ -40,6 +40,8 @@ public class GoogleSheetCandidateDto
     /// Email (nếu có thu thập, nếu không sẽ tự động sinh email danh danh)
     /// </summary>
     public string? Email { get; set; }
+    public string? CvUrl { get; set; }
+    public Dictionary<string, string> CustomFields { get; set; } = new();
 
     /// <summary>
     /// Helper chuyển đổi ShiftReady sang boolean linh hoạt
@@ -98,6 +100,7 @@ public class ImportedApplicationSummaryDto
     public string Status { get; set; } = string.Empty;
     public string StageName { get; set; } = string.Empty;
     public DateTime AppliedAt { get; set; }
+    public Dictionary<string, string> CustomFields { get; set; } = new();
 }
 
 /// <summary>
@@ -108,10 +111,10 @@ public class GoogleFormWebhookRequest
     [Required(ErrorMessage = "JobPostingId là bắt buộc")]
     public Guid JobId { get; set; }
 
-    [Required(ErrorMessage = "Họ và tên là bắt buộc")]
+    // Cho phép trích xuất động từ bất kỳ tên cột nào của Form/Sheet
     public string FullName { get; set; } = string.Empty;
 
-    [Required(ErrorMessage = "Số điện thoại là bắt buộc")]
+    // Cho phép trích xuất động SĐT hoặc dùng Email/định danh thay thế nếu Form không hỏi SĐT
     public string Phone { get; set; } = string.Empty;
 
     public string? YearOfBirth { get; set; }
@@ -119,6 +122,8 @@ public class GoogleFormWebhookRequest
     public string? ExperienceNotes { get; set; }
     public object? ShiftReady { get; set; }
     public string? Email { get; set; }
+    public string? CvUrl { get; set; }
+    public Dictionary<string, string> CustomFields { get; set; } = new();
 
     [JsonIgnore]
     public bool IsShiftReady
@@ -147,3 +152,45 @@ public class GoogleFormWebhookResultDto
     public string? Status { get; set; }
     public DateTime? AppliedAt { get; set; }
 }
+
+/// <summary>
+/// Request đồng bộ trực tiếp từ đường link Google Sheet
+/// </summary>
+public class SyncGoogleSheetRequest
+{
+    [Required(ErrorMessage = "JobId là bắt buộc")]
+    public Guid JobId { get; set; }
+
+    [Required(ErrorMessage = "Đường link Google Sheet không được để trống")]
+    public string SheetUrl { get; set; } = string.Empty;
+    public GoogleSheetColumnMappingDto? ColumnMapping { get; set; }
+}
+
+public class GoogleSheetColumnMappingDto
+{
+    public string? FullNameColumn { get; set; }
+    public string? PhoneColumn { get; set; }
+    public string? EmailColumn { get; set; }
+    public string? YearOfBirthColumn { get; set; }
+    public string? HometownColumn { get; set; }
+    public string? ExperienceColumn { get; set; }
+    public string? ShiftReadyColumn { get; set; }
+    public string? CvUrlColumn { get; set; }
+}
+
+public class GoogleSheetPreviewResultDto
+{
+    public List<string> Headers { get; set; } = new();
+    public Dictionary<string, string> SampleRow { get; set; } = new();
+    public List<Dictionary<string, string>> SampleRows { get; set; } = new();
+    public int TotalRows { get; set; }
+    public GoogleSheetColumnMappingDto SuggestedMapping { get; set; } = new();
+}
+
+public class PreviewGoogleSheetRequest
+{
+    [Required(ErrorMessage = "Đường link Google Sheet không được để trống")]
+    public string SheetUrl { get; set; } = string.Empty;
+
+}
+

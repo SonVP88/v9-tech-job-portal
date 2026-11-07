@@ -58,7 +58,9 @@
                 <thead class="text-xs text-gray-500 uppercase bg-gray-50 dark:bg-slate-900 dark:text-slate-400">
                     <tr>
                         <th class="px-6 py-4 font-bold">Tiêu Đề</th>
+                        <th class="px-6 py-4 font-bold">Phân Xưởng</th>
                         <th class="px-6 py-4 font-bold">Địa Điểm</th>
+                        <th class="px-6 py-4 font-bold">Hồ Sơ Tuyển</th>
                         <th class="px-6 py-4 font-bold">Mức Lương</th>
                         <th class="px-6 py-4 font-bold text-center">Tiến Độ</th>
                         <th class="px-6 py-4 font-bold">Ngày Đăng</th>
@@ -70,7 +72,7 @@
                 </thead>
                 <tbody class="divide-y divide-gray-100 dark:divide-slate-800">
                     <tr *ngIf="isLoading()">
-                        <td colspan="6" class="px-6 py-12">
+                        <td colspan="11" class="px-6 py-12">
                             <div class="flex flex-col items-center justify-center gap-4">
                                 <div
                                     class="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin">
@@ -92,11 +94,20 @@
                             <div class="text-xs text-gray-500 dark:text-slate-400 mt-0.5">{{ job.employmentType || 'Toàn
                                 thời gian' }}</div>
                         </td>
+                        <td class="px-6 py-4 text-slate-700 dark:text-slate-300">
+                            <span class="inline-flex items-center rounded-full bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300 px-3 py-1 text-xs font-semibold">
+                                {{ job.departmentName || 'Chưa gán phân xưởng' }}
+                            </span>
+                        </td>
                         <td class="px-6 py-4 text-slate-600 dark:text-slate-300">
                             <div class="flex items-center gap-1">
                                 <span class="material-symbols-outlined text-[16px] text-gray-400">location_on</span>
                                 {{ job.location || 'Remote' }}
                             </div>
+                        </td>
+                        <td class="px-6 py-4 text-xs text-slate-600 dark:text-slate-300">
+                            <div class="font-semibold text-slate-700 dark:text-slate-200">{{ job.seniorityLevel || 'Chưa chọn ca' }}</div>
+                            <div class="mt-0.5">{{ job.experienceLevel || 'Kinh nghiệm linh hoạt' }}</div>
                         </td>
                         <td class="px-6 py-4 font-medium text-slate-900 dark:text-white">
                             {{ formatSalary(job.salaryMin, job.salaryMax) }}
@@ -145,6 +156,11 @@
                         <td class="px-6 py-4 text-right">
                             <div
                                 class="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <button type="button" (click)="openCampaignQr(job)"
+                                    class="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg"
+                                    title="Google Form + QR">
+                                    <span class="material-symbols-outlined text-[20px]">qr_code_2</span>
+                                </button>
                                 <a [routerLink]="['/hr/manage-applications', job.jobId]"
                                     class="p-2 text-blue-600 hover:bg-blue-50 rounded-lg tooltip-trigger"
                                     title="Xem ứng viên">
@@ -175,7 +191,7 @@
                     </tr>
 
                     <tr *ngIf="!isLoading && filteredJobs.length === 0">
-                        <td colspan="6" class="px-6 py-12 text-center text-gray-500">
+                        <td colspan="11" class="px-6 py-12 text-center text-gray-500">
                             <div class="flex flex-col items-center gap-3">
                                 <div
                                     class="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center text-gray-400">
@@ -211,4 +227,10 @@
             </div>
         </div>
     </div>
+    <app-campaign-qr-modal
+        [campaign]="campaignQr"
+        [regenerating]="regeneratingQr"
+        (closed)="closeCampaignQr()"
+        (regenerate)="regenerateCampaignQr()">
+    </app-campaign-qr-modal>
 </div>

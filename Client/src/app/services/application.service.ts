@@ -226,4 +226,22 @@ export class ApplicationService {
     getAiScore(applicationId: string): Observable<ApiResponse<any>> {
         return this.http.get<ApiResponse<any>>(`${this.apiUrl}/applications/${applicationId}/ai-score`);
     }
+
+    /**
+     * Đồng bộ 1-click từ đường link Google Sheet công khai
+     */
+    syncGoogleSheets(jobId: string, sheetUrl: string, columnMapping?: any): Observable<any> {
+        return this.http.post<any>(`${this.apiUrl}/applications/sync-google-sheets`, { jobId, sheetUrl, columnMapping });
+    }
+
+    previewGoogleSheets(sheetUrl: string): Observable<any> {
+        return this.http.post<any>(`${this.apiUrl}/applications/preview-google-sheets`, { sheetUrl });
+    }
+
+    /**
+     * Gửi test ứng viên mẫu qua webhook để kiểm tra kết nối
+     */
+    testGoogleFormWebhook(payload: any): Observable<any> {
+        return this.http.post<any>(`${this.apiUrl}/applications/test-webhook`, payload);
+    }
 }

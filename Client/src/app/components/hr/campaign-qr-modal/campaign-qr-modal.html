@@ -1,0 +1,422 @@
+@if (campaign) {
+<div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 overflow-y-auto" (click)="closed.emit()">
+  <div class="w-full max-w-2xl max-h-[92vh] flex flex-col rounded-2xl bg-white dark:bg-slate-900 shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden"
+    (click)="$event.stopPropagation()">
+    
+    <!-- Modal Header -->
+    <div class="flex items-start justify-between gap-3 px-6 py-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/70">
+      <div>
+        <div class="flex items-center gap-2">
+          <span class="material-symbols-outlined text-primary text-2xl">qr_code_2</span>
+          <h3 class="text-lg font-bold text-slate-900 dark:text-white">Kênh Thu Hút & Đồng Bộ Ứng Viên</h3>
+        </div>
+        <p class="text-xs text-slate-500 mt-0.5 font-medium">{{ campaign.jobTitle }}</p>
+      </div>
+      <button type="button" class="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-200/50 dark:hover:bg-slate-800 transition" (click)="closed.emit()">
+        <span class="material-symbols-outlined text-xl">close</span>
+      </button>
+    </div>
+
+    <!-- Navigation Tabs -->
+    <div class="flex border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900 px-6 pt-2 gap-2 text-xs font-bold">
+      <button type="button" (click)="activeTab = 'qr'"
+        [class.border-primary]="activeTab === 'qr'" [class.text-primary]="activeTab === 'qr'"
+        [class.border-transparent]="activeTab !== 'qr'" [class.text-slate-500]="activeTab !== 'qr'"
+        class="pb-2.5 px-3 border-b-2 flex items-center gap-1.5 transition">
+        <span class="material-symbols-outlined text-base">qr_code</span>
+        1. Form & Mã QR
+      </button>
+
+      <button type="button" (click)="activeTab = 'sheet-sync'"
+        [class.border-emerald-600]="activeTab === 'sheet-sync'" [class.text-emerald-600]="activeTab === 'sheet-sync'"
+        [class.border-transparent]="activeTab !== 'sheet-sync'" [class.text-slate-500]="activeTab !== 'sheet-sync'"
+        class="pb-2.5 px-3 border-b-2 flex items-center gap-1.5 transition">
+        <span class="material-symbols-outlined text-base">table_view</span>
+        2. Đồng Bộ Google Sheet (Khuyên Dùng)
+      </button>
+
+      <button type="button" (click)="activeTab = 'webhook'"
+        [class.border-indigo-600]="activeTab === 'webhook'" [class.text-indigo-600]="activeTab === 'webhook'"
+        [class.border-transparent]="activeTab !== 'webhook'" [class.text-slate-500]="activeTab !== 'webhook'"
+        class="pb-2.5 px-3 border-b-2 flex items-center gap-1.5 transition">
+        <span class="material-symbols-outlined text-base">webhook</span>
+        3. Webhook Real-time (ngrok)
+      </button>
+    </div>
+
+    <!-- Modal Body -->
+    <div class="p-6 space-y-5 overflow-y-auto flex-1">
+
+      <!-- ==================== TAB 1: FORM & QR CODE ==================== -->
+      @if (activeTab === 'qr') {
+      <div class="space-y-4">
+        
+        <!-- Source Indicator Badge -->
+        <div class="flex items-center justify-between">
+          <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold"
+            [class.bg-emerald-50]="isGoogle" [class.text-emerald-700]="isGoogle" [class.border]="isGoogle" [class.border-emerald-200]="isGoogle"
+            [class.bg-blue-50]="!isGoogle" [class.text-blue-700]="!isGoogle" [class.border]="!isGoogle" [class.border-blue-200]="!isGoogle">
+            <span class="w-2 h-2 rounded-full" [class.bg-emerald-500]="isGoogle" [class.bg-blue-500]="!isGoogle"></span>
+            {{ isGoogle ? 'Đang trỏ tới: Google Form' : 'Đang trỏ tới: Form ứng tuyển web nội bộ ATS' }}
+          </span>
+        </div>
+
+        @if (campaign.warning) {
+        <div class="flex items-start gap-2.5 text-xs text-amber-800 bg-amber-50/90 border border-amber-200 rounded-xl p-3">
+          <span class="material-symbols-outlined text-base text-amber-600 mt-0.5 shrink-0">info</span>
+          <div>{{ campaign.warning }}</div>
+        </div>
+        }
+
+        <!-- QR Display & Actions -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 items-center bg-slate-50 dark:bg-slate-800/40 p-4 rounded-xl border border-slate-100 dark:border-slate-800">
+          <div class="flex flex-col items-center">
+            <img [src]="campaign.qrCodeDataUrl" alt="QR chiến dịch" class="w-48 h-48 rounded-xl border border-slate-200 bg-white p-2 shadow-sm" />
+            <span class="text-[11px] text-slate-500 text-center mt-2 font-medium">Mã QR dẫn tới form ứng tuyển</span>
+          </div>
+
+          <div class="space-y-3">
+            <div>
+              <label class="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">Đường link hiện tại:</label>
+              <div class="rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 px-3 py-2 text-xs font-mono break-all text-slate-600 dark:text-slate-300 select-all max-h-16 overflow-y-auto">
+                {{ campaign.formUrl }}
+              </div>
+            </div>
+
+            <div class="flex flex-wrap gap-2">
+              <a [href]="campaign.formUrl" target="_blank" rel="noopener"
+                class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold transition">
+                <span class="material-symbols-outlined text-base">open_in_new</span>
+                Mở Form
+              </a>
+              @if (campaign.formEditUrl) {
+              <a [href]="campaign.formEditUrl" target="_blank" rel="noopener"
+                class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition">
+                <span class="material-symbols-outlined text-base">edit</span>
+                Sửa Google Form
+              </a>
+              }
+              <button type="button" (click)="copyLink()"
+                class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition">
+                <span class="material-symbols-outlined text-base">content_copy</span>
+                {{ copied ? 'Đã copy' : 'Copy link' }}
+              </button>
+              <button type="button" (click)="downloadQr()"
+                class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition">
+                <span class="material-symbols-outlined text-base">download</span>
+                Tải QR
+              </button>
+              <button type="button" (click)="regenerate.emit()" [disabled]="regenerating"
+                class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition disabled:opacity-50">
+                <span class="material-symbols-outlined text-base" [class.animate-spin]="regenerating">refresh</span>
+                {{ regenerating ? 'Đang tạo...' : 'Tạo lại' }}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Custom Google Form Link Input -->
+        <div class="border border-slate-200 dark:border-slate-700 rounded-xl p-4 bg-slate-50 dark:bg-slate-800/40 space-y-3">
+          <div class="flex items-center gap-2">
+            <span class="material-symbols-outlined text-primary text-lg">edit_note</span>
+            <h4 class="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">Tùy Chỉnh Form Tuyển Dụng Ngay Trên Web</h4>
+          </div>
+          <p class="text-xs text-slate-500">
+            Nếu bạn đã tạo sẵn một Google Form riêng, chỉ cần dán đường link vào ô dưới đây để gán vào Job và tự động sinh lại mã QR:
+          </p>
+
+          <div class="flex gap-2">
+            <input type="text" [(ngModel)]="customFormUrl" placeholder="https://docs.google.com/forms/d/e/1FAIpQLSc.../viewform"
+              class="flex-1 text-xs font-mono rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary focus:outline-none" />
+            <button type="button" (click)="saveCustomFormUrl()" [disabled]="isSavingCustomForm || !customFormUrl.trim()"
+              class="px-4 py-2 rounded-lg bg-primary hover:bg-blue-700 text-white text-xs font-bold shrink-0 transition disabled:opacity-50">
+              {{ isSavingCustomForm ? 'Đang lưu...' : 'Lưu & Sinh QR' }}
+            </button>
+          </div>
+
+          @if (isGoogle) {
+          <div class="flex justify-end">
+            <button type="button" (click)="resetToInternalForm()" [disabled]="isSavingCustomForm"
+              class="text-xs text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 underline">
+              Quay lại dùng Form ứng tuyển nội bộ ATS
+            </button>
+          </div>
+          }
+        </div>
+
+      </div>
+      }
+
+      <!-- ==================== TAB 2: GOOGLE SHEET 1-CLICK SYNC ==================== -->
+      @if (activeTab === 'sheet-sync') {
+      <div class="space-y-4">
+        
+        <div class="border border-emerald-200 dark:border-emerald-900/60 bg-emerald-50/50 dark:bg-emerald-950/20 rounded-xl p-4 space-y-2">
+          <div class="flex items-center gap-2 text-emerald-800 dark:text-emerald-300 font-bold text-sm">
+            <span class="material-symbols-outlined text-emerald-600">sync_alt</span>
+            Đồng Bộ Dữ Liệu 1-Click Từ Google Sheet (Hoàn toàn trên Web)
+          </div>
+          <p class="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+            Phương án này <b>100% không cần bật ngrok</b>, <b>không cần Google Apps Script</b> và <b>không cần cài đặt trigger phức tạp</b>!
+            Khi có ứng viên điền form, Google Form tự lưu vào Google Sheet. Bạn chỉ cần dán link file Google Sheet đó vào ô dưới đây rồi bấm <b>Đồng bộ ứng viên</b>.
+          </p>
+        </div>
+
+        <div class="space-y-2">
+          <label class="text-xs font-bold text-slate-700 dark:text-slate-300 block">
+            Đường link file Google Sheets (Chứa danh sách câu trả lời của ứng viên):
+          </label>
+          <div class="flex gap-2">
+            <input type="text" [(ngModel)]="sheetUrl" placeholder="https://docs.google.com/spreadsheets/d/1BxiMVs0XRA5.../edit"
+              class="flex-1 text-xs font-mono rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2.5 text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:outline-none" />
+            <button type="button" (click)="loadSheetColumns()" [disabled]="isLoadingColumns || !sheetUrl.trim()"
+              class="px-3.5 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold shrink-0 transition flex items-center gap-1.5 disabled:opacity-50">
+              <span class="material-symbols-outlined text-base" [class.animate-spin]="isLoadingColumns">tune</span>
+              {{ isLoadingColumns ? 'Đang đọc cột...' : 'Cấu Hình Cột' }}
+            </button>
+            <button type="button" (click)="syncGoogleSheet()" [disabled]="isSyncingSheet || !sheetUrl.trim()"
+              class="px-5 py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shrink-0 transition flex items-center gap-1.5 disabled:opacity-50 shadow-sm">
+              <span class="material-symbols-outlined text-base" [class.animate-spin]="isSyncingSheet">sync</span>
+              {{ isSyncingSheet ? 'Đang đồng bộ...' : 'Đồng Bộ Ứng Viên' }}
+            </button>
+          </div>
+          <p class="text-[11px] text-slate-500 flex items-center gap-1">
+            <span class="material-symbols-outlined text-sm text-slate-400">info</span>
+            Lưu ý: File Google Sheet cần bật chia sẻ <b>"Bất kỳ ai có đường liên kết đều có thể xem (Viewer)"</b>. Hệ thống tự động nhận diện tiếng Việt có dấu / không dấu hoặc bạn có thể bấm <b>Cấu Hình Cột</b> để chọn cột tùy ý.
+          </p>
+        </div>
+
+        <!-- Configurable Column Mapping Box -->
+        @if (showColumnConfig && sheetHeaders.length > 0) {
+        <div class="border border-blue-200 dark:border-blue-800 bg-blue-50/40 dark:bg-blue-950/20 rounded-xl p-4 space-y-3">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-1.5 text-xs font-bold text-blue-800 dark:text-blue-300">
+              <span class="material-symbols-outlined text-base">view_column</span>
+              Cấu hình ánh xạ cột từ Google Sheet ({{ sheetHeaders.length }} cột, {{ sheetTotalRows }} dòng phản hồi)
+            </div>
+            <button type="button" (click)="showColumnConfig = false" class="text-[11px] text-slate-400 hover:text-slate-600">Ẩn</button>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+            <div>
+              <label class="font-semibold text-slate-700 dark:text-slate-300 block mb-1">Cột Họ và tên (*):</label>
+              <select [(ngModel)]="columnMapping.fullNameColumn"
+                class="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-2.5 py-1.5 text-xs">
+                <option value="">-- Tự động nhận diện --</option>
+                @for (h of sheetHeaders; track h) {
+                <option [value]="h">{{ h }} {{ sheetSampleRow[h] ? '(' + sheetSampleRow[h] + ')' : '' }}</option>
+                }
+              </select>
+            </div>
+
+            <div>
+              <label class="font-semibold text-slate-700 dark:text-slate-300 block mb-1">Cột Số điện thoại (*):</label>
+              <select [(ngModel)]="columnMapping.phoneColumn"
+                class="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-2.5 py-1.5 text-xs">
+                <option value="">-- Tự động nhận diện --</option>
+                @for (h of sheetHeaders; track h) {
+                <option [value]="h">{{ h }} {{ sheetSampleRow[h] ? '(' + sheetSampleRow[h] + ')' : '' }}</option>
+                }
+              </select>
+            </div>
+
+            <div>
+              <label class="font-semibold text-slate-700 dark:text-slate-300 block mb-1">Cột Email:</label>
+              <select [(ngModel)]="columnMapping.emailColumn"
+                class="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-2.5 py-1.5 text-xs">
+                <option value="">-- Tự động / Không bắt buộc --</option>
+                @for (h of sheetHeaders; track h) {
+                <option [value]="h">{{ h }} {{ sheetSampleRow[h] ? '(' + sheetSampleRow[h] + ')' : '' }}</option>
+                }
+              </select>
+            </div>
+
+            <div>
+              <label class="font-semibold text-slate-700 dark:text-slate-300 block mb-1">Cột Kinh nghiệm / Ghi chú:</label>
+              <select [(ngModel)]="columnMapping.experienceColumn"
+                class="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-2.5 py-1.5 text-xs">
+                <option value="">-- Tự động gom các cột phụ --</option>
+                @for (h of sheetHeaders; track h) {
+                <option [value]="h">{{ h }} {{ sheetSampleRow[h] ? '(' + sheetSampleRow[h] + ')' : '' }}</option>
+                }
+              </select>
+            </div>
+
+            <div>
+              <label class="font-semibold text-slate-700 dark:text-slate-300 block mb-1">Cột Địa chỉ / Quê quán:</label>
+              <select [(ngModel)]="columnMapping.hometownColumn"
+                class="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-2.5 py-1.5 text-xs">
+                <option value="">-- Tự động / Không bắt buộc --</option>
+                @for (h of sheetHeaders; track h) {
+                <option [value]="h">{{ h }} {{ sheetSampleRow[h] ? '(' + sheetSampleRow[h] + ')' : '' }}</option>
+                }
+              </select>
+            </div>
+
+            <div>
+              <label class="font-semibold text-slate-700 dark:text-slate-300 block mb-1">Cột Năm sinh / Ngày sinh:</label>
+              <select [(ngModel)]="columnMapping.yearOfBirthColumn"
+                class="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-2.5 py-1.5 text-xs">
+                <option value="">-- Tự động / Không bắt buộc --</option>
+                @for (h of sheetHeaders; track h) {
+                <option [value]="h">{{ h }} {{ sheetSampleRow[h] ? '(' + sheetSampleRow[h] + ')' : '' }}</option>
+                }
+              </select>
+            </div>
+          </div>
+
+          <p class="text-[11px] text-blue-700 dark:text-blue-300">
+            💡 Các cột câu hỏi khác trong Sheet (như Vị trí ứng tuyển, Ngày bắt đầu, Link CV...) sẽ tự động được lưu gộp vào hồ sơ ứng viên để không mất bất kỳ thông tin nào!
+          </p>
+        </div>
+        }
+
+        <!-- Sync Result Display -->
+        @if (syncResult) {
+        <div class="border border-emerald-200 dark:border-emerald-800 bg-emerald-50/70 dark:bg-emerald-950/30 rounded-xl p-4 space-y-3">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold text-emerald-800 dark:text-emerald-300 flex items-center gap-1">
+              <span class="material-symbols-outlined text-base">check_circle</span>
+              Kết quả đồng bộ vừa thực hiện:
+            </span>
+            <span class="text-xs text-slate-500">Tổng nhận: {{ syncResult.totalReceived }}</span>
+          </div>
+
+          <div class="grid grid-cols-3 gap-2 text-center text-xs">
+            <div class="bg-white dark:bg-slate-900 p-2.5 rounded-lg border border-emerald-100 dark:border-emerald-800">
+              <div class="text-lg font-bold text-emerald-600">{{ syncResult.importedCount }}</div>
+              <div class="text-[11px] text-slate-500">Hồ sơ mới</div>
+            </div>
+            <div class="bg-white dark:bg-slate-900 p-2.5 rounded-lg border border-slate-200 dark:border-slate-800">
+              <div class="text-lg font-bold text-amber-600">{{ syncResult.duplicateCount }}</div>
+              <div class="text-[11px] text-slate-500">Trùng SĐT</div>
+            </div>
+            <div class="bg-white dark:bg-slate-900 p-2.5 rounded-lg border border-slate-200 dark:border-slate-800">
+              <div class="text-lg font-bold text-slate-600">{{ syncResult.skippedCount }}</div>
+              <div class="text-[11px] text-slate-500">Bỏ qua / Lỗi</div>
+            </div>
+          </div>
+
+          @if (syncResult.importedApplications?.length > 0) {
+          <div class="space-y-1 mt-2">
+            <span class="text-[11px] font-bold text-slate-600 dark:text-slate-400">Danh sách ứng viên vừa thêm mới:</span>
+            <div class="max-h-36 overflow-y-auto space-y-1 text-xs font-mono">
+              @for (app of syncResult.importedApplications; track app.applicationId) {
+              <div class="bg-white dark:bg-slate-900 px-3 py-2 rounded border border-slate-200 dark:border-slate-800 space-y-1.5">
+                <div class="flex items-center justify-between">
+                  <span class="font-bold text-slate-800 dark:text-slate-200 font-sans">{{ app.fullName }}</span>
+                  <span class="text-slate-500">{{ app.phone }}</span>
+                  <span class="px-2 py-0.5 rounded text-[10px] bg-blue-50 text-blue-700 font-sans font-semibold">{{ app.stageName }}</span>
+                </div>
+                @if (app.customFields) {
+                <div class="flex flex-wrap gap-1 pt-1 border-t border-slate-100 dark:border-slate-800 font-sans">
+                  @for (field of app.customFields | keyvalue; track field.key) {
+                  <span class="inline-block px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-[10px] text-slate-600 dark:text-slate-300">
+                    <b>{{ field.key }}:</b> {{ field.value }}
+                  </span>
+                  }
+                </div>
+                }
+              </div>
+              }
+            </div>
+          </div>
+          }
+        </div>
+        }
+
+      </div>
+      }
+
+      <!-- ==================== TAB 3: WEBHOOK REAL-TIME (NGROK) ==================== -->
+      @if (activeTab === 'webhook') {
+      <div class="space-y-4">
+        
+        <!-- Ngrok URL Input -->
+        <div class="border border-indigo-200 dark:border-indigo-900/60 bg-indigo-50/40 dark:bg-indigo-950/20 rounded-xl p-4 space-y-3">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <span class="material-symbols-outlined text-indigo-600 dark:text-indigo-400">link</span>
+              <h4 class="text-sm font-bold text-slate-900 dark:text-white">Cấu hình URL Public (ngrok)</h4>
+            </div>
+            <span class="text-[11px] text-indigo-700 dark:text-indigo-300 font-medium bg-indigo-100/70 dark:bg-indigo-900/50 px-2.5 py-0.5 rounded-full">
+              Real-time Webhook
+            </span>
+          </div>
+
+          <div class="flex gap-2">
+            <input type="text" [(ngModel)]="ngrokApiUrl" placeholder="https://abc-123.ngrok-free.app"
+              class="flex-1 text-xs font-mono rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
+            <button type="button" (click)="applyNgrokConfig()" [disabled]="isApplyingNgrok"
+              class="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shrink-0 transition disabled:opacity-50">
+              {{ isApplyingNgrok ? 'Đang lưu...' : 'Áp Dụng ngrok' }}
+            </button>
+          </div>
+        </div>
+
+        <!-- Webhook Info Box -->
+        <div class="border border-slate-200 dark:border-slate-700 rounded-xl p-4 bg-slate-50 dark:bg-slate-800/40 space-y-3">
+          <div class="flex items-center justify-between">
+            <h4 class="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+              <span class="material-symbols-outlined text-sm text-primary">webhook</span>
+              Webhook Endpoint & Headers
+            </h4>
+            <button type="button" (click)="copyWebhookUrl()" class="text-xs text-primary hover:underline font-semibold flex items-center gap-1">
+              <span class="material-symbols-outlined text-sm">content_copy</span>
+              {{ copiedWebhook ? 'Đã copy URL' : 'Copy Webhook URL' }}
+            </button>
+          </div>
+
+          <div class="rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 px-3 py-2 text-xs font-mono break-all text-slate-700 dark:text-slate-200 select-all">
+            {{ campaign.webhookUrl || (campaign.publicApiBaseUrl + '/api/applications/webhook-google-form') }}
+          </div>
+
+          <!-- Quick Test Webhook Button -->
+          <div class="pt-2 border-t border-slate-200 dark:border-slate-700 flex flex-wrap items-center justify-between gap-2">
+            <div class="text-xs text-slate-500">Kiểm tra kết nối Webhook ngay trên giao diện ATS:</div>
+            <button type="button" (click)="sendTestWebhook()" [disabled]="isTestingWebhook"
+              class="px-3.5 py-1.5 rounded-lg border border-indigo-300 dark:border-indigo-700 bg-white dark:bg-slate-900 hover:bg-indigo-50 text-indigo-700 dark:text-indigo-300 text-xs font-bold transition flex items-center gap-1.5">
+              <span class="material-symbols-outlined text-sm">send</span>
+              {{ isTestingWebhook ? 'Đang bắn test...' : 'Bắn Thử 1 Ứng Viên Mẫu Qua Webhook' }}
+            </button>
+          </div>
+
+          @if (testResult) {
+          <div class="p-2.5 rounded-lg text-xs font-mono"
+            [class.bg-emerald-50]="testResult.success" [class.text-emerald-700]="testResult.success"
+            [class.bg-red-50]="!testResult.success" [class.text-red-700]="!testResult.success">
+            {{ testResult.success ? '✅ ' + testResult.message : '❌ ' + testResult.message }}
+          </div>
+          }
+        </div>
+
+        <!-- Google Apps Script Accordion/Box -->
+        @if (campaign.appsScript) {
+        <div class="border border-slate-200 dark:border-slate-700 rounded-xl p-4 bg-slate-900 text-slate-100 space-y-2">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold text-amber-400 uppercase tracking-wider">Mã Apps Script Đã Điền Sẵn Token & URL</span>
+            <button type="button" (click)="copyScript()"
+              class="inline-flex items-center gap-1 px-3 py-1 rounded bg-amber-500 hover:bg-amber-600 text-slate-900 font-bold text-xs transition">
+              <span class="material-symbols-outlined text-sm">content_copy</span>
+              {{ copiedScript ? 'Đã chép' : 'Copy Mã' }}
+            </button>
+          </div>
+          <pre class="max-h-40 overflow-auto rounded bg-slate-950 p-3 text-xs font-mono text-emerald-400 border border-slate-800 whitespace-pre-wrap select-all">{{ campaign.appsScript }}</pre>
+        </div>
+        }
+
+      </div>
+      }
+
+    </div>
+
+    <!-- Modal Footer -->
+    <div class="px-6 py-3 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 flex justify-end">
+      <button type="button" class="px-4 py-2 rounded-lg bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-xs font-bold text-slate-800 dark:text-slate-100 transition" (click)="closed.emit()">
+        Đóng
+      </button>
+    </div>
+
+  </div>
+</div>
+}

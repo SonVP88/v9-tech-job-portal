@@ -10,6 +10,10 @@ public class JobDetailDto
     public string Title { get; set; } = string.Empty;
     
     public string CompanyName { get; set; } = string.Empty; // Lấy từ User.FullName
+
+    public Guid? DepartmentId { get; set; }
+
+    public string? DepartmentName { get; set; }
     
     public decimal? SalaryMin { get; set; }
     
@@ -44,4 +48,10 @@ public class JobDetailDto
     public string? ContactEmail { get; set; } // Email liên hệ (từ User)
     
     public int? NumberOfPositions { get; set; } // Số lượng tuyển
+
+    public string? CampaignFormSource { get; set; }
+    public string? GoogleFormId { get; set; }
+    public string? GoogleFormPublicUrl { get; set; }
+    public string? GoogleFormEditUrl { get; set; }
+    public string? QrCodeImagePath { get; set; }
 }

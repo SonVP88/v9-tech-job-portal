@@ -88,5 +88,40 @@ namespace UTC_DATN.Controllers
                 return BadRequest(new { message = "Lỗi khi lấy danh sách phường/xã", error = ex.Message });
             }
         }
+
+        /// <summary>
+        /// Lấy danh sách các Phân xưởng / Phòng ban sản xuất trong hệ thống
+        /// </summary>
+        /// <returns>Danh sách phòng ban/phân xưởng</returns>
+        [HttpGet("departments")]
+        public async Task<IActionResult> GetDepartments()
+        {
+            try
+            {
+                var departments = await _masterDataService.GetDepartmentsAsync();
+                return Ok(departments);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = "Lỗi khi lấy danh sách phòng ban / phân xưởng", error = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Lấy danh sách ngày lễ Việt Nam theo năm
+        /// </summary>
+        [HttpGet("vietnam-holidays/{year}")]
+        public IActionResult GetVietnamHolidays(int year)
+        {
+            var holidays = new[]
+            {
+                "01-01", // Tết Dương Lịch
+                "17-02", "18-02", "19-02", "20-02", "21-02", "22-02", "23-02", // Tết Nguyên Đán
+                "30-04", // Ngày Giải phóng
+                "01-05", // Quốc tế Lao động
+                "02-09"  // Quốc khánh
+            };
+            return Ok(new { year, holidays });
+        }
     }
 }

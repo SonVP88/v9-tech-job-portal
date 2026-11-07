@@ -25,6 +25,13 @@ export interface Ward {
     provinceCode: number;
 }
 
+export interface DepartmentLookup {
+    departmentId: string;
+    departmentCode: string;
+    departmentName: string;
+    employeeCount: number;
+}
+
 @Injectable({
     providedIn: 'root'
 })
@@ -59,5 +66,12 @@ export class MasterDataService {
      */
     getWards(provinceCode: number): Observable<Ward[]> {
         return this.http.get<Ward[]>(`${this.apiUrl}/master-data/provinces/${provinceCode}/wards`);
+    }
+
+    /**
+     * Lấy danh sách phòng ban/phân xưởng để gắn chiến dịch tuyển dụng
+     */
+    getDepartments(): Observable<DepartmentLookup[]> {
+        return this.http.get<DepartmentLookup[]>(`${this.apiUrl}/master-data/departments`);
     }
 }

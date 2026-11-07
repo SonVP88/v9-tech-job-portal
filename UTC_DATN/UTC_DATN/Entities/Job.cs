@@ -64,6 +64,20 @@ public partial class Job
 
     public bool IsDeleted { get; set; }
 
+    /// <summary>Nguồn form chiến dịch: GOOGLE_FORM hoặc INTERNAL</summary>
+    public string CampaignFormSource { get; set; }
+
+    public string GoogleFormId { get; set; }
+
+    public string GoogleFormPublicUrl { get; set; }
+
+    public string GoogleFormEditUrl { get; set; }
+
+    public string QrCodeImagePath { get; set; }
+
+    /// <summary>Luồng tuyển dụng: 'PROFESSIONAL' (Khối Kỹ thuật/Văn phòng) | 'MASS_LABOR' (Khối Công nhân xưởng)</summary>
+    public string RecruitmentTrack { get; set; }
+
     public virtual ICollection<Application> Applications { get; set; } = new List<Application>();
 
     public virtual User CreatedByNavigation { get; set; }

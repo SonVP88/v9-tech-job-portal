@@ -186,5 +186,24 @@ namespace UTC_DATN.Services.Implements
                 return new List<WardDto>();
             }
         }
+
+        /// <summary>
+        /// Lấy danh sách các Phân xưởng / Phòng ban đang hoạt động
+        /// </summary>
+        public async Task<List<UTC_DATN.DTOs.Employee.DepartmentLookupDto>> GetDepartmentsAsync()
+        {
+            return await _context.Departments
+                .AsNoTracking()
+                .Where(d => d.IsActive)
+                .OrderBy(d => d.DepartmentName)
+                .Select(d => new UTC_DATN.DTOs.Employee.DepartmentLookupDto
+                {
+                    DepartmentId = d.DepartmentId,
+                    DepartmentCode = d.DepartmentCode,
+                    DepartmentName = d.DepartmentName,
+                    EmployeeCount = d.Users.Count(u => u.IsActive)
+                })
+                .ToListAsync();
+        }
     }
 }

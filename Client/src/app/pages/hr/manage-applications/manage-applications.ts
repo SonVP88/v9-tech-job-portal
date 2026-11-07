@@ -158,7 +158,7 @@ export class ManageApplications implements OnInit, OnDestroy {
   isOfferModalOpen = false;
   selectedCandidateForOffer: ApplicationDto | null = null;
 
-  private apiUrl = 'https://localhost:7181/api';
+  private apiUrl = '/api';
   private refreshInterval: any; // Auto-refresh timer
 
   // ==================== REFRESH CONFIGURATION ====================
@@ -168,6 +168,41 @@ export class ManageApplications implements OnInit, OnDestroy {
   private readonly REFRESH_INTERVAL_PROD = 15000; // 15 seconds - for production
 
   lastRefreshTime: Date | null = null; // For UI display
+
+  // ==================== GOOGLE SHEET 1-CLICK SYNC ====================
+  showSyncModal = false;
+  syncSheetUrl = '';
+  isSyncing = false;
+
+  openGoogleSheetSyncModal(): void {
+    this.showSyncModal = true;
+    this.syncSheetUrl = '';
+  }
+
+  closeGoogleSheetSyncModal(): void {
+    this.showSyncModal = false;
+  }
+
+  performGoogleSheetSync(): void {
+    if (!this.jobId || !this.syncSheetUrl.trim()) {
+      this.toast.warning('Thiếu link', 'Vui lòng dán link file Google Sheet.');
+      return;
+    }
+
+    this.isSyncing = true;
+    this.applicationService.syncGoogleSheets(this.jobId, this.syncSheetUrl.trim()).subscribe({
+      next: (res: any) => {
+        this.isSyncing = false;
+        this.showSyncModal = false;
+        this.toast.success('Đồng bộ thành công', res.message || 'Đã đồng bộ ứng viên từ Google Sheet!');
+        this.loadApplications();
+      },
+      error: (err: any) => {
+        this.isSyncing = false;
+        this.toast.error('Đồng bộ thất bại', err.error?.message || 'Không thể đồng bộ dữ liệu.');
+      }
+    });
+  }
 
   constructor(
     private applicationService: ApplicationService,
@@ -690,7 +725,7 @@ export class ManageApplications implements OnInit, OnDestroy {
     let url = app.cvUrl;
     if (!url.startsWith('http')) {
       const clean = url.startsWith('/') ? url.substring(1) : url;
-      url = `https://localhost:7181/${clean}`;
+      url = `/${clean}`;
     }
     if (url.startsWith('http://') && window.location.protocol === 'https:') {
       url = url.replace('http://', 'https://');

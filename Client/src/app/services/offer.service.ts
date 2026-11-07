@@ -19,7 +19,7 @@ export interface SendOfferLetterDto {
     providedIn: 'root'
 })
 export class OfferService {
-    private apiUrl = 'https://localhost:7181/api/offer';
+    private apiUrl = '/api/offer';
 
     constructor(private http: HttpClient) { }
 

@@ -7,6 +7,8 @@
 *.sln.docstates
 
 # Build results
+**/bin/
+**/obj/
 bin/
 obj/
 *.dll
@@ -18,12 +20,22 @@ node_modules/
 package-lock.json
 
 # Environment & Secrets (⚠️ CRITICAL - NEVER COMMIT)
+appsettings.json
 appsettings.Development.json
 appsettings.*.json
+**/appsettings.json
+**/appsettings.*.json
 .env
 .env.local
 .env.*.local
 secrets.json
+Secrets/
+**/Secrets/
+.cr/
+**/.cr/
+models.json
+plan.md
+**/plan.md
 # User Secrets - auto-generated from dotnet user-secrets
 */Properties/launchSettings.json
 
@@ -49,6 +61,13 @@ npm-debug.log*
 temp/
 tmp/
 *.tmp
+
+# Uploads runtime
+**/wwwroot/uploads/cvs/
+**/wwwroot/uploads/avatars/*
+!**/wwwroot/uploads/avatars/**/.gitkeep
+**/wwwroot/uploads/qrcodes/*
+!**/wwwroot/uploads/qrcodes/.gitkeep
 
 # OS
 .DS_Store

@@ -8,6 +8,11 @@ public class CreateJobRequest : IValidatableObject
     [StringLength(200, MinimumLength = 10, ErrorMessage = "Tên chức danh phải từ 10 đến 200 ký tự")]
     public string Title { get; set; } = string.Empty;
 
+    /// <summary>
+    /// Phòng ban / Phân xưởng tuyển dụng (PROD_LINE, QA_QC, WH_LOGS...)
+    /// </summary>
+    public Guid? DepartmentId { get; set; }
+
     [Required(ErrorMessage = "Mô tả công việc là bắt buộc")]
     [StringLength(4000, MinimumLength = 50, ErrorMessage = "Mô tả công việc phải từ 50 đến 4000 ký tự")]
     public string Description { get; set; } = string.Empty;
@@ -47,6 +52,11 @@ public class CreateJobRequest : IValidatableObject
     [Required]
     [MinLength(1, ErrorMessage = "Phải chọn ít nhất 1 kỹ năng")]
     public List<Guid> SkillIds { get; set; } = new List<Guid>();
+
+    /// <summary>
+    /// Tự tạo Google Form + mã QR khi đăng tin (mặc định bật)
+    /// </summary>
+    public bool CreateCampaignQr { get; set; } = true;
 
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
     {

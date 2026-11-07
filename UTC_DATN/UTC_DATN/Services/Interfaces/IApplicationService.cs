@@ -62,4 +62,10 @@ public interface IApplicationService
     /// Tiếp nhận dữ liệu thời gian thực từ Google Apps Script Webhook
     /// </summary>
     Task<GoogleFormWebhookResultDto> ProcessGoogleFormWebhookAsync(GoogleFormWebhookRequest request);
+
+    /// <summary>
+    /// Tự động đọc và đồng bộ hồ sơ ứng viên từ đường link Google Sheet công khai
+    /// </summary>
+    Task<ImportGoogleSheetsResultDto> SyncFromGoogleSheetUrlAsync(Guid jobId, string sheetUrlOrId, GoogleSheetColumnMappingDto? columnMapping = null);
+    Task<GoogleSheetPreviewResultDto> PreviewGoogleSheetUrlAsync(string sheetUrlOrId);
 }

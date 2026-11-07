@@ -59,7 +59,7 @@ export interface SkillDto {
     providedIn: 'root'
 })
 export class CandidateService {
-    private apiUrl = 'https://localhost:7181/api/candidate';
+    private apiUrl = '/api/candidate';
 
     constructor(private http: HttpClient) { }
 
@@ -69,8 +69,8 @@ export class CandidateService {
 
     getAllSkills(search?: string): Observable<SkillDto[]> {
         const url = search
-            ? `https://localhost:7181/api/master-data/skills?search=${encodeURIComponent(search)}`
-            : `https://localhost:7181/api/master-data/skills`;
+            ? `/api/master-data/skills?search=${encodeURIComponent(search)}`
+            : `/api/master-data/skills`;
         return this.http.get<SkillDto[]>(url);
     }
 
@@ -107,15 +107,15 @@ export class CandidateService {
     }
 
     changePassword(data: any): Observable<any> {
-        return this.http.post('https://localhost:7181/api/auth/change-password', data);
+        return this.http.post('/api/auth/change-password', data);
     }
 
     getNotificationSettings(): Observable<NotificationSettingDto> {
-        return this.http.get<NotificationSettingDto>('https://localhost:7181/api/notification-settings');
+        return this.http.get<NotificationSettingDto>('/api/notification-settings');
     }
 
     updateNotificationSettings(settings: NotificationSettingDto): Observable<NotificationSettingDto> {
-        return this.http.put<NotificationSettingDto>('https://localhost:7181/api/notification-settings', settings);
+        return this.http.put<NotificationSettingDto>('/api/notification-settings', settings);
     }
 }
 

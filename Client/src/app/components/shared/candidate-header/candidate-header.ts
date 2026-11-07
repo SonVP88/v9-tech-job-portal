@@ -110,7 +110,7 @@ export class CandidateHeaderComponent implements OnInit, OnDestroy {
             return url;
         }
         const clean = url.startsWith('/') ? url.slice(1) : url;
-        return `https://localhost:7181/${clean}`;
+        return `/${clean}`;
     }
 
     get roleLabel(): string {

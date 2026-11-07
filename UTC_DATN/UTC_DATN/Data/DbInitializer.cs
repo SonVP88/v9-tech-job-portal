@@ -8,10 +8,219 @@ namespace UTC_DATN.Data
         public static async Task InitializeAsync(UTC_DATNContext context)
         {
             await context.Database.EnsureCreatedAsync();
+            await EnsureIndustrialAtsSchemaAsync(context);
 
             await SeedDepartmentsAsync(context);
+            await SeedJobTypesAsync(context);
+            await SeedSkillsAsync(context);
+            await SeedPipelineStagesAsync(context);
             await SeedRolesAsync(context);
             await SeedUsersAsync(context);
+        }
+
+        private static async Task EnsureIndustrialAtsSchemaAsync(UTC_DATNContext context)
+        {
+            const string sql = @"
+IF COL_LENGTH('Jobs', 'RecruitmentTrack') IS NULL
+    ALTER TABLE Jobs ADD RecruitmentTrack NVARCHAR(50) NULL;
+
+IF COL_LENGTH('Applications', 'ApplicationSource') IS NULL
+    ALTER TABLE Applications ADD ApplicationSource NVARCHAR(50) NULL;
+
+IF COL_LENGTH('Applications', 'ScoringMethod') IS NULL
+    ALTER TABLE Applications ADD ScoringMethod NVARCHAR(50) NULL;
+
+IF COL_LENGTH('Applications', 'CvFileUrl') IS NULL
+    ALTER TABLE Applications ADD CvFileUrl NVARCHAR(500) NULL;
+
+IF COL_LENGTH('Applications', 'RawResumeText') IS NULL
+    ALTER TABLE Applications ADD RawResumeText NVARCHAR(MAX) NULL;
+
+IF COL_LENGTH('Applications', 'OralInterviewChecklistJson') IS NULL
+    ALTER TABLE Applications ADD OralInterviewChecklistJson NVARCHAR(MAX) NULL;
+";
+            try
+            {
+                await context.Database.ExecuteSqlRawAsync(sql);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[DbInitializer] Schema check warning: {ex.Message}");
+            }
+        }
+
+        private static async Task SeedJobTypesAsync(UTC_DATNContext context)
+        {
+            var defaults = new List<JobType>
+            {
+                new JobType
+                {
+                    JobTypeId = new Guid("40000000-0000-0000-0000-000000000001"),
+                    Name = "Toàn thời gian",
+                    Description = "Làm việc toàn thời gian theo ca hoặc hành chính"
+                },
+                new JobType
+                {
+                    JobTypeId = new Guid("40000000-0000-0000-0000-000000000002"),
+                    Name = "Theo ca",
+                    Description = "Làm việc theo ca sáng/chiều/đêm hoặc xoay ca"
+                },
+                new JobType
+                {
+                    JobTypeId = new Guid("40000000-0000-0000-0000-000000000003"),
+                    Name = "Thời vụ",
+                    Description = "Tuyển theo đợt cao điểm sản xuất"
+                },
+                new JobType
+                {
+                    JobTypeId = new Guid("40000000-0000-0000-0000-000000000004"),
+                    Name = "Hợp đồng ngắn hạn",
+                    Description = "Hợp đồng có thời hạn cho chiến dịch tuyển nhanh"
+                }
+            };
+
+            var existingNames = await context.JobTypes
+                .Select(x => x.Name.Trim().ToLower())
+                .ToListAsync();
+
+            var missing = defaults
+                .Where(x => !existingNames.Contains(x.Name.Trim().ToLower()))
+                .ToList();
+
+            if (!missing.Any()) return;
+
+            await context.JobTypes.AddRangeAsync(missing);
+            await context.SaveChangesAsync();
+            Console.WriteLine($"✓ Seeded {missing.Count} JobTypes mặc định");
+        }
+
+        private static async Task SeedSkillsAsync(UTC_DATNContext context)
+        {
+            var defaultSkillNames = new[]
+            {
+                "Lắp ráp điện tử",
+                "Đứng chuyền sản xuất",
+                "Vận hành máy",
+                "Đóng gói thành phẩm",
+                "Kiểm tra chất lượng",
+                "Kho vận nội bộ",
+                "An toàn lao động",
+                "5S công nghiệp",
+                "Sẵn sàng tăng ca",
+                "Làm việc xoay ca",
+                "Hàn cơ bản",
+                "May công nghiệp"
+            };
+
+            var existing = await context.Skills
+                .Select(x => x.NormalizedName)
+                .ToListAsync();
+
+            var now = DateTime.UtcNow;
+            var missing = new List<Skill>();
+
+            foreach (var name in defaultSkillNames)
+            {
+                var normalized = name.Trim().ToUpperInvariant();
+                if (existing.Contains(normalized))
+                {
+                    continue;
+                }
+
+                missing.Add(new Skill
+                {
+                    SkillId = Guid.NewGuid(),
+                    Name = name,
+                    NormalizedName = normalized,
+                    CreatedAt = now,
+                    IsDeleted = false
+                });
+            }
+
+            if (!missing.Any()) return;
+
+            await context.Skills.AddRangeAsync(missing);
+            await context.SaveChangesAsync();
+            Console.WriteLine($"✓ Seeded {missing.Count} Skills mặc định");
+        }
+
+        private static async Task SeedPipelineStagesAsync(UTC_DATNContext context)
+        {
+            var defaults = new List<PipelineStage>
+            {
+                new PipelineStage
+                {
+                    StageId = new Guid("50000000-0000-0000-0000-000000000001"),
+                    Code = "PENDING_REVIEW",
+                    Name = "Tiếp nhận hồ sơ",
+                    SortOrder = 1,
+                    IsTerminal = false,
+                    CreatedAt = DateTime.UtcNow,
+                    IsSlaEnabled = true,
+                    SlaMaxDays = 2,
+                    SlaWarnBeforeDays = 1
+                },
+                new PipelineStage
+                {
+                    StageId = new Guid("50000000-0000-0000-0000-000000000002"),
+                    Code = "SCREENING",
+                    Name = "Sàng lọc",
+                    SortOrder = 2,
+                    IsTerminal = false,
+                    CreatedAt = DateTime.UtcNow,
+                    IsSlaEnabled = true,
+                    SlaMaxDays = 3,
+                    SlaWarnBeforeDays = 1
+                },
+                new PipelineStage
+                {
+                    StageId = new Guid("50000000-0000-0000-0000-000000000003"),
+                    Code = "INTERVIEW",
+                    Name = "Phỏng vấn",
+                    SortOrder = 3,
+                    IsTerminal = false,
+                    CreatedAt = DateTime.UtcNow,
+                    IsSlaEnabled = true,
+                    SlaMaxDays = 3,
+                    SlaWarnBeforeDays = 1
+                },
+                new PipelineStage
+                {
+                    StageId = new Guid("50000000-0000-0000-0000-000000000004"),
+                    Code = "OFFER",
+                    Name = "Đề nghị nhận việc",
+                    SortOrder = 4,
+                    IsTerminal = false,
+                    CreatedAt = DateTime.UtcNow,
+                    IsSlaEnabled = true,
+                    SlaMaxDays = 2,
+                    SlaWarnBeforeDays = 1
+                },
+                new PipelineStage
+                {
+                    StageId = new Guid("50000000-0000-0000-0000-000000000005"),
+                    Code = "HIRED",
+                    Name = "Đã nhận việc",
+                    SortOrder = 5,
+                    IsTerminal = true,
+                    CreatedAt = DateTime.UtcNow,
+                    IsSlaEnabled = false
+                }
+            };
+
+            var existingCodes = await context.PipelineStages
+                .Select(x => x.Code.Trim().ToUpper())
+                .ToListAsync();
+
+            var missing = defaults
+                .Where(x => !existingCodes.Contains(x.Code.Trim().ToUpper()))
+                .ToList();
+
+            if (!missing.Any()) return;
+
+            await context.PipelineStages.AddRangeAsync(missing);
+            await context.SaveChangesAsync();
+            Console.WriteLine($"✓ Seeded {missing.Count} PipelineStages mặc định");
         }
 
         // ════════════════════════════════════════════════════════════════════════
@@ -19,8 +228,6 @@ namespace UTC_DATN.Data
         // ════════════════════════════════════════════════════════════════════════
         private static async Task SeedDepartmentsAsync(UTC_DATNContext context)
         {
-            if (await context.Departments.AnyAsync()) return;
-
             var departments = new List<Department>
             {
                 new Department
@@ -88,9 +295,20 @@ namespace UTC_DATN.Data
                 }
             };
 
-            await context.Departments.AddRangeAsync(departments);
-            await context.SaveChangesAsync();
-            Console.WriteLine("✓ Seeded 7 Departments (nhà máy công nghiệp)");
+            var existingCodes = await context.Departments
+                .Select(x => x.DepartmentCode.Trim().ToUpper())
+                .ToListAsync();
+
+            var missing = departments
+                .Where(x => !existingCodes.Contains(x.DepartmentCode.Trim().ToUpper()))
+                .ToList();
+
+            if (missing.Any())
+            {
+                await context.Departments.AddRangeAsync(missing);
+                await context.SaveChangesAsync();
+                Console.WriteLine($"✓ Seeded {missing.Count} Departments (nhà máy công nghiệp)");
+            }
         }
 
         private static async Task SeedRolesAsync(UTC_DATNContext context)

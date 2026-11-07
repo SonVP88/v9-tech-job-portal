@@ -12,6 +12,11 @@ var connectionString = builder.Configuration.GetConnectionString("UTC_DATNContex
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IMasterDataService, MasterDataService>();
 builder.Services.AddScoped<IJobService, JobService>();
+builder.Services.AddScoped<ICampaignQrService, CampaignQrService>();
+builder.Services.AddHttpClient("GoogleApis", client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(60);
+});
 builder.Services.AddScoped<IApplicationService, ApplicationService>();
 builder.Services.AddScoped<IAiMatchingService, AiMatchingService>();
 builder.Services.AddScoped<IEmailService, EmailService>();

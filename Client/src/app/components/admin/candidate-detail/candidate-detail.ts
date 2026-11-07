@@ -211,7 +211,7 @@ export class CandidateDetail implements OnInit {
     // Fix URL (giống candidate-profile.previewCV)
     if (!url.startsWith('http')) {
       const clean = url.startsWith('/') ? url.substring(1) : url;
-      url = `https://localhost:7181/${clean}`;
+      url = `/${clean}`;
     }
     if (url.startsWith('http://') && window.location.protocol === 'https:') {
       url = url.replace('http://', 'https://');
@@ -225,13 +225,13 @@ export class CandidateDetail implements OnInit {
     // Fix URL (giống candidate-profile.downloadCV)
     if (!url.startsWith('http')) {
       const clean = url.startsWith('/') ? url.substring(1) : url;
-      url = `https://localhost:7181/${clean}`;
+      url = `/${clean}`;
     }
     if (url.startsWith('http://') && window.location.protocol === 'https:') {
       url = url.replace('http://', 'https://');
     }
     if (url.includes('localhost:5000')) {
-      url = url.replace('localhost:5000', 'localhost:7181');
+      url = url.replace('localhost:5000', 'localhost:5222');
     }
 
     this.isDownloading.set(true);

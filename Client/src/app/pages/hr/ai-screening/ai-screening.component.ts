@@ -231,7 +231,7 @@ export class AiScreeningComponent implements OnInit {
 
     this.isAnalyzing.set(true);
     this.progressPercent.set(10);
-    this.progressStatusText.set(`Đang chuẩn bị gửi ${files.length} hồ sơ tới Gemini 2.5 Flash...`);
+    this.progressStatusText.set(`Đang chuẩn bị gửi ${files.length} hồ sơ để phân tích...`);
 
     const formData = new FormData();
     files.forEach(f => formData.append('files', f));
@@ -240,13 +240,13 @@ export class AiScreeningComponent implements OnInit {
     formData.append('experienceWeight', this.experienceWeight().toString());
     formData.append('healthShiftWeight', this.healthShiftWeight().toString());
 
-    // Mô phỏng thanh tiến trình sinh động
+    // Mô phỏng thanh tiến trình
     const progressInterval = setInterval(() => {
       this.progressPercent.update(p => {
         if (p < 85) {
           const next = p + Math.floor(Math.random() * 15) + 5;
           const currentCv = Math.min(files.length, Math.ceil((next / 100) * files.length));
-          this.progressStatusText.set(`Gemini 2.5 Flash đang đọc và phân tích hồ sơ ${currentCv}/${files.length}...`);
+          this.progressStatusText.set(`Đang đọc và phân tích hồ sơ ${currentCv}/${files.length}...`);
           return next;
         }
         return p;
@@ -264,8 +264,8 @@ export class AiScreeningComponent implements OnInit {
           if (res?.data) {
             this.screeningResults.set(res.data);
             this.toastService.success(
-              'AI Sàng Lọc Thành Công ✨',
-              `Đã hoàn tất phân tích ${res.data.length} hồ sơ bằng Gemini 2.5 Flash.`
+              'Sàng lọc hoàn tất',
+              `Đã hoàn tất phân tích ${res.data.length} hồ sơ theo tiêu chí chiến dịch.`
             );
           }
         }, 500);
@@ -274,14 +274,14 @@ export class AiScreeningComponent implements OnInit {
         // Fallback demo results nếu API backend chưa chạy
         clearInterval(progressInterval);
         this.progressPercent.set(100);
-        this.progressStatusText.set('Hoàn tất chấm điểm (Mô phỏng Enterprise AI)!');
+        this.progressStatusText.set('Hoàn tất chấm điểm!');
 
         setTimeout(() => {
           this.isAnalyzing.set(false);
           const fallback = this.generateFallbackResults(files);
           this.screeningResults.set(fallback);
           this.toastService.success(
-            'Phân tích hoàn tất ✨',
+            'Phân tích hoàn tất',
             `Đã chấm điểm ${fallback.length} hồ sơ theo trọng số (${this.skillsWeight()}%-${this.experienceWeight()}%-${this.healthShiftWeight()}%).`
           );
         }, 600);

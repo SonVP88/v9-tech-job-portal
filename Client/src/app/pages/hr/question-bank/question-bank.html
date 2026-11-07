@@ -6,20 +6,22 @@
       <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Quản lý và sinh câu hỏi phỏng vấn tự động bằng AI</p>
     </div>
     <button (click)="showGeneratePanel = !showGeneratePanel" type="button"
-      class="flex items-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 px-5 py-2.5 text-sm font-semibold text-white shadow-md transition-all">
-      <span class="material-symbols-outlined text-[18px]">auto_awesome</span>
-      {{ showGeneratePanel ? 'Ẩn panel AI' : '✨ Sinh câu hỏi bằng AI' }}
+      class="flex items-center gap-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 px-4 py-2 text-sm font-semibold text-white shadow-xs transition-all">
+      <span class="material-symbols-outlined text-[18px]">add_circle</span>
+      {{ showGeneratePanel ? 'Ẩn bộ tạo câu hỏi' : 'Tạo câu hỏi từ JD' }}
     </button>
   </div>
 
   <!-- AI Generate Panel -->
   <div *ngIf="showGeneratePanel"
-    class="rounded-2xl border border-dashed border-blue-300 dark:border-blue-700 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 p-6 space-y-4">
+    class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-5 space-y-4">
     <div class="flex items-center gap-2 mb-2">
-      <span class="text-2xl">🤖</span>
+      <div class="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold">
+        <span class="material-symbols-outlined text-[18px]">quiz</span>
+      </div>
       <div>
-        <p class="font-semibold text-blue-700 dark:text-blue-300">AI Question Generator</p>
-        <p class="text-xs text-blue-500">Chọn Job → AI tự đọc JD → sinh câu hỏi phù hợp → lưu vào ngân hàng</p>
+        <p class="font-semibold text-slate-800 dark:text-slate-200 text-sm">Gợi ý câu hỏi phỏng vấn theo vị trí</p>
+        <p class="text-xs text-slate-500">Chọn vị trí công việc để tự động tổng hợp bộ câu hỏi nghiệp vụ và kỹ năng tương ứng</p>
       </div>
     </div>
 
@@ -83,10 +85,10 @@
 
     <div class="flex justify-end pt-2">
       <button (click)="onAiGenerate()" [disabled]="isGenerating" type="button"
-        class="flex items-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 px-6 py-3 text-sm font-bold text-white shadow-lg transition-all disabled:opacity-60 disabled:cursor-not-allowed">
-        <span *ngIf="!isGenerating" class="material-symbols-outlined text-[20px]">psychology</span>
-        <span *ngIf="isGenerating" class="material-symbols-outlined text-[20px] animate-spin">progress_activity</span>
-        {{ isGenerating ? 'AI đang sinh câu hỏi...' : '🚀 Sinh & Lưu câu hỏi' }}
+        class="flex items-center gap-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 px-5 py-2.5 text-sm font-semibold text-white shadow-xs transition-all disabled:opacity-60 disabled:cursor-not-allowed">
+        <span *ngIf="!isGenerating" class="material-symbols-outlined text-[18px]">psychology</span>
+        <span *ngIf="isGenerating" class="material-symbols-outlined text-[18px] animate-spin">progress_activity</span>
+        {{ isGenerating ? 'Đang tạo câu hỏi...' : 'Tạo & Lưu câu hỏi' }}
       </button>
     </div>
 

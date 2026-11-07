@@ -33,7 +33,7 @@ export interface QuestionChoice {
   providedIn: 'root'
 })
 export class AssessmentService {
-  private apiUrl = 'http://localhost:7181/api/v2/assessment';
+  private apiUrl = '/api/v2/assessment';
 
   constructor(private http: HttpClient) {}
 
