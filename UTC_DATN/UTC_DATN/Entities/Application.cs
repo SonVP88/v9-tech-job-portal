@@ -2,6 +2,7 @@
 #nullable disable
 using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 
 namespace UTC_DATN.Entities;
 
@@ -28,32 +29,141 @@ public partial class Application
     /// <summary>
     /// Snapshot họ tên liên lạc tại thời điểm nộp hồ sơ (Historical Data Integrity)
     /// </summary>
-    public string? ContactName { get; set; }
+    public string ContactName { get; set; }
 
     /// <summary>
     /// Snapshot email liên lạc tại thời điểm nộp hồ sơ (Historical Data Integrity)
     /// </summary>
-    public string? ContactEmail { get; set; }
+    public string ContactEmail { get; set; }
 
     /// <summary>
     /// Snapshot số điện thoại tại thời điểm nộp hồ sơ (Historical Data Integrity)
     /// </summary>
-    public string? ContactPhone { get; set; }
+    public string ContactPhone { get; set; }
 
     /// <summary>Nguồn tiếp nhận: 'PDF_UPLOAD' | 'GOOGLE_FORM_QR' | 'WALK_IN'</summary>
-    public string? ApplicationSource { get; set; }
+    public string ApplicationSource { get; set; } = "PDF_UPLOAD";
 
     /// <summary>Phương thức chấm điểm: 'GEMINI_AI' | 'RULE_ENGINE'</summary>
-    public string? ScoringMethod { get; set; }
+    public string ScoringMethod { get; set; } = "GEMINI_AI";
 
     /// <summary>Đường dẫn file CV PDF (null nếu công nhân nộp qua QR Form hoặc Walk-in tại cổng)</summary>
-    public string? CvFileUrl { get; set; }
+    public string CvFileUrl { get; set; }
+
+    /// <summary>Số CCCD 12 số của ứng viên (Có Index)</summary>
+    public string CitizenId { get; set; }
+
+    /// <summary>SĐT chuẩn hóa dạng 09xxxxxxxx (Có Index)</summary>
+    public string PhoneNormalized { get; set; }
+
+    /// <summary>Số lần nộp trùng trong 60 ngày gần nhất</summary>
+    public int DuplicateCount { get; set; } = 1;
+
+    /// <summary>ID hồ sơ nộp trước đó (nếu có)</summary>
+    public int? PreviousApplicationId { get; set; }
+
+    /// <summary>Cờ đánh dấu ứng viên nằm trong danh sách đen (CandidateBlacklists)</summary>
+    public bool IsBlacklisted { get; set; } = false;
+
+    /// <summary>Ghi chú cảnh báo lý do cấm tuyển từ Blacklist</summary>
+    public string BlacklistWarningNote { get; set; }
+
+    /// <summary>Cờ báo file PDF scan dạng ảnh không đọc được lớp văn bản (< 50 ký tự)</summary>
+    public bool IsScannedOrUnparseablePdf { get; set; } = false;
 
     /// <summary>Nội dung text bóc từ PDF hoặc thông tin tờ khai công nhân từ Google Form</summary>
-    public string? RawResumeText { get; set; }
+    public string RawResumeText { get; set; }
+
+    /// <summary>Tóm tắt phân tích AI hoặc cảnh báo lỗi đọc file PDF scan</summary>
+    public string AiAnalysisSummary { get; set; }
+
+    /// <summary>Phiên bản bộ trọng số AI tại thời điểm chấm điểm</summary>
+    public int? AppliedScoringVersion { get; set; } = 1;
+
+    /// <summary>Snapshot JSON cấu hình trọng số lúc chấm điểm</summary>
+    public string AppliedScoringConfigJson { get; set; }
 
     /// <summary>JSON kết quả phỏng vấn miệng nhanh: HandEyePass, VisionPass, Shift12hConfirmed, AttitudePass, QuickNote</summary>
-    public string? OralInterviewChecklistJson { get; set; }
+    public string OralInterviewChecklistJson { get; set; }
+
+    /// <summary>Trạng thái Khám sức khỏe Onboarding: 'Pending' | 'Passed' | 'Failed'</summary>
+    public string MedicalCheckStatus { get; set; } = "Pending";
+
+    /// <summary>Số tài khoản ngân hàng nhận lương</summary>
+    public string BankAccountNumber { get; set; }
+
+    /// <summary>Tên ngân hàng</summary>
+    public string BankName { get; set; }
+
+    /// <summary>Đã hoàn tất hồ sơ giấy tờ tiếp nhận Onboarding</summary>
+    public bool OnboardingDocsCompleted { get; set; } = false;
+
+    /// <summary>Mã nhân viên chính thức sau khi tiếp nhận (VD: NV-2026-0001). Có Unique Index khi IS NOT NULL</summary>
+    public string ConvertedEmployeeCode { get; set; }
+
+    /// <summary>Hạn chót xử lý SLA của bước hiện tại</summary>
+    public DateTime? SlaDeadlineAt { get; set; }
+
+    /// <summary>Cờ đánh dấu hồ sơ đã bị quá hạn SLA và được duyệt thay (Escalated Override)</summary>
+    public bool IsSlaEscalated { get; set; } = false;
+
+    /// <summary>Lý do HR/Admin duyệt thay khi Quản đốc xưởng để quá hạn SLA</summary>
+    public string SlaOverrideReason { get; set; }
+
+    /// <summary>Ngày/Tháng/Năm sinh chính xác để tính tuổi lao động đến từng ngày</summary>
+    public DateTime? DateOfBirth { get; set; }
+
+    /// <summary>Cờ xác nhận đã ẩn SĐT/CCCD/Email trước khi gửi lên Gemini API</summary>
+    public bool IsPiiMaskedBeforeAi { get; set; } = true;
+
+    /// <summary>Điểm đánh giá chuyên môn thực tế khi phỏng vấn (tách biệt với AiMatchingScore)</summary>
+    public decimal? InterviewScore { get; set; }
+
+    /// <summary>Cờ đánh dấu HR/Quản đốc bác bỏ gợi ý AI (Human Override để vớt hoặc loại hồ sơ)</summary>
+    public bool IsAiOverriddenByHuman { get; set; } = false;
+
+    /// <summary>Lý do ghi đè kết quả AI</summary>
+    public string AiOverrideReason { get; set; }
+
+    /// <summary>Trạng thái Offer Letter: 'Not_Required' | 'Offer_Pending' | 'Offer_Sent' | 'Offer_Accepted' | 'Offer_Declined'</summary>
+    public string OfferStatus { get; set; } = "Not_Required";
+
+    /// <summary>Mức lương thỏa thuận trong Offer Letter cho khối PROFESSIONAL</summary>
+    public decimal? OfferedSalary { get; set; }
+
+    /// <summary>Lý do ứng viên từ chối Offer nếu có</summary>
+    public string OfferResponseNote { get; set; }
+
+    /// <summary>Lưu vết JobId cũ nếu ứng viên được điều chuyển từ phân xưởng khác sang</summary>
+    public Guid? TransferredFromJobId { get; set; }
+
+    /// <summary>Lý do điều chuyển phân xưởng</summary>
+    public string TransferReason { get; set; }
+
+    /// <summary>Cờ nhân viên cũ tái ứng tuyển (Ex-Employee Rehire)</summary>
+    public bool IsExEmployeeRehire { get; set; } = false;
+
+    /// <summary>Mã nhân viên cũ từng làm việc tại nhà máy</summary>
+    public string PreviousEmployeeCode { get; set; }
+
+    /// <summary>Số lần xin dời lịch phỏng vấn (Tối đa 2 lần)</summary>
+    public int InterviewRescheduleCount { get; set; } = 0;
+
+    /// <summary>Thời hạn hiệu lực Offer Letter (72h)</summary>
+    public DateTime? OfferExpiresAt { get; set; }
+
+    /// <summary>Cờ bảo lưu vào kho ứng viên tiềm năng (Talent Pool) khi chiến dịch đóng</summary>
+    public bool IsInTalentPool { get; set; } = false;
+
+    /// <summary>Đánh giá thử việc sau 30 ngày: 'Not_Started' | 'In_Probation' | 'Passed_30Days' | 'Early_Resigned'</summary>
+    public string Probation30DayStatus { get; set; } = "Not_Started";
+
+    /// <summary>Ca phỏng vấn tập trung</summary>
+    public int? InterviewBatchId { get; set; }
+
+    /// <summary>Khóa chống xung đột tương tranh (Optimistic Concurrency)</summary>
+    [Timestamp]
+    public byte[] RowVersion { get; set; }
 
     public virtual ICollection<ApplicationAiScore> ApplicationAiScores { get; set; } = new List<ApplicationAiScore>();
 

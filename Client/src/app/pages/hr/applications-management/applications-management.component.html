@@ -73,6 +73,16 @@
         </span>
       </button>
 
+      <button type="button" (click)="setTab('TALENT_POOL')"
+        class="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition"
+        [class]="activeTab() === 'TALENT_POOL' ? 'bg-cyan-600 text-white shadow-sm' : 'bg-cyan-50/70 dark:bg-cyan-950/30 text-cyan-800 dark:text-cyan-300 hover:bg-cyan-100'">
+        <span>💎 Kho ứng viên bảo lưu (Talent Pool)</span>
+        <span class="px-2 py-0.5 rounded-full text-[11px]"
+          [class]="activeTab() === 'TALENT_POOL' ? 'bg-white/20 text-white' : 'bg-cyan-100 dark:bg-cyan-900 text-cyan-900 dark:text-cyan-200'">
+          {{ counts().talentPool }}
+        </span>
+      </button>
+
       <button type="button" (click)="setTab('RULE_REJECTED')"
         class="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition"
         [class]="activeTab() === 'RULE_REJECTED' ? 'bg-rose-600 text-white shadow-sm' : 'bg-rose-50 dark:bg-rose-950/30 text-rose-700 dark:text-rose-300 hover:bg-rose-100'">
@@ -194,6 +204,49 @@
                     <span>NS: {{ app.yearOfBirth }}</span>
                     <span>•</span>
                     <span>{{ app.hometown }}</span>
+                  </div>
+
+                  <!-- Badges cảnh báo nghiệp vụ từ DB -->
+                  <div class="flex flex-wrap items-center gap-1 mt-1">
+                    @if (app.isBlacklisted) {
+                    <span class="px-2 py-0.5 rounded-md bg-rose-600 text-white font-bold text-[10px]"
+                      [title]="app.blacklistWarningNote || 'Ứng viên nằm trong danh sách đen'">
+                      🚫 Blacklist - Cấm tuyển
+                    </span>
+                    }
+                    @if (app.isExEmployeeRehire) {
+                    <span class="px-2 py-0.5 rounded-md bg-teal-100 dark:bg-teal-950 text-teal-800 dark:text-teal-300 border border-teal-400 font-bold text-[10px] shadow-xs inline-flex items-center gap-1"
+                      [title]="'Cựu nhân viên: ' + (app.previousEmployeeCode || 'N/A') + ' - Đã cộng 15 điểm ưu tiên tay nghề'">
+                      ⭐ Nhân viên cũ tái ứng tuyển - Đã có tay nghề {{ app.previousEmployeeCode ? '(' + app.previousEmployeeCode + ')' : '' }}
+                    </span>
+                    }
+                    @if (app.isInTalentPool || app.status === 'Saved_In_Talent_Pool') {
+                    <span class="px-2 py-0.5 rounded-md bg-cyan-100 dark:bg-cyan-950 text-cyan-800 dark:text-cyan-300 border border-cyan-400 font-bold text-[10px] inline-flex items-center gap-1">
+                      💎 Bảo lưu Talent Pool
+                    </span>
+                    }
+                    @if ((app.interviewRescheduleCount ?? 0) > 0) {
+                    <span class="px-2 py-0.5 rounded-md font-bold text-[10px]"
+                      [class]="(app.interviewRescheduleCount ?? 0) >= 3 ? 'bg-rose-100 text-rose-800 border border-rose-300' : 'bg-amber-100 text-amber-800 border border-amber-300'">
+                      🔄 Dời lịch: {{ app.interviewRescheduleCount }}/2
+                    </span>
+                    }
+                    @if (app.offerStatus === 'Offer_Expired') {
+                    <span class="px-2 py-0.5 rounded-md bg-rose-100 text-rose-800 border border-rose-300 font-bold text-[10px]">
+                      ⏰ Offer đã hết hạn 72h
+                    </span>
+                    }
+                    @if (app.isScannedOrUnparseablePdf) {
+                    <span class="px-2 py-0.5 rounded-md bg-orange-100 text-orange-800 border border-orange-300 font-bold text-[10px]"
+                      title="File PDF dạng ảnh scan không có lớp văn bản.">
+                      🖼️ PDF Scan Ảnh
+                    </span>
+                    }
+                    @if ((app.duplicateCount ?? 1) > 1) {
+                    <span class="px-2 py-0.5 rounded-md bg-yellow-100 text-yellow-800 border border-yellow-300 font-bold text-[10px]">
+                      ⚠️ Nộp trùng {{ app.duplicateCount }} lần
+                    </span>
+                    }
                   </div>
                 </div>
               </div>
@@ -464,7 +517,7 @@
         ➡️ Chuyển Quản đốc xưởng duyệt
       </button>
 
-      <button type="button" [disabled]="isProcessingBulk()" (click)="executeBulkAction('ScheduledInterview')"
+      <button type="button" [disabled]="isProcessingBulk()" (click)="openBatchInterviewModal()"
         class="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition disabled:opacity-50">
         📅 Xếp ca phỏng vấn hàng loạt
       </button>
@@ -852,6 +905,136 @@
           <button type="button" [disabled]="isSyncingSheet()" (click)="syncFromGoogleFormSheet()"
             class="px-5 py-2 rounded-xl bg-violet-600 hover:bg-violet-700 text-white font-extrabold">
             {{ isSyncingSheet() ? 'Đang đồng bộ...' : '🔄 Đồng Bộ Ngay' }}
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+  }
+
+  <!-- ==================== MODAL 3: XẾP CA PHỎNG VẤN TẬP TRUNG (BATCH INTERVIEWS) ==================== -->
+  @if (showBatchInterviewModal()) {
+  <div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/65 backdrop-blur-xs p-4" (click)="closeBatchInterviewModal()">
+    <div class="w-full max-w-2xl bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden" (click)="$event.stopPropagation()">
+      <!-- Modal Header -->
+      <div class="px-6 py-4 bg-indigo-700 text-white flex items-center justify-between">
+        <h3 class="text-base font-extrabold flex items-center gap-2">
+          <span>📅 Xếp Ca Phỏng Vấn Tập Trung (Batch Scheduling)</span>
+        </h3>
+        <button type="button" (click)="closeBatchInterviewModal()" class="text-white/80 hover:text-white text-lg">✕</button>
+      </div>
+
+      <div class="p-6 space-y-5 text-xs">
+        <!-- Thông báo ứng viên đã chọn -->
+        <div class="p-3.5 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800 flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span class="text-lg">👥</span>
+            <div>
+              <span class="font-bold text-slate-800 dark:text-slate-200">Số lượng ứng viên đã chọn:</span>
+              <span class="ml-2 px-2.5 py-0.5 rounded-full bg-indigo-600 text-white font-extrabold text-xs">
+                {{ selectedCount() }} người
+              </span>
+            </div>
+          </div>
+          <span class="text-[11px] text-slate-500">Sức chứa hội trường: 50 người / ca</span>
+        </div>
+
+        <!-- Cảnh báo tự động chia tách ca khi chọn > 50 người -->
+        @if (selectedCount() > 50) {
+        <div class="p-3.5 rounded-xl bg-amber-50 dark:bg-amber-950/60 border border-amber-300 dark:border-amber-700 text-amber-900 dark:text-amber-200 flex items-start gap-2.5">
+          <span class="text-lg shrink-0">⚠️</span>
+          <div>
+            <div class="font-bold">Cảnh báo vượt sức chứa hội trường:</div>
+            <p class="mt-0.5 leading-relaxed">
+              Bạn đang chọn <strong>{{ selectedCount() }} ứng viên</strong> (> 50 người/ca).
+              Hệ thống sẽ <strong>tự động chia tách thành các ca liên tiếp</strong>
+              (Ví dụ: 50 người Ca Sáng, 50 người Ca Chiều, phần còn lại ngày kế tiếp) để đảm bảo an ninh trật tự nhà máy và năng lực hội trường.
+            </p>
+          </div>
+        </div>
+        }
+
+        <!-- Thanh tiến độ sức chứa của từng ca đang mở (Capacity Progress Bars) -->
+        <div>
+          <label class="block font-bold text-slate-700 dark:text-slate-300 mb-2">
+            🏛️ Tình trạng sức chứa các Ca phỏng vấn hiện tại:
+          </label>
+          <div class="space-y-2.5">
+            @for (batch of activeInterviewBatches(); track batch.id) {
+            <div class="p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/60 space-y-1.5">
+              <div class="flex items-center justify-between font-bold text-slate-800 dark:text-slate-200">
+                <span class="inline-flex items-center gap-1.5 font-mono text-[11px]">
+                  📌 {{ batch.batchCode }} — {{ batch.shiftName }} ({{ batch.scheduledDate }})
+                </span>
+                <span class="text-[11px]"
+                  [class]="batch.currentCount >= 45 ? 'text-rose-600 dark:text-rose-400 font-extrabold' : 'text-teal-600 dark:text-teal-400 font-bold'">
+                  {{ batch.currentCount }}/{{ batch.maxCapacity }} chỗ
+                  {{ batch.currentCount >= 45 ? '(Gần đầy)' : '(Còn trống)' }}
+                </span>
+              </div>
+              <!-- Thanh tiến độ trực quan -->
+              <div class="w-full bg-slate-200 dark:bg-slate-700 h-2.5 rounded-full overflow-hidden">
+                <div class="h-full rounded-full transition-all duration-300"
+                  [style.width.%]="(batch.currentCount / batch.maxCapacity) * 100"
+                  [class]="batch.currentCount >= 45 ? 'bg-amber-500' : 'bg-teal-500'">
+                </div>
+              </div>
+            </div>
+            }
+          </div>
+        </div>
+
+        <!-- Form thiết lập ngày và ca bắt đầu -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+          <div>
+            <label class="block font-bold text-slate-700 dark:text-slate-300 mb-1">Ngày phỏng vấn bắt đầu:</label>
+            <input type="date" [ngModel]="batchInterviewDate()" (ngModelChange)="batchInterviewDate.set($event)"
+              class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-semibold" />
+          </div>
+
+          <div>
+            <label class="block font-bold text-slate-700 dark:text-slate-300 mb-1">Ca bắt đầu:</label>
+            <select [ngModel]="batchShiftSlot()" (ngModelChange)="batchShiftSlot.set($event)"
+              class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-semibold">
+              <option value="MORNING_08_11">Ca Sáng (08:00 - 11:30)</option>
+              <option value="AFTERNOON_13_17">Ca Chiều (13:30 - 17:00)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block font-bold text-slate-700 dark:text-slate-300 mb-1">Sức chứa tối đa / ca (Chống quá tải):</label>
+            <input type="number" [ngModel]="batchMaxCapacity()" (ngModelChange)="batchMaxCapacity.set($event)"
+              min="10" max="100"
+              class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold text-indigo-600" />
+          </div>
+
+          <div>
+            <label class="block font-bold text-slate-700 dark:text-slate-300 mb-1">Chống trùng lịch Người phỏng vấn:</label>
+            <select [ngModel]="batchInterviewerId()" (ngModelChange)="batchInterviewerId.set($event)"
+              class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-semibold">
+              <option value="">-- Tự động phân công / Chọn HR / Quản đốc --</option>
+              <option value="user-hr-01">Phạm Đình Sơn (HR Lead)</option>
+              <option value="user-mgr-02">Nguyễn Văn Bình (Quản đốc Xưởng SMT)</option>
+              <option value="user-eng-03">Trần Minh Hoàng (Trưởng nhóm Kỹ thuật PLC)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Nút hành động -->
+        <div class="flex items-center justify-end gap-2 pt-3 border-t border-slate-200 dark:border-slate-800">
+          <button type="button" (click)="closeBatchInterviewModal()"
+            class="px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 font-bold transition">
+            Đóng
+          </button>
+          <button type="button" [disabled]="isSchedulingBatches()" (click)="confirmScheduleBatches()"
+            class="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold shadow-md transition disabled:opacity-50 flex items-center gap-2">
+            @if (isSchedulingBatches()) {
+              <span>Đang chia ca...</span>
+            } @else {
+              <span>📅 Xác Nhận Xếp Ca &amp; Phân Bổ</span>
+            }
           </button>
         </div>
       </div>

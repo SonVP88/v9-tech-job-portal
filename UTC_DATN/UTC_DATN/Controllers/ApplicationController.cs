@@ -1,9 +1,11 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
 using UTC_DATN.Data;
 using UTC_DATN.DTOs.Application;
 using UTC_DATN.DTOs.Interview;
+using UTC_DATN.Services.Implements;
 using UTC_DATN.Services.Interfaces;
 
 namespace UTC_DATN.Controllers;
@@ -18,6 +20,7 @@ public class ApplicationController : ControllerBase
     private readonly UTC_DATNContext _context;
     private readonly IConfiguration _configuration;
     private readonly ICampaignQrService _campaignQrService;
+    private readonly IApplicationWorkflowGuardService _workflowGuard;
 
     public ApplicationController(
         IApplicationService applicationService,
@@ -25,7 +28,8 @@ public class ApplicationController : ControllerBase
         ILogger<ApplicationController> logger,
         UTC_DATNContext context,
         IConfiguration configuration,
-        ICampaignQrService campaignQrService)
+        ICampaignQrService campaignQrService,
+        IApplicationWorkflowGuardService workflowGuard)
     {
         _applicationService = applicationService;
         _interviewService = interviewService;
@@ -33,6 +37,7 @@ public class ApplicationController : ControllerBase
         _context = context;
         _configuration = configuration;
         _campaignQrService = campaignQrService;
+        _workflowGuard = workflowGuard;
     }
 
     /// <summary>
@@ -196,6 +201,12 @@ public class ApplicationController : ControllerBase
             {
                 return NotFound(new { success = false, message = "Không tìm thấy hồ sơ hoặc cập nhật thất bại" });
             }
+        }
+        catch (InvalidOperationException ex)
+        {
+            // Vi phạm Strict State Machine / điều kiện cứng trước Onboarding (Logic 4)
+            _logger.LogWarning(ex, "Chuyển trạng thái bị chặn cho hồ sơ ID: {Id}", id);
+            return BadRequest(new { success = false, message = ex.Message });
         }
         catch (Exception ex)
         {
@@ -364,13 +375,52 @@ public class ApplicationController : ControllerBase
                     a.CvFileUrl,
                     a.RawResumeText,
                     a.OralInterviewChecklistJson,
+                    a.CitizenId,
+                    a.PhoneNormalized,
+                    a.DuplicateCount,
+                    a.IsBlacklisted,
+                    a.BlacklistWarningNote,
+                    a.IsScannedOrUnparseablePdf,
+                    a.AiAnalysisSummary,
+                    a.AppliedScoringVersion,
+                    a.MedicalCheckStatus,
+                    a.BankAccountNumber,
+                    a.BankName,
+                    a.OnboardingDocsCompleted,
+                    a.ConvertedEmployeeCode,
+                    a.SlaDeadlineAt,
+                    a.IsSlaEscalated,
+                    a.SlaOverrideReason,
                     a.ResumeDocumentId,
                     ResumeFileUrl = a.ResumeDocument != null && a.ResumeDocument.File != null ? (a.ResumeDocument.File.Url ?? a.ResumeDocument.File.LocalPath) : null,
                     CandidateSummary = a.Candidate != null ? a.Candidate.Summary : null,
                     JobDepartmentId = a.Job.DepartmentId,
                     JobDepartmentName = a.Job.DepartmentNavigation != null ? a.Job.DepartmentNavigation.DepartmentName : a.Job.Department,
                     JobDepartmentCode = a.Job.DepartmentNavigation != null ? a.Job.DepartmentNavigation.DepartmentCode : "PROD_LINE",
-                    JobRecruitmentTrack = a.Job.RecruitmentTrack
+                    JobRecruitmentTrack = a.Job.RecruitmentTrack,
+                    JobCurrentScoringWeightVersion = a.Job.CurrentScoringWeightVersion,
+                    JobTargetQuantity = a.Job.TargetQuantity,
+                    JobHiredCount = a.Job.HiredCount,
+                    JobWaitlistBufferPercent = a.Job.WaitlistBufferPercent,
+                    JobRequireNightShift = a.Job.RequireNightShift,
+                    JobRequisitionStatus = a.Job.RequisitionStatus,
+                    a.DateOfBirth,
+                    a.IsPiiMaskedBeforeAi,
+                    a.InterviewScore,
+                    a.IsAiOverriddenByHuman,
+                    a.AiOverrideReason,
+                    a.OfferStatus,
+                    a.OfferedSalary,
+                    a.OfferResponseNote,
+                    a.TransferredFromJobId,
+                    a.TransferReason,
+                    a.IsExEmployeeRehire,
+                    a.PreviousEmployeeCode,
+                    a.InterviewRescheduleCount,
+                    a.OfferExpiresAt,
+                    a.IsInTalentPool,
+                    a.Probation30DayStatus,
+                    a.InterviewBatchId
                 })
                 .ToDictionaryAsync(x => x.ApplicationId);
 
@@ -395,6 +445,52 @@ public class ApplicationController : ControllerBase
                 app.DepartmentId = m.JobDepartmentId;
                 app.DepartmentName = m.JobDepartmentName;
                 app.DepartmentCode = m.JobDepartmentCode;
+
+                // 7 Business Rules Metadata & Score Versioning (Logic 3)
+                app.CitizenId = m.CitizenId;
+                app.PhoneNormalized = m.PhoneNormalized;
+                app.DuplicateCount = m.DuplicateCount > 0 ? m.DuplicateCount : 1;
+                app.IsBlacklisted = m.IsBlacklisted;
+                app.BlacklistWarningNote = m.BlacklistWarningNote;
+                app.IsScannedOrUnparseablePdf = m.IsScannedOrUnparseablePdf;
+                app.AiAnalysisSummary = m.AiAnalysisSummary;
+                app.AppliedScoringVersion = m.AppliedScoringVersion ?? 1;
+                app.CurrentScoringWeightVersion = m.JobCurrentScoringWeightVersion > 0 ? m.JobCurrentScoringWeightVersion : 1;
+                app.IsOutdatedScore = (m.AppliedScoringVersion ?? 1) < app.CurrentScoringWeightVersion;
+                app.MedicalCheckStatus = m.MedicalCheckStatus ?? "Pending";
+                app.BankAccountNumber = m.BankAccountNumber;
+                app.BankName = m.BankName;
+                app.OnboardingDocsCompleted = m.OnboardingDocsCompleted;
+                app.ConvertedEmployeeCode = m.ConvertedEmployeeCode;
+                app.SlaDeadlineAt = m.SlaDeadlineAt ?? app.SlaDueAt;
+                app.IsSlaEscalated = m.IsSlaEscalated;
+                app.SlaOverrideReason = m.SlaOverrideReason;
+                app.JobTargetQuantity = m.JobTargetQuantity > 0 ? m.JobTargetQuantity : (app.JobNumberOfPositions ?? 50);
+                app.JobHiredCount = m.JobHiredCount;
+                app.JobWaitlistBufferPercent = m.JobWaitlistBufferPercent > 0 ? m.JobWaitlistBufferPercent : 15;
+
+                // V3 Enterprise Compliance Metadata
+                app.DateOfBirth = m.DateOfBirth;
+                app.IsPiiMaskedBeforeAi = m.IsPiiMaskedBeforeAi;
+                app.InterviewScore = m.InterviewScore;
+                app.IsAiOverriddenByHuman = m.IsAiOverriddenByHuman;
+                app.AiOverrideReason = m.AiOverrideReason;
+                app.OfferStatus = m.OfferStatus ?? "Not_Required";
+                app.OfferedSalary = m.OfferedSalary;
+                app.OfferResponseNote = m.OfferResponseNote;
+                app.TransferredFromJobId = m.TransferredFromJobId;
+                app.TransferReason = m.TransferReason;
+                app.JobRequireNightShift = m.JobRequireNightShift;
+                app.JobRequisitionStatus = m.JobRequisitionStatus;
+
+                // V5 Factory & HR Operations Complete
+                app.IsExEmployeeRehire = m.IsExEmployeeRehire;
+                app.PreviousEmployeeCode = m.PreviousEmployeeCode;
+                app.InterviewRescheduleCount = m.InterviewRescheduleCount;
+                app.OfferExpiresAt = m.OfferExpiresAt;
+                app.IsInTalentPool = m.IsInTalentPool;
+                app.Probation30DayStatus = m.Probation30DayStatus ?? "Not_Started";
+                app.InterviewBatchId = m.InterviewBatchId;
             }
         }
 
@@ -722,6 +818,56 @@ public class ApplicationController : ControllerBase
         {
             _logger.LogError(ex, "Lỗi khi xử lý quick-walkin-eval");
             return StatusCode(500, new { success = false, message = "Lỗi khi lưu đánh giá phỏng vấn miệng.", detail = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Logic 6: POST /api/applications/{id}/sla-override
+    /// Duyệt thay khi Quản đốc xưởng để quá hạn SLA (chỉ dành cho HR_TEAM hoặc SuperAdmin/ADMIN)
+    /// </summary>
+    [HttpPost("{id}/sla-override")]
+    [Authorize]
+    public async Task<IActionResult> SlaOverride(Guid id, [FromBody] SlaOverrideRequestDto request)
+    {
+        try
+        {
+            Guid? actorUserId = null;
+            var actorClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            if (!string.IsNullOrEmpty(actorClaim) && Guid.TryParse(actorClaim, out var parsedActor))
+                actorUserId = parsedActor;
+
+            var roles = User.FindAll(System.Security.Claims.ClaimTypes.Role).Select(r => r.Value.ToUpperInvariant()).ToList();
+            bool isHrOrAdmin = roles.Contains("ADMIN") || roles.Contains("SUPERADMIN") || roles.Contains("HR") || roles.Contains("HR_TEAM") || roles.Contains("STAFF");
+
+            var (success, message, updatedApp) = await _workflowGuard.SlaOverrideApproveAsync(
+                id,
+                request?.SlaOverrideReason ?? string.Empty,
+                request?.TargetStatus ?? "ScheduledInterview",
+                actorUserId,
+                isHrOrAdmin);
+
+            if (!success)
+            {
+                return BadRequest(new { success = false, message });
+            }
+
+            return Ok(new
+            {
+                success = true,
+                message,
+                data = new
+                {
+                    applicationId = updatedApp?.ApplicationId,
+                    status = updatedApp?.Status,
+                    isSlaEscalated = updatedApp?.IsSlaEscalated,
+                    slaOverrideReason = updatedApp?.SlaOverrideReason
+                }
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Lỗi khi thực hiện sla-override cho Application {Id}", id);
+            return StatusCode(500, new { success = false, message = "Có lỗi xảy ra khi duyệt thay quá hạn SLA.", detail = ex.Message });
         }
     }
 
@@ -1100,4 +1246,121 @@ public class ApplicationController : ControllerBase
     }
 
     #endregion
+
+    #region V3 Enterprise Compliance Endpoints (Human Override, Offer Letter, Transfer Job)
+
+    /// <summary>
+    /// Ghi đè kết quả AI (Human Override): Vớt hồ sơ điểm AI thấp vào phỏng vấn hoặc loại hồ sơ ảo
+    /// </summary>
+    [HttpPost("{id}/override-ai")]
+    [Authorize]
+    public async Task<IActionResult> OverrideAi(Guid id, [FromBody] OverrideAiRequestDto request)
+    {
+        if (request == null || string.IsNullOrWhiteSpace(request.OverrideReason))
+            return BadRequest(new { success = false, message = "Lý do ghi đè kết quả AI (Human Override) là bắt buộc." });
+
+        var actorClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        Guid.TryParse(actorClaim, out Guid actorId);
+
+        var (success, message) = await _workflowGuard.OverrideAiAsync(
+            id, request.OverrideToPassed, request.OverrideReason, request.NewStatus, actorId != Guid.Empty ? actorId : null);
+
+        if (!success)
+            return BadRequest(new { success = false, message });
+
+        return Ok(new { success = true, message });
+    }
+
+    /// <summary>
+    /// Gửi Offer Letter & Chốt lương thỏa thuận (Dành cho khối PROFESSIONAL sau khi phỏng vấn đạt)
+    /// </summary>
+    [HttpPost("{id}/send-offer")]
+    [Authorize]
+    public async Task<IActionResult> SendOffer(Guid id, [FromBody] SendOfferRequestDto request)
+    {
+        if (request == null || request.OfferedSalary <= 0)
+            return BadRequest(new { success = false, message = "Mức lương thỏa thuận (OfferedSalary) phải lớn hơn 0." });
+
+        var actorClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        Guid.TryParse(actorClaim, out Guid actorId);
+
+        var (success, message) = await _workflowGuard.SendOfferAsync(
+            id, request.OfferedSalary, request.Note, actorId != Guid.Empty ? actorId : null);
+
+        if (!success)
+            return BadRequest(new { success = false, message });
+
+        return Ok(new { success = true, message });
+    }
+
+    /// <summary>
+    /// Ứng viên / HR ghi nhận kết quả phản hồi Offer Letter (Đồng ý hoặc Từ chối)
+    /// </summary>
+    [HttpPost("{id}/respond-offer")]
+    [Authorize]
+    public async Task<IActionResult> RespondOffer(Guid id, [FromBody] RespondOfferRequestDto request)
+    {
+        if (request == null)
+            return BadRequest(new { success = false, message = "Dữ liệu phản hồi Offer không hợp lệ." });
+
+        var (success, message) = await _workflowGuard.RespondOfferAsync(
+            id, request.Accepted, request.ResponseNote);
+
+        if (!success)
+            return BadRequest(new { success = false, message });
+
+        return Ok(new { success = true, message });
+    }
+
+    /// <summary>
+    /// Điều chuyển ứng viên sang phân xưởng / chiến dịch khác (Cross-Department Transfer)
+    /// </summary>
+    [HttpPost("{id}/transfer-job")]
+    [Authorize]
+    public async Task<IActionResult> TransferJob(Guid id, [FromBody] TransferJobRequestDto request)
+    {
+        if (request == null || request.TargetJobId == Guid.Empty)
+            return BadRequest(new { success = false, message = "Vui lòng chọn chiến dịch/phân xưởng đích để điều chuyển." });
+
+        if (string.IsNullOrWhiteSpace(request.TransferReason))
+            return BadRequest(new { success = false, message = "Lý do điều chuyển phân xưởng không được để trống." });
+
+        var actorClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        Guid.TryParse(actorClaim, out Guid actorId);
+
+        var (success, message) = await _workflowGuard.TransferJobAsync(
+            id, request.TargetJobId, request.TransferReason, actorId != Guid.Empty ? actorId : null);
+
+        if (!success)
+            return BadRequest(new { success = false, message });
+
+        return Ok(new { success = true, message });
+    }
+
+    #endregion
+}
+
+public class OverrideAiRequestDto
+{
+    public bool OverrideToPassed { get; set; } = true;
+    public string OverrideReason { get; set; } = string.Empty;
+    public string? NewStatus { get; set; }
+}
+
+public class SendOfferRequestDto
+{
+    public decimal OfferedSalary { get; set; }
+    public string? Note { get; set; }
+}
+
+public class RespondOfferRequestDto
+{
+    public bool Accepted { get; set; } = true;
+    public string? ResponseNote { get; set; }
+}
+
+public class TransferJobRequestDto
+{
+    public Guid TargetJobId { get; set; }
+    public string TransferReason { get; set; } = string.Empty;
 }

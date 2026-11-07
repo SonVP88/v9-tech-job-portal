@@ -155,7 +155,7 @@ export const routes: Routes = [
       // Tiếp nhận & Onboarding mới
       {
         path: 'onboarding',
-        loadComponent: () => import('./pages/hr/onboarding/onboarding.component').then(m => m.OnboardingComponent),
+        loadComponent: () => import('./pages/hr/onboarding/onboarding-management.component').then(m => m.OnboardingManagementComponent),
         canActivate: [roleAccessGuard]
       },
       // Kho nhân tài (Talent Pool) - đổi từ /candidates

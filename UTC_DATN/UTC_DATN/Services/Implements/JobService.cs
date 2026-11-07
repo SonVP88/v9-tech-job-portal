@@ -57,7 +57,16 @@ public class JobService : IJobService
                 SeniorityLevel = request.SeniorityLevel,
                 Deadline = request.Deadline,
                 CreatedBy = userId,
-                Status = "OPEN",
+                RequestedByUserId = userId,
+                RecruitmentTrack = request.RecruitmentTrack ?? "PROFESSIONAL",
+                TargetQuantity = request.TargetQuantity > 0 ? request.TargetQuantity : 50,
+                HiredCount = 0,
+                WaitlistBufferPercent = 15,
+                CurrentScoringWeightVersion = 1,
+                RequireNightShift = request.RequireNightShift,
+                RequisitionNote = request.RequisitionNote,
+                RequisitionStatus = request.RequisitionStatus ?? "Approved",
+                Status = (request.RequisitionStatus == "Pending_Approval") ? "PENDING_APPROVAL" : "OPEN",
                 CreatedAt = DateTime.UtcNow,
                 IsDeleted = false
             };
@@ -334,6 +343,28 @@ public class JobService : IJobService
     }
 
     /// <summary>
+    /// Phê duyệt định biên ngân sách chiến dịch (RequisitionStatus = 'Approved')
+    /// </summary>
+    public async Task<bool> ApproveRequisitionAsync(Guid id, Guid approverUserId)
+    {
+        var job = await _context.Jobs.FindAsync(id);
+        if (job == null || job.IsDeleted)
+        {
+            return false;
+        }
+
+        job.RequisitionStatus = "Approved";
+        job.ApprovedByUserId = approverUserId;
+        job.ApprovedAt = DateTime.UtcNow;
+        job.Status = "OPEN";
+        job.UpdatedAt = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync();
+        _logger.LogInformation("✅ Job {JobId} ({Title}) requisition approved by user {UserId}", job.JobId, job.Title, approverUserId);
+        return true;
+    }
+
+    /// <summary>
     /// Sinh mã Code duy nhất theo format: JOB-{yyyyMMdd}-{RandomString}
     /// </summary>
     private async Task<string> GenerateUniqueJobCodeAsync()
@@ -509,7 +540,20 @@ public class JobService : IJobService
             GoogleFormId = job.GoogleFormId,
             GoogleFormPublicUrl = job.GoogleFormPublicUrl,
             GoogleFormEditUrl = job.GoogleFormEditUrl,
-            QrCodeImagePath = job.QrCodeImagePath
+            QrCodeImagePath = job.QrCodeImagePath,
+
+            RecruitmentTrack = job.RecruitmentTrack ?? "PROFESSIONAL",
+            TargetQuantity = job.TargetQuantity > 0 ? job.TargetQuantity : (job.NumberOfPositions ?? 50),
+            HiredCount = job.HiredCount,
+            WaitlistBufferPercent = job.WaitlistBufferPercent > 0 ? job.WaitlistBufferPercent : 15,
+            CurrentScoringWeightVersion = job.CurrentScoringWeightVersion > 0 ? job.CurrentScoringWeightVersion : 1,
+            GoogleFormUrl = job.GoogleFormUrl,
+            RequisitionStatus = job.RequisitionStatus ?? "Approved",
+            RequestedByUserId = job.RequestedByUserId,
+            ApprovedByUserId = job.ApprovedByUserId,
+            ApprovedAt = job.ApprovedAt,
+            RequisitionNote = job.RequisitionNote,
+            RequireNightShift = job.RequireNightShift
         };
 
         Console.WriteLine($"[DEBUG] Returning DTO for job: {result.Title}");

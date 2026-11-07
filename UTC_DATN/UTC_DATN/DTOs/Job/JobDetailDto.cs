@@ -54,4 +54,17 @@ public class JobDetailDto
     public string? GoogleFormPublicUrl { get; set; }
     public string? GoogleFormEditUrl { get; set; }
     public string? QrCodeImagePath { get; set; }
+
+    public string RecruitmentTrack { get; set; } = "PROFESSIONAL";
+    public int TargetQuantity { get; set; } = 50;
+    public int HiredCount { get; set; } = 0;
+    public int WaitlistBufferPercent { get; set; } = 15;
+    public int CurrentScoringWeightVersion { get; set; } = 1;
+    public string? GoogleFormUrl { get; set; }
+    public string RequisitionStatus { get; set; } = "Approved";
+    public Guid? RequestedByUserId { get; set; }
+    public Guid? ApprovedByUserId { get; set; }
+    public DateTime? ApprovedAt { get; set; }
+    public string? RequisitionNote { get; set; }
+    public bool RequireNightShift { get; set; } = false;
 }

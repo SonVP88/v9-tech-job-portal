@@ -85,14 +85,25 @@
                     <tr *ngFor="let job of paginatedJobs()"
                         class="hover:bg-gray-50 dark:hover:bg-slate-800/50 transition-colors group">
                         <td class="px-6 py-4">
-                            <div class="font-bold text-slate-900 dark:text-white text-base">
-                                {{ job.title }}
+                            <div class="font-bold text-slate-900 dark:text-white text-base flex flex-wrap items-center gap-1.5">
+                                <span>{{ job.title }}</span>
                                 <span *ngIf="job.status === 'CLOSED'"
-                                    class="ml-2 px-2 py-0.5 text-xs rounded bg-gray-200 text-gray-600 dark:bg-slate-700 dark:text-gray-300">Đã
-                                    đóng</span>
+                                    class="px-2 py-0.5 text-xs rounded bg-gray-200 text-gray-600 dark:bg-slate-700 dark:text-gray-300">Đã đóng</span>
+                                <span *ngIf="job.requisitionStatus === 'Pending_Approval'"
+                                    class="px-2 py-0.5 text-xs rounded-full bg-amber-100 text-amber-800 font-bold border border-amber-300">
+                                    ⏳ Chờ duyệt định biên
+                                </span>
+                                <span *ngIf="job.requisitionStatus === 'Approved'"
+                                    class="px-2 py-0.5 text-xs rounded-full bg-emerald-100 text-emerald-800 font-bold border border-emerald-300">
+                                    ✅ Đã duyệt định biên
+                                </span>
+                                <span *ngIf="job.requireNightShift"
+                                    class="px-2 py-0.5 text-xs rounded-full bg-purple-100 text-purple-800 font-bold border border-purple-200"
+                                    title="Công việc bắt buộc làm ca đêm (22h-06h), chặn ứng viên dưới 18 tuổi">
+                                    🌙 Ca đêm
+                                </span>
                             </div>
-                            <div class="text-xs text-gray-500 dark:text-slate-400 mt-0.5">{{ job.employmentType || 'Toàn
-                                thời gian' }}</div>
+                            <div class="text-xs text-gray-500 dark:text-slate-400 mt-0.5">{{ job.employmentType || 'Toàn thời gian' }}</div>
                         </td>
                         <td class="px-6 py-4 text-slate-700 dark:text-slate-300">
                             <span class="inline-flex items-center rounded-full bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300 px-3 py-1 text-xs font-semibold">
@@ -156,6 +167,14 @@
                         <td class="px-6 py-4 text-right">
                             <div
                                 class="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <button *ngIf="job.requisitionStatus === 'Pending_Approval'"
+                                    type="button"
+                                    (click)="onApproveRequisition(job.jobId)"
+                                    class="px-2 py-1 text-xs font-bold rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1 shadow-sm transition"
+                                    title="Phê duyệt định biên ngân sách cho chiến dịch này">
+                                    <span class="material-symbols-outlined text-[16px]">verified</span>
+                                    Duyệt
+                                </button>
                                 <button type="button" (click)="openCampaignQr(job)"
                                     class="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg"
                                     title="Google Form + QR">

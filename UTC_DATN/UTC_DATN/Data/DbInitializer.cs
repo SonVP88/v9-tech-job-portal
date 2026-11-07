@@ -21,23 +21,122 @@ namespace UTC_DATN.Data
         private static async Task EnsureIndustrialAtsSchemaAsync(UTC_DATNContext context)
         {
             const string sql = @"
+IF OBJECT_ID('dbo.CandidateBlacklists', 'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.CandidateBlacklists
+    (
+        Id              INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_CandidateBlacklists PRIMARY KEY,
+        CitizenId       NVARCHAR(20)      NULL,
+        PhoneNormalized NVARCHAR(20)      NULL,
+        FullName        NVARCHAR(150)     NOT NULL,
+        Reason          NVARCHAR(500)     NOT NULL,
+        BanType         NVARCHAR(50)      NOT NULL CONSTRAINT DF_CandidateBlacklists_BanType DEFAULT ('PERMANENT'),
+        BannedUntil     DATETIME2         NULL,
+        CreatedBy       NVARCHAR(100)     NULL,
+        CreatedAt       DATETIME2         NOT NULL CONSTRAINT DF_CandidateBlacklists_CreatedAt DEFAULT (SYSUTCDATETIME())
+    );
+    CREATE INDEX IX_CandidateBlacklists_CitizenId ON dbo.CandidateBlacklists(CitizenId) WHERE CitizenId IS NOT NULL;
+    CREATE INDEX IX_CandidateBlacklists_PhoneNormalized ON dbo.CandidateBlacklists(PhoneNormalized) WHERE PhoneNormalized IS NOT NULL;
+END;
+
 IF COL_LENGTH('Jobs', 'RecruitmentTrack') IS NULL
-    ALTER TABLE Jobs ADD RecruitmentTrack NVARCHAR(50) NULL;
+    ALTER TABLE Jobs ADD RecruitmentTrack NVARCHAR(30) NOT NULL DEFAULT ('PROFESSIONAL');
+
+IF COL_LENGTH('Jobs', 'TargetQuantity') IS NULL
+    ALTER TABLE Jobs ADD TargetQuantity INT NOT NULL DEFAULT (50);
+
+IF COL_LENGTH('Jobs', 'HiredCount') IS NULL
+    ALTER TABLE Jobs ADD HiredCount INT NOT NULL DEFAULT (0);
+
+IF COL_LENGTH('Jobs', 'WaitlistBufferPercent') IS NULL
+    ALTER TABLE Jobs ADD WaitlistBufferPercent INT NOT NULL DEFAULT (15);
+
+IF COL_LENGTH('Jobs', 'CurrentScoringWeightVersion') IS NULL
+    ALTER TABLE Jobs ADD CurrentScoringWeightVersion INT NOT NULL DEFAULT (1);
+
+IF COL_LENGTH('Jobs', 'GoogleFormUrl') IS NULL
+    ALTER TABLE Jobs ADD GoogleFormUrl NVARCHAR(500) NULL;
 
 IF COL_LENGTH('Applications', 'ApplicationSource') IS NULL
-    ALTER TABLE Applications ADD ApplicationSource NVARCHAR(50) NULL;
+    ALTER TABLE Applications ADD ApplicationSource NVARCHAR(30) NOT NULL DEFAULT ('PDF_UPLOAD');
 
 IF COL_LENGTH('Applications', 'ScoringMethod') IS NULL
-    ALTER TABLE Applications ADD ScoringMethod NVARCHAR(50) NULL;
+    ALTER TABLE Applications ADD ScoringMethod NVARCHAR(30) NOT NULL DEFAULT ('GEMINI_AI');
 
 IF COL_LENGTH('Applications', 'CvFileUrl') IS NULL
     ALTER TABLE Applications ADD CvFileUrl NVARCHAR(500) NULL;
 
+IF COL_LENGTH('Applications', 'CitizenId') IS NULL
+    ALTER TABLE Applications ADD CitizenId NVARCHAR(20) NULL;
+
+IF COL_LENGTH('Applications', 'PhoneNormalized') IS NULL
+    ALTER TABLE Applications ADD PhoneNormalized NVARCHAR(20) NULL;
+
+IF COL_LENGTH('Applications', 'DuplicateCount') IS NULL
+    ALTER TABLE Applications ADD DuplicateCount INT NOT NULL DEFAULT (1);
+
+IF COL_LENGTH('Applications', 'PreviousApplicationId') IS NULL
+    ALTER TABLE Applications ADD PreviousApplicationId INT NULL;
+
+IF COL_LENGTH('Applications', 'IsBlacklisted') IS NULL
+    ALTER TABLE Applications ADD IsBlacklisted BIT NOT NULL DEFAULT (0);
+
+IF COL_LENGTH('Applications', 'BlacklistWarningNote') IS NULL
+    ALTER TABLE Applications ADD BlacklistWarningNote NVARCHAR(500) NULL;
+
+IF COL_LENGTH('Applications', 'IsScannedOrUnparseablePdf') IS NULL
+    ALTER TABLE Applications ADD IsScannedOrUnparseablePdf BIT NOT NULL DEFAULT (0);
+
 IF COL_LENGTH('Applications', 'RawResumeText') IS NULL
     ALTER TABLE Applications ADD RawResumeText NVARCHAR(MAX) NULL;
 
+IF COL_LENGTH('Applications', 'AiAnalysisSummary') IS NULL
+    ALTER TABLE Applications ADD AiAnalysisSummary NVARCHAR(MAX) NULL;
+
+IF COL_LENGTH('Applications', 'AppliedScoringVersion') IS NULL
+    ALTER TABLE Applications ADD AppliedScoringVersion INT NULL DEFAULT (1);
+
+IF COL_LENGTH('Applications', 'AppliedScoringConfigJson') IS NULL
+    ALTER TABLE Applications ADD AppliedScoringConfigJson NVARCHAR(MAX) NULL;
+
 IF COL_LENGTH('Applications', 'OralInterviewChecklistJson') IS NULL
     ALTER TABLE Applications ADD OralInterviewChecklistJson NVARCHAR(MAX) NULL;
+
+IF COL_LENGTH('Applications', 'MedicalCheckStatus') IS NULL
+    ALTER TABLE Applications ADD MedicalCheckStatus NVARCHAR(30) NOT NULL DEFAULT ('Pending');
+
+IF COL_LENGTH('Applications', 'BankAccountNumber') IS NULL
+    ALTER TABLE Applications ADD BankAccountNumber NVARCHAR(50) NULL;
+
+IF COL_LENGTH('Applications', 'BankName') IS NULL
+    ALTER TABLE Applications ADD BankName NVARCHAR(100) NULL;
+
+IF COL_LENGTH('Applications', 'OnboardingDocsCompleted') IS NULL
+    ALTER TABLE Applications ADD OnboardingDocsCompleted BIT NOT NULL DEFAULT (0);
+
+IF COL_LENGTH('Applications', 'ConvertedEmployeeCode') IS NULL
+    ALTER TABLE Applications ADD ConvertedEmployeeCode NVARCHAR(50) NULL;
+
+IF COL_LENGTH('Applications', 'SlaDeadlineAt') IS NULL
+    ALTER TABLE Applications ADD SlaDeadlineAt DATETIME2 NULL;
+
+IF COL_LENGTH('Applications', 'IsSlaEscalated') IS NULL
+    ALTER TABLE Applications ADD IsSlaEscalated BIT NOT NULL DEFAULT (0);
+
+IF COL_LENGTH('Applications', 'SlaOverrideReason') IS NULL
+    ALTER TABLE Applications ADD SlaOverrideReason NVARCHAR(500) NULL;
+
+IF COL_LENGTH('Applications', 'RowVersion') IS NULL
+    ALTER TABLE Applications ADD RowVersion ROWVERSION;
+
+IF NOT EXISTS (SELECT 1 FROM dbo.CandidateBlacklists WHERE CitizenId = '027098004512')
+BEGIN
+    INSERT INTO dbo.CandidateBlacklists (CitizenId, PhoneNormalized, FullName, Reason, BanType, BannedUntil, CreatedBy, CreatedAt)
+    VALUES
+    (N'027098004512', N'0984112990', N'Lê Văn Cường', N'Vi phạm kỷ luật an toàn lao động nghiêm trọng tại Xưởng SMT (Hút thuốc trong kho hóa chất)', N'PERMANENT', NULL, N'hr1@factory.com', SYSUTCDATETIME()),
+    (N'001095008821', N'0913778221', N'Phạm Quốc Tuấn', N'Tự ý bỏ việc 5 ngày liên tiếp không bàn giao thiết bị đo kiểm tại Xưởng Bảo Trì', N'PERMANENT', NULL, N'truong.sx@factory.com', SYSUTCDATETIME()),
+    (N'030201003319', N'0972665110', N'Hoàng Thị Mai', N'Nộp bằng cấp/chứng chỉ giả và nhờ người quẹt thẻ từ chấm công hộ', N'TEMPORARY_6M', DATEADD(MONTH, 6, SYSUTCDATETIME()), N'hr1@factory.com', SYSUTCDATETIME());
+END;
 ";
             try
             {

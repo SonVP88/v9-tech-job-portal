@@ -289,6 +289,25 @@
           </span>
         </label>
       </div>
+
+      <!-- Checkbox Ràng buộc ca đêm & Định biên ngân sách -->
+      <div class="col-span-1 md:col-span-2 space-y-3">
+        <label class="flex items-start gap-3 rounded-xl border border-purple-200 bg-purple-50/70 dark:bg-purple-950/30 dark:border-purple-800 px-4 py-3 cursor-pointer">
+          <input type="checkbox" formControlName="requireNightShift" class="mt-1 h-4 w-4 rounded text-purple-600 focus:ring-purple-500" />
+          <span>
+            <span class="block text-sm font-bold text-purple-900 dark:text-purple-200">🌙 Có làm ca đêm (22h-06h) / Công việc nặng nhọc (Chặn lao động dưới 18 tuổi)</span>
+            <span class="block text-xs text-purple-700 dark:text-purple-300 mt-0.5">Tuân thủ Bộ luật Lao động: Hệ thống sẽ tự động chặn cứng ứng viên dưới 18 tuổi nộp vào chiến dịch này.</span>
+          </span>
+        </label>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+            Lý do đề xuất tuyển dụng (Quản đốc phân xưởng đề xuất định biên):
+          </label>
+          <input type="text" formControlName="requisitionNote" placeholder="VD: Mở chuyền đóng gói mới số 4, bù 15 nhân sự nghỉ việc..."
+            class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs focus:ring-2 focus:ring-indigo-500" />
+        </div>
+      </div>
     </div>
     <div
       class="mt-10 flex flex-col-reverse md:flex-row items-center justify-end gap-4 border-t border-gray-100 dark:border-gray-800 pt-6">

@@ -18,6 +18,9 @@ builder.Services.AddHttpClient("GoogleApis", client =>
     client.Timeout = TimeSpan.FromSeconds(60);
 });
 builder.Services.AddScoped<IApplicationService, ApplicationService>();
+builder.Services.AddScoped<IApplicationWorkflowGuardService, ApplicationWorkflowGuardService>();
+builder.Services.AddScoped<ApplicationWorkflowGuardService>();
+builder.Services.AddScoped<IHrOperationsBusinessService, HrOperationsBusinessService>();
 builder.Services.AddScoped<IAiMatchingService, AiMatchingService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<IInterviewService, InterviewService>();

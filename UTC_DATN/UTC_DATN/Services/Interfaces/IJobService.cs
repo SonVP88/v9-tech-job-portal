@@ -16,6 +16,7 @@ public interface IJobService
     Task<bool> DeleteJobAsync(Guid id);
     Task<bool> CloseJobAsync(Guid id, Guid closedById, string closedByName);
     Task<bool> OpenJobAsync(Guid id);
+    Task<bool> ApproveRequisitionAsync(Guid id, Guid approverUserId);
 
     Task<JobDetailDto?> GetJobByIdAsync(Guid id);
 

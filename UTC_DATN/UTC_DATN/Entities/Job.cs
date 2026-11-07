@@ -76,7 +76,40 @@ public partial class Job
     public string QrCodeImagePath { get; set; }
 
     /// <summary>Luồng tuyển dụng: 'PROFESSIONAL' (Khối Kỹ thuật/Văn phòng) | 'MASS_LABOR' (Khối Công nhân xưởng)</summary>
-    public string RecruitmentTrack { get; set; }
+    public string RecruitmentTrack { get; set; } = "PROFESSIONAL";
+
+    /// <summary>Chỉ tiêu cần tuyển (Quota định biên của xưởng)</summary>
+    public int TargetQuantity { get; set; } = 50;
+
+    /// <summary>Số lượng đã nhận việc thực tế (Đã cấp mã nhân viên)</summary>
+    public int HiredCount { get; set; } = 0;
+
+    /// <summary>% dự phòng vượt chỉ tiêu đưa vào danh sách Dự bị (Waitlist), VD: 15%</summary>
+    public int WaitlistBufferPercent { get; set; } = 15;
+
+    /// <summary>Version bộ trọng số AI hiện tại của chiến dịch</summary>
+    public int CurrentScoringWeightVersion { get; set; } = 1;
+
+    /// <summary>Đường dẫn Google Form chiến dịch</summary>
+    public string GoogleFormUrl { get; set; }
+
+    /// <summary>Trạng thái đề xuất / phê duyệt định biên: 'Draft' | 'Pending_Approval' | 'Approved' | 'Rejected_Budget'</summary>
+    public string RequisitionStatus { get; set; } = "Approved";
+
+    /// <summary>ID Quản đốc xưởng đề xuất tuyển người</summary>
+    public Guid? RequestedByUserId { get; set; }
+
+    /// <summary>ID Giám đốc / Trưởng phòng HR phê duyệt định biên</summary>
+    public Guid? ApprovedByUserId { get; set; }
+
+    /// <summary>Thời điểm phê duyệt định biên ngân sách</summary>
+    public DateTime? ApprovedAt { get; set; }
+
+    /// <summary>Lý do đề xuất tuyển dụng: Mở chuyền mới, bù nhân sự nghỉ việc...</summary>
+    public string RequisitionNote { get; set; }
+
+    /// <summary>Cờ công việc bắt buộc làm ca đêm (22h-06h) hoặc nặng nhọc -> Chặn tuyệt đối lao động dưới 18 tuổi</summary>
+    public bool RequireNightShift { get; set; } = false;
 
     public virtual ICollection<Application> Applications { get; set; } = new List<Application>();
 

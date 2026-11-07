@@ -115,7 +115,11 @@ export class PostJob implements OnInit {
       requirements: ['', [Validators.maxLength(4000)]],
       benefits: ['', [Validators.maxLength(4000)]],
       numberOfPositions: [null, [Validators.min(1)]],
-      createCampaignQr: [true]
+      createCampaignQr: [true],
+      requireNightShift: [false],
+      requisitionNote: [''],
+      recruitmentTrack: ['PROFESSIONAL'],
+      targetQuantity: [50]
     }, { validators: this.salaryRangeValidator });
   }
 
@@ -357,7 +361,11 @@ export class PostJob implements OnInit {
       seniorityLevel: formValue.seniorityLevel,
       deadline: formValue.deadline ? `${formValue.deadline}T12:00:00Z` : undefined,
       skillIds: this.selectedSkillIds,
-      createCampaignQr: formValue.createCampaignQr !== false
+      createCampaignQr: formValue.createCampaignQr !== false,
+      requireNightShift: !!formValue.requireNightShift,
+      requisitionNote: formValue.requisitionNote || '',
+      recruitmentTrack: formValue.recruitmentTrack || 'PROFESSIONAL',
+      targetQuantity: formValue.targetQuantity ? Number(formValue.targetQuantity) : 50
     };
 
     this.isSubmitting = true;

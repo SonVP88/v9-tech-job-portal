@@ -58,6 +58,21 @@ public class CreateJobRequest : IValidatableObject
     /// </summary>
     public bool CreateCampaignQr { get; set; } = true;
 
+    /// <summary>Luồng tuyển dụng: 'PROFESSIONAL' | 'MASS_LABOR'</summary>
+    public string RecruitmentTrack { get; set; } = "PROFESSIONAL";
+
+    /// <summary>Chỉ tiêu cần tuyển</summary>
+    public int TargetQuantity { get; set; } = 50;
+
+    /// <summary>Bắt buộc làm ca đêm (22h-06h) hoặc nặng nhọc -> chặn dưới 18 tuổi</summary>
+    public bool RequireNightShift { get; set; } = false;
+
+    /// <summary>Lý do đề xuất tuyển dụng (cho Quản đốc xưởng)</summary>
+    public string? RequisitionNote { get; set; }
+
+    /// <summary>Trạng thái định biên yêu cầu (Pending_Approval nếu Quản đốc xưởng)</summary>
+    public string? RequisitionStatus { get; set; }
+
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
     {
         if (SalaryMin.HasValue && SalaryMax.HasValue && SalaryMax.Value < SalaryMin.Value)

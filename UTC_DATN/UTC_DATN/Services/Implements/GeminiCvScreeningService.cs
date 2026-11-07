@@ -1,4 +1,4 @@
-﻿using System.Diagnostics;
+using System.Diagnostics;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -375,10 +375,13 @@ public sealed class GeminiCvScreeningService
         var cvSection = new StringBuilder();
         foreach (var cv in batch)
         {
+            // [PII MASKING] Ẩn SĐT, CCCD, Email trước khi gửi lên Gemini API (Nghị định 13/2023/NĐ-CP & Blind Screening)
+            var sanitizedText = UTC_DATN.Helpers.PiiMaskingHelper.MaskSensitivePii(cv.CvText);
+
             cvSection.AppendLine($"=== START CV [{cv.CandidateId}] ===");
-            cvSection.AppendLine(cv.CvText.Length > 3000
-                ? cv.CvText[..3000] + "\n...[truncated]"
-                : cv.CvText);
+            cvSection.AppendLine(sanitizedText.Length > 3000
+                ? sanitizedText[..3000] + "\n...[truncated]"
+                : sanitizedText);
             cvSection.AppendLine($"=== END CV [{cv.CandidateId}] ===");
             cvSection.AppendLine();
         }

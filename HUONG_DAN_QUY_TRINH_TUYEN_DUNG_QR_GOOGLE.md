@@ -1,189 +1,112 @@
-# HƯỚNG DẪN QUY TRÌNH THU HÚT & ĐỒNG BỘ ỨNG VIÊN (QR CODE, GOOGLE FORMS, GOOGLE SHEETS & NGROK WEBHOOK)
+Tôi đang hoàn thiện toàn bộ hệ thống Quản lý tuyển dụng nhân sự khu công nghiệp tích hợp AI (ATS Industrial) bằng .NET 8 (Clean Architecture, EF Core) và Angular 17 (Standalone Components, Tailwind CSS).
+Hệ thống của tôi đã có các tính năng cơ bản về AI Gemini, PII Masking, Blacklist, State Machine và Quota. Bây giờ, tôi cần bổ sung phần cuối cùng về Nghiệp vụ Vận hành Nhà máy (Factory & HR Operations) gồm 6 logic cốt lõi:
 
-Tài liệu này hướng dẫn chi tiết quy trình vận hành thu thập và tiếp nhận hồ sơ công nhân số lượng lớn (Mass Recruitment) cho hệ thống ATS, từ cách tiện lợi nhất thao tác hoàn toàn trên giao diện web đến cách chạy tự động hóa thời gian thực (Real-time).
+Nhận diện nhân viên cũ tái ứng tuyển (Ex-Employee Rehire).
 
----
+Tự động chia tách Ca phỏng vấn theo sức chứa hội trường (Max 50 người/ca) & Chống trùng lịch người PV.
 
-## 📌 BẢNG SO SÁNH 3 PHƯƠNG THỨC TIẾP NHẬN
+Giới hạn dời lịch phỏng vấn tối đa 2 lần.
 
-| Tiêu chí | Cách 1: Đồng bộ 1-Click từ Google Sheet | Cách 2: Form Web nội bộ ATS + Mã QR | Cách 3: Webhook Real-time (Google Forms + ngrok) |
-| :--- | :--- | :--- | :--- |
-| **Độ phức tạp** | ⭐ Rất dễ (Khuyên dùng khi demo/báo cáo) | ⭐ Rất dễ | ⭐⭐⭐ Nâng cao |
-| **Cần ngrok?** | ❌ **Không** | ❌ **Không** (nếu chạy nội bộ) / Có (nếu quét từ 4G) | ✅ **Bắt buộc** |
-| **Cần Google Script?** | ❌ **Không** | ❌ **Không** | ✅ **Có** (Trigger onFormSubmit) |
-| **Nơi thao tác** | **100% trên Web ATS** | **100% trên Web ATS** | Web ATS + Google Apps Script |
-| **Thời gian cập nhật** | Thủ công (bấm nút "Đồng bộ ngay") | Tức thì khi ứng viên bấm Gửi | Tức thì khi ứng viên bấm Gửi Form |
+Tự động hết hạn Thư mời nhận việc (Offer Expiration) sau 72 giờ cho khối Kỹ sư/Văn phòng.
 
----
+Tự động đóng chiến dịch và bảo lưu hồ sơ chưa xử lý vào Kho ứng viên tiềm năng (Talent Pool) khi đủ chỉ tiêu.
 
-## 🚀 CÁCH 1: ĐỒNG BỘ 1-CLICK TỪ GOOGLE SHEET (TIỆN LỢI NHẤT)
+Đánh giá thử việc sau 30 ngày (Probation 30-Day Feedback) để đo lường độ chính xác của AI.
 
-> **Mục tiêu**: Công nhân quét QR điền Google Form, dữ liệu đổ về Google Sheet. HR chỉ cần bấm 1 nút trên Web ATS là hồ sơ được kéo về hệ thống mà không cần cài đặt ngrok hay lập trình script.
+Tôi không dùng EF Migration mà tự chạy file Script SQL thủ công.
 
-### Quy trình thực hiện:
+Yêu cầu công việc:
+Hãy thực hiện tuần tự 3 phần sau:
 
-#### Bước 1: Chuẩn bị Google Form & Google Sheet
-1. Tạo một biểu mẫu trên [Google Forms](https://forms.google.com) với các câu hỏi:
-   * Họ và tên *(Bắt buộc)*
-   * Số điện thoại *(Bắt buộc)*
-   * Năm sinh
-   * Quê quán / Thường trú
-   * Kinh nghiệm làm việc
-   * Sẵn sàng làm việc xoay 3 ca / tăng ca *(Có / Không)*
-   * Email *(nếu có)*
-2. Chuyển sang tab **Câu trả lời (Responses)** &rarr; Bấm **Liên kết với Trang tính (Link to Sheets)** để tạo file Google Sheet nhận dữ liệu.
+PHẦN 1: TẠO FILE SCRIPT SQL TỔNG HỢP (database_update_v5_hr_operations_complete.sql)
+Hãy viết nội dung cho file script SQL tạo các cột và bảng mới (có kiểm tra IF NOT EXISTS hoặc COL_LENGTH để không bị lỗi nếu chạy lại):
 
-#### Bước 2: Bật quyền chia sẻ Google Sheet
-1. Mở file Google Sheet vừa tạo &rarr; Bấm nút **Chia sẻ (Share)** ở góc trên bên phải.
-2. Tại mục **Quyền truy cập chung (General access)**, đổi thành:
-   * **Bất kỳ ai có đường liên kết (Anyone with the link)**
-   * Quyền: **Người xem (Viewer)**
-3. Bấm **Sao chép đường liên kết (Copy link)**.
+Bổ sung các cột vào bảng Applications:
 
-#### Bước 3: Tạo mã QR Google Form trên Web ATS
-1. Đăng nhập vào hệ thống ATS với tài khoản HR/Admin &rarr; Vào menu **Tin tuyển dụng**.
-2. Tìm vị trí cần tuyển &rarr; Bấm icon **Mã QR chiến dịch**.
-3. Tại tab **1. Form & Mã QR**:
-   * Dán link biểu mẫu Google Form vào ô *Tùy chỉnh form tuyển dụng*.
-   * Bấm **Lưu & Sinh QR**.
-   * Bấm **Tải QR** để in ra poster, standee dán tại cổng nhà máy hoặc gửi cho cộng tác viên tuyển dụng.
+IsExEmployeeRehire BIT NOT NULL DEFAULT 0 (Cờ nhân viên cũ tái ứng tuyển).
 
-#### Bước 4: Đồng bộ dữ liệu về ATS (Thao tác trên Web)
-Khi có công nhân quét QR và điền Google Form:
-1. Mở Web ATS &rarr; Vào **Quản lý hồ sơ ứng viên** của Job đó (hoặc bấm vào icon QR của Job).
-2. Bấm nút **"Đồng bộ Google Sheet"** (hoặc tab *2. Đồng bộ Google Sheet*).
-3. Dán link Google Sheet đã sao chép ở Bước 2 &rarr; Bấm **"Đồng bộ ngay"**.
-4. Hệ thống sẽ:
-   * Tự động đọc dữ liệu mới.
-   * Chuẩn hóa và đối soát số điện thoại (tự động bỏ qua số bị trùng lặp).
-   * Lưu hồ sơ ứng viên vào cơ sở dữ liệu với trạng thái **Sơ tuyển (PENDING / Sàng lọc)**.
-   * Hiển thị bảng tổng kết: *Số hồ sơ nhập mới, Số trùng lặp, Danh sách ứng viên*.
+PreviousEmployeeCode NVARCHAR(50) NULL (Mã nhân viên cũ từng làm).
 
----
+InterviewRescheduleCount INT NOT NULL DEFAULT 0 (Số lần xin dời lịch PV, tối đa 2 lần).
 
-## 📱 CÁCH 2: DÙNG FORM ỨNG TUYỂN WEB NỘI BỘ ATS (KHÔNG CẦN GOOGLE)
+OfferExpiresAt DATETIME2 NULL (Thời hạn hiệu lực Offer Letter 72h).
 
-> **Mục tiêu**: Hệ thống ATS đã có sẵn trang ứng tuyển trực tuyến trên điện thoại tại `/apply/{jobId}`. Không phụ thuộc vào Google.
+IsInTalentPool BIT NOT NULL DEFAULT 0 (Cờ bảo lưu vào kho ứng viên tiềm năng khi đóng chiến dịch).
 
-### Quy trình thực hiện:
-1. **Lấy mã QR nội bộ**:
-   * Vào **Quản lý tin tuyển dụng** &rarr; Bấm icon **Mã QR chiến dịch**.
-   * Hệ thống mặc định đã tạo sẵn mã QR trỏ thẳng tới link: `http://localhost:4200/apply/{jobId}`.
-   * Bấm **Tải QR**.
-2. **Ứng viên nộp hồ sơ**:
-   * Ứng viên quét mã QR bằng Zalo, Camera điện thoại &rarr; Mở giao diện ứng tuyển mobile-friendly của ATS.
-   * Nhập Họ tên, SĐT, chọn làm xoay 3 ca &rarr; Bấm **Gửi đăng ký**.
-3. **Kết quả**:
-   * Hồ sơ ghi nhận thẳng vào Database ATS và thông báo đến HR tức thì.
+Probation30DayStatus NVARCHAR(30) NULL DEFAULT 'Not_Started' ('Not_Started' | 'In_Probation' | 'Passed_30Days' | 'Early_Resigned').
 
----
+Tạo bảng quản lý Ca phỏng vấn tập trung (InterviewBatches):
 
-## ⚡ CÁCH 3: TÍCH HỢP WEBHOOK REAL-TIME QUA NGROK
+Id (PK, Auto Increment)
 
-> **Mục tiêu**: Mỗi khi ứng viên bấm nút **Gửi (Submit)** trên Google Form, Google Apps Script sẽ lập tức gọi webhook chuyển tiếp dữ liệu về máy bạn qua ngrok.
+JobPostingId (FK)
 
-### Bước 1: Khởi động ngrok trên máy tính
-Mở Command Prompt / PowerShell và chạy lệnh mở cổng Backend (port 5222):
-```bash
-ngrok http 5222
-```
-*Giao diện ngrok sẽ xuất hiện đường dẫn công khai, ví dụ: `https://abcd-1234.ngrok-free.app`.*
+BatchCode NVARCHAR(50) NOT NULL (VD: BATCH-SMT-2026-01)
 
-### Bước 2: Cập nhật URL ngrok trên Web ATS
-1. Đăng nhập ATS &rarr; Vào **Tin tuyển dụng** &rarr; Mở modal **QR chiến dịch**.
-2. Chọn tab **3. Webhook Real-time (ngrok)**.
-3. Dán link ngrok (ví dụ: `https://abcd-1234.ngrok-free.app`) vào ô **Public API URL**.
-4. Bấm **Áp Dụng ngrok**. Hệ thống sẽ tự động cập nhật:
-   * Webhook Endpoint: `https://abcd-1234.ngrok-free.app/api/applications/webhook-google-form`
-   * Toàn bộ mã Google Apps Script bên dưới.
+ScheduledDate DATE NOT NULL
 
-### Bước 3: Kiểm tra kết nối Webhook (Test Ping)
-* Bấm nút **"Bắn Thử 1 Ứng Viên Mẫu Qua Webhook"** ngay trên giao diện ATS.
-* Nếu thông báo xanh **"✅ Tiếp nhận ứng viên qua Google Forms thành công"** nghĩa là Webhook đã sẵn sàng nhận dữ liệu thật từ Google!
+ShiftSlot NVARCHAR(30) NOT NULL ('MORNING_08_11' | 'AFTERNOON_13_17')
 
-### Bước 4: Cài đặt Trigger trên Google Form / Sheet
-1. Mở Google Form hoặc file Google Sheet liên kết.
-2. Trên thanh menu, chọn: **Tiện ích mở rộng (Extensions)** &rarr; **Apps Script**.
-3. Bấm nút **"Copy Mã"** trên Web ATS và dán toàn bộ vào file `Code.gs`:
+MaxCapacity INT NOT NULL DEFAULT 50
 
-```javascript
-function onFormSubmit(e) {
-  const named = e.namedValues || {};
-  const first = (key) => (named[key] && named[key][0]) ? named[key][0] : '';
+CurrentCount INT NOT NULL DEFAULT 0
 
-  const payload = {
-    jobId: '{{JOB_ID_CỦA_BẠN}}',
-    fullName: first('Họ và tên'),
-    phone: first('Số điện thoại'),
-    yearOfBirth: first('Năm sinh'),
-    hometown: first('Quê quán / Thường trú'),
-    experienceNotes: first('Kinh nghiệm làm việc'),
-    shiftReady: first('Sẵn sàng làm việc xoay 3 ca / tăng ca'),
-    email: first('Email (nếu có)')
-  };
+InterviewerUserId INT NOT NULL
 
-  const webhookUrl = 'https://YOUR-NGROK-DOMAIN.ngrok-free.app/api/applications/webhook-google-form';
+CreatedAt DATETIME2 DEFAULT GETUTCDATE()
 
-  const options = {
-    method: 'post',
-    contentType: 'application/json',
-    headers: {
-      'X-Webhook-Secret': 'ats_google_webhook_secret_2026',
-      'ngrok-skip-browser-warning': 'true' // Bắt buộc để vượt qua trang cảnh báo của ngrok
-    },
-    payload: JSON.stringify(payload),
-    muteHttpExceptions: true
-  };
+PHẦN 2: VIẾT CODE C# (.NET 8) CHO SERVICE VÀ CONTROLLERS
+Viết class HrOperationsBusinessService.cs và các API Endpoints tương ứng xử lý 6 logic sau:
 
-  try {
-    const response = UrlFetchApp.fetch(webhookUrl, options);
-    Logger.log('ATS Webhook status: ' + response.getResponseCode());
-    Logger.log('ATS Webhook response: ' + response.getContentText());
-  } catch (err) {
-    Logger.log('Lỗi gọi ATS Webhook: ' + err.toString());
-  }
-}
-```
-4. Bấm biểu tượng đĩa mềm **Lưu dự án (Ctrl + S)**.
-5. Ở menu bên trái, bấm vào icon đồng hồ **Kích hoạt (Triggers)** &rarr; Bấm **Thêm trình kích hoạt (Add Trigger)** ở góc dưới bên phải:
-   * **Chọn hàm để chạy**: `onFormSubmit`
-   * **Nguồn sự kiện**: `Từ biểu mẫu (From form)` hoặc `Từ bảng tính (From spreadsheet)`
-   * **Loại sự kiện**: `Khi gửi biểu mẫu (On form submit)`
-6. Bấm **Lưu (Save)** và chấp nhận quyền truy cập tài khoản khi Google yêu cầu.
+Nhận diện Nhân viên cũ (CheckExEmployeeRehireAsync):
 
----
+Khi ứng viên nộp hồ sơ, kiểm tra CitizenId hoặc PhoneNormalized với cơ sở dữ liệu nhân sự cũ (nghỉ việc đúng quy trình, không dính Blacklist). Nếu khớp, gán IsExEmployeeRehire = true, lưu PreviousEmployeeCode và tự động cộng +15 điểm ưu tiên vào tiêu chí Kinh nghiệm dây chuyền.
 
-## 🛡️ CÁC HEADERS BẢO MẬT & ĐẶC THÙ
+Chia tách Ca phỏng vấn tự động & Chống trùng lịch (ScheduleBatchInterviewsAsync):
 
-| Header | Giá trị | Mục đích |
-| :--- | :--- | :--- |
-| `Content-Type` | `application/json` | Định dạng dữ liệu JSON gửi lên API |
-| `X-Webhook-Secret` | `ats_google_webhook_secret_2026` | Token bí mật xác thực nguồn gửi từ Google, chống giả mạo request |
-| `ngrok-skip-browser-warning` | `true` | **Rất quan trọng cho ngrok free**: Chặn ngrok trả về trang cảnh báo HTML, đảm bảo request đi thẳng vào ASP.NET Core |
+Nhận danh sách ApplicationIds[] và ngày tháng yêu cầu. Kiểm tra MaxCapacity = 50. Nếu chọn 120 người, tự động phân phối vào các Batch (Ca Sáng ngày 1: 50, Ca Chiều ngày 1: 50, Ca Sáng ngày 2: 20).
 
----
+Kiểm tra InterviewerUserId: Chặn và ném ngoại lệ nếu người phỏng vấn đó đã bị xếp lịch ở ca khác trùng thời gian.
 
-## 🔍 CƠ CHẾ LỌC TRÙNG LẶP (DE-DUPLICATION)
+Giới hạn Dời lịch Phỏng vấn (RescheduleInterviewAsync):
 
-Hệ thống tích hợp sẵn cơ chế chống trùng ứng viên trong cùng một chiến dịch tuyển dụng:
-1. **Chuẩn hóa số điện thoại**: Tự động loại bỏ dấu cách, dấu chấm, dấu gạch nối và mã quốc gia `+84` &rarr; Chuẩn hóa thành dạng `09xxxxxxxx`.
-2. **Kiểm tra trùng**: Nếu số điện thoại đã tồn tại trong danh sách ứng tuyển của Job đó, hệ thống sẽ:
-   * Từ chối ghi đè hồ sơ cũ.
-   * Ghi nhận vào danh sách `DuplicateCount` và thông báo rõ trên giao diện.
+Mỗi lần dời lịch tăng InterviewRescheduleCount++. Nếu InterviewRescheduleCount > 2, chuyển trạng thái Status = "Rejected_Exceed_Reschedule".
 
----
+Kiểm tra Hết hạn Offer 72h (CheckAndExpireOffersAsync):
 
-## 🛠️ XỬ LÝ LỖI THƯỜNG GẶP (TROUBLESHOOTING)
+Background Job quét các hồ sơ khối PROFESSIONAL đang ở trạng thái Offer_Sent mà DateTime.UtcNow > OfferExpiresAt, tự động chuyển sang Offer_Expired và mở khóa slot cho ứng viên kế tiếp.
 
-1. **Lỗi: *"Không thể đọc dữ liệu từ Google Sheet"***:
-   * *Nguyên nhân*: File Google Sheet đang để chế độ "Hạn chế" (Restricted).
-   * *Khắc phục*: Vào nút **Chia sẻ (Share)** trên Google Sheet &rarr; Đổi thành **"Bất kỳ ai có đường liên kết đều có thể xem (Viewer)"**.
+Tự động Đóng chiến dịch & Đẩy vào Talent Pool (AutoCloseCampaignAndMoveToTalentPoolAsync):
 
-2. **Lỗi: Google Apps Script báo `401 Unauthorized`**:
-   * *Nguyên nhân*: Header `X-Webhook-Secret` không khớp với giá trị cấu hình trong `appsettings.json`.
-   * *Khắc phục*: Kiểm tra token trong `appsettings.json` (`GoogleIntegration:WebhookSecret`) và cập nhật lại trong Apps Script.
+Khi jobPosting.HiredCount >= jobPosting.TargetQuantity và đã đủ Waitlist, tự động đóng chiến dịch (Closed_Quota_Full).
 
-3. **Lỗi: Webhook trả về trang HTML cảnh báo ngrok**:
-   * *Nguyên nhân*: Thiếu header `ngrok-skip-browser-warning: 'true'`.
-   * *Khắc phục*: Mã Apps Script sinh ra trên Web ATS đã có sẵn dòng này, bạn chỉ cần copy lại đúng mẫu.
+Toàn bộ hồ sơ đạt sơ loại nhưng chưa kịp phỏng vấn được bật cờ IsInTalentPool = true, Status = "Saved_In_Talent_Pool".
 
+Cập nhật Trạng thái Thử việc 30 ngày (UpdateProbationFeedbackAsync):
+
+Cập nhật Probation30DayStatus (Passed_30Days hoặc Early_Resigned) và tính toán tỷ lệ thành công thực tế so với điểm AI ban đầu.
+
+PHẦN 3: XÂY DỰNG GIAO DIỆN ANGULAR 17 (HrOperationsComponent)
+Cung cấp code Angular 17 (.ts và .html dùng Tailwind CSS) cho các tính năng nghiệp vụ sau:
+
+Giao diện Màn hình Hồ Sơ Ứng Tuyển:
+
+Hiển thị nổi bật Badge [⭐ Nhân viên cũ tái ứng tuyển - Đã có tay nghề] màu xanh ngọc.
+
+Thêm tab 💎 Kho ứng viên bảo lưu (Talent Pool) để HR dễ dàng điều chuyển hồ sơ cũ sang chiến dịch mới.
+
+Giao diện Modal Xếp ca phỏng vấn hàng loạt:
+
+Hiển thị thanh tiến độ sức chứa của từng ca (Ca Sáng: 48/50 chỗ - Gần đầy) và tự động cảnh báo tách ca khi chọn số lượng lớn hơn 50 người.
+
+Giao diện Màn hình Tiếp Nhận & Onboarding:
+
+Ở tab 🎉 Đã cấp Mã NV, trên mỗi dòng nhân viên mới có nút đánh giá hậu kiểm thử việc: [🏆 Đạt thử việc 30 ngày] / [📉 Nghỉ việc sớm (<30 ngày)].
+
+Yêu cầu Output:
+
+Xuất nội dung file database_update_v5_hr_operations_complete.sql.
+
+Xuất code C# (.NET 8) cho Service và Controller.
+
+Xuất code Angular 17 (.ts và .html) hoàn chỉnh cho các thành phần giao diện trên.

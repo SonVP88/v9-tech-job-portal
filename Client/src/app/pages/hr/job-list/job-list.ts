@@ -218,6 +218,27 @@ export class JobListComponent implements OnInit {
         });
     }
 
+    async onApproveRequisition(id: string): Promise<void> {
+        const confirmed = await this.popup.confirm({
+            title: 'Phê duyệt định biên tuyển dụng',
+            message: 'Bạn có chắc chắn muốn phê duyệt định biên cho chiến dịch này? Sau khi duyệt, chiến dịch sẽ mở trạng thái nhận hồ sơ công khai.',
+            confirmText: 'Phê duyệt định biên',
+            cancelText: 'Hủy',
+            tone: 'primary',
+        });
+        if (!confirmed) return;
+
+        this.jobService.approveRequisition(id).subscribe({
+            next: (res) => {
+                this.toast.success('Phê duyệt thành công', res.message || 'Chiến dịch đã được duyệt định biên và mở nhận hồ sơ.');
+                this.loadJobs();
+            },
+            error: (err: any) => {
+                this.toast.error('Phê duyệt thất bại', err.error?.message || 'Đã xảy ra lỗi khi duyệt định biên.');
+            }
+        });
+    }
+
     // Pagination methods
     changePage(page: number): void {
         if (page >= 1 && page <= this.totalPages()) {

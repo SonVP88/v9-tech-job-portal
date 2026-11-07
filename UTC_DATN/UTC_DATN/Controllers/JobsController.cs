@@ -228,6 +228,30 @@ public class JobsController : ControllerBase
     }
 
     /// <summary>
+    /// Phê duyệt định biên ngân sách chiến dịch (Dành cho SuperAdmin, HR_Manager)
+    /// </summary>
+    [HttpPost("{id}/approve-requisition")]
+    [Authorize]
+    public async Task<IActionResult> ApproveRequisition(Guid id)
+    {
+        try
+        {
+            var approverIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            Guid.TryParse(approverIdClaim, out Guid approverId);
+
+            var success = await _jobService.ApproveRequisitionAsync(id, approverId);
+            if (!success)
+                return NotFound(new { message = "Không tìm thấy chiến dịch tuyển dụng." });
+
+            return Ok(new { success = true, message = "Phê duyệt định biên chiến dịch thành công. Trạng thái đã mở công khai." });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = $"Lỗi khi phê duyệt định biên: {ex.Message}" });
+        }
+    }
+
+    /// <summary>
     /// Cập nhật cấu hình Public / ngrok URL toàn hệ thống và sinh lại link / Apps Script cho Job
     /// </summary>
     [HttpPut("{id}/campaign-qr/public-config")]

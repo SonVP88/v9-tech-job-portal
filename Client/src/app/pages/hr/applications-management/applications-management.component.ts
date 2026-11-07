@@ -9,7 +9,7 @@ import { ToastService } from '../../../services/toast.service';
 export type RecruitmentTrack = 'PROFESSIONAL' | 'MASS_LABOR';
 export type ApplicationSource = 'PDF_UPLOAD' | 'GOOGLE_FORM_QR' | 'WALK_IN';
 export type ScoringMethod = 'GEMINI_AI' | 'RULE_ENGINE';
-export type QuickTabType = 'ALL' | 'PROFESSIONAL' | 'MASS_LABOR' | 'FAST_TRACK' | 'RULE_REJECTED';
+export type QuickTabType = 'ALL' | 'PROFESSIONAL' | 'MASS_LABOR' | 'FAST_TRACK' | 'TALENT_POOL' | 'RULE_REJECTED';
 
 export interface OralInterviewChecklist {
   handEyePass: boolean;
@@ -56,8 +56,40 @@ export interface IndustrialApplication {
   oralChecklist: OralInterviewChecklist;
   customFormFields?: Record<string, string>;
 
-  status: 'PENDING' | 'SentToManager' | 'ScheduledInterview' | 'InterviewPassed' | 'Rejected';
+  status: 'PENDING' | 'SentToManager' | 'ScheduledInterview' | 'InterviewPassed' | 'Rejected' | 'Saved_In_Talent_Pool';
   appliedAt: string;
+
+  // ── Cảnh báo nghiệp vụ từ DB (7 Business Rules) ──
+  isBlacklisted?: boolean;
+  blacklistWarningNote?: string | null;
+  isScannedOrUnparseablePdf?: boolean;
+  duplicateCount?: number;
+  isOutdatedScore?: boolean;
+  slaDeadlineAt?: string | null;
+  isSlaEscalated?: boolean;
+  slaOverrideReason?: string | null;
+
+  // ── V3 Enterprise Compliance ──
+  interviewScore?: number | null;
+  isAiOverriddenByHuman?: boolean;
+  aiOverrideReason?: string | null;
+  offerStatus?: string;
+  offeredSalary?: number | null;
+  offerResponseNote?: string | null;
+  transferredFromJobId?: string | null;
+  transferredFromJobTitle?: string | null;
+  transferReason?: string | null;
+  isPiiMaskedBeforeAi?: boolean;
+
+  // ── V5 Factory & HR Operations Complete ──
+  isExEmployeeRehire?: boolean;
+  previousEmployeeCode?: string | null;
+  interviewRescheduleCount?: number;
+  offerExpiresAt?: string | null;
+  isInTalentPool?: boolean;
+  probation30DayStatus?: string | null;
+  interviewBatchId?: number | null;
+  interviewBatchCode?: string | null;
 }
 
 @Component({
@@ -114,6 +146,44 @@ export class ApplicationsManagementComponent implements OnInit {
   sheetUrlInput = signal<string>('');
   isSyncingSheet = signal<boolean>(false);
 
+  // ── V3 Enterprise Compliance Modal States ──
+  showOverrideModal = signal<boolean>(false);
+  overrideModalApp = signal<IndustrialApplication | null>(null);
+  overrideReason = signal<string>('CV viết sơ sài nhưng ứng viên có chứng chỉ nghề bậc 3 thực tế và kinh nghiệm 4 năm');
+  overrideToPassed = signal<boolean>(true);
+
+  showTransferModal = signal<boolean>(false);
+  transferModalApp = signal<IndustrialApplication | null>(null);
+  transferTargetJobId = signal<string>('');
+  transferReason = signal<string>('Thị lực không đạt chuẩn xưởng linh kiện điện tử SMT, điều chuyển sang Xưởng Kho Vận (WH_LOGS)');
+  transferAvailableJobs = signal<Array<{ jobId: string; title: string; department: string }>>([]);
+
+  showOfferModal = signal<boolean>(false);
+  offerModalApp = signal<IndustrialApplication | null>(null);
+  offeredSalary = signal<number>(18000000);
+  offerNote = signal<string>('Lương cơ bản thỏa thuận 18.000.000 VNĐ Net + phụ cấp kỹ sư');
+
+  // ── V5 Factory & HR Operations State ──
+  showBatchInterviewModal = signal<boolean>(false);
+  batchInterviewDate = signal<string>(new Date(Date.now() + 86400000).toISOString().split('T')[0]);
+  batchShiftSlot = signal<'MORNING_08_11' | 'AFTERNOON_13_17'>('MORNING_08_11');
+  batchInterviewerId = signal<string>('');
+  batchMaxCapacity = signal<number>(50);
+  isSchedulingBatches = signal<boolean>(false);
+
+  activeInterviewBatches = signal<Array<{
+    id: number;
+    batchCode: string;
+    shiftSlot: string;
+    shiftName: string;
+    scheduledDate: string;
+    currentCount: number;
+    maxCapacity: number;
+  }>>([
+    { id: 1, batchCode: 'BATCH-SMT-2026-01', shiftSlot: 'MORNING_08_11', shiftName: 'Ca Sáng (08:00 - 11:30)', scheduledDate: 'Hôm nay', currentCount: 48, maxCapacity: 50 },
+    { id: 2, batchCode: 'BATCH-SMT-2026-02', shiftSlot: 'AFTERNOON_13_17', shiftName: 'Ca Chiều (13:30 - 17:00)', scheduledDate: 'Hôm nay', currentCount: 15, maxCapacity: 50 }
+  ]);
+
   // Danh sách chiến dịch tuyển dụng mẫu + thực tế
   jobCampaigns = signal<Array<{ id: string; code: string; title: string; track: RecruitmentTrack; deptCode: string }>>([
     { id: 'job-smt-01', code: 'JOB-SMT-100', title: 'Công nhân vận hành dây chuyền SMT (Tuyển gấp 100 người)', track: 'MASS_LABOR', deptCode: 'PROD_LINE' },
@@ -127,9 +197,10 @@ export class ApplicationsManagementComponent implements OnInit {
     const all = this.applications();
     return {
       all: all.length,
-      professional: all.filter(a => a.recruitmentTrack === 'PROFESSIONAL' && !a.isRuleRejected).length,
-      massLabor: all.filter(a => a.recruitmentTrack === 'MASS_LABOR' && !a.isRuleRejected).length,
-      fastTrack: all.filter(a => a.recruitmentTrack === 'MASS_LABOR' && a.status !== 'InterviewPassed' && a.status !== 'Rejected').length,
+      professional: all.filter(a => a.recruitmentTrack === 'PROFESSIONAL' && !a.isRuleRejected && !a.isInTalentPool).length,
+      massLabor: all.filter(a => a.recruitmentTrack === 'MASS_LABOR' && !a.isRuleRejected && !a.isInTalentPool).length,
+      fastTrack: all.filter(a => a.recruitmentTrack === 'MASS_LABOR' && a.status !== 'InterviewPassed' && a.status !== 'Rejected' && !a.isInTalentPool).length,
+      talentPool: all.filter(a => a.isInTalentPool || a.status === 'Saved_In_Talent_Pool').length,
       ruleRejected: all.filter(a => a.isRuleRejected || a.status === 'Rejected').length
     };
   });
@@ -142,10 +213,15 @@ export class ApplicationsManagementComponent implements OnInit {
     const minScore = this.minScoreFilter();
 
     return this.applications().filter(app => {
-      if (tab === 'PROFESSIONAL' && (app.recruitmentTrack !== 'PROFESSIONAL' || app.isRuleRejected)) return false;
-      if (tab === 'MASS_LABOR' && (app.recruitmentTrack !== 'MASS_LABOR' || app.isRuleRejected)) return false;
-      if (tab === 'FAST_TRACK' && app.recruitmentTrack !== 'MASS_LABOR') return false;
-      if (tab === 'RULE_REJECTED' && !app.isRuleRejected && app.status !== 'Rejected') return false;
+      if (tab === 'TALENT_POOL') {
+        if (!app.isInTalentPool && app.status !== 'Saved_In_Talent_Pool') return false;
+      } else {
+        if (app.isInTalentPool || app.status === 'Saved_In_Talent_Pool') return false;
+        if (tab === 'PROFESSIONAL' && (app.recruitmentTrack !== 'PROFESSIONAL' || app.isRuleRejected)) return false;
+        if (tab === 'MASS_LABOR' && (app.recruitmentTrack !== 'MASS_LABOR' || app.isRuleRejected)) return false;
+        if (tab === 'FAST_TRACK' && app.recruitmentTrack !== 'MASS_LABOR') return false;
+        if (tab === 'RULE_REJECTED' && !app.isRuleRejected && app.status !== 'Rejected') return false;
+      }
 
       if (job !== 'ALL' && app.jobId !== job) return false;
       if (dept !== 'ALL' && app.departmentCode !== dept) return false;
@@ -246,7 +322,8 @@ export class ApplicationsManagementComponent implements OnInit {
 
     const rawStatus = (item.status || 'PENDING').toUpperCase();
     const mappedStatus: IndustrialApplication['status'] =
-      rawStatus === 'SCREENING' || rawStatus === 'SENTTOMANAGER' ? 'SentToManager'
+      rawStatus === 'SAVED_IN_TALENT_POOL' ? 'Saved_In_Talent_Pool'
+      : rawStatus === 'SCREENING' || rawStatus === 'SENTTOMANAGER' ? 'SentToManager'
       : rawStatus === 'INTERVIEW' || rawStatus === 'SCHEDULEDINTERVIEW' ? 'ScheduledInterview'
       : rawStatus === 'PASSED' || rawStatus === 'INTERVIEWPASSED' || rawStatus === 'HIRED' || rawStatus === 'OFFER_SENT' ? 'InterviewPassed'
       : rawStatus === 'REJECTED' ? 'Rejected'
@@ -286,8 +363,231 @@ export class ApplicationsManagementComponent implements OnInit {
       rawResumeText: item.rawResumeText || `Họ tên: ${item.candidateName}\nSĐT: ${item.phone}\nEmail: ${item.email}`,
       oralChecklist: checklist,
       status: mappedStatus,
-      appliedAt: item.appliedAt || new Date().toISOString()
+      appliedAt: item.appliedAt || new Date().toISOString(),
+      isBlacklisted: !!item.isBlacklisted,
+      blacklistWarningNote: item.blacklistWarningNote ?? null,
+      isScannedOrUnparseablePdf: !!item.isScannedOrUnparseablePdf,
+      duplicateCount: item.duplicateCount ?? 1,
+      isOutdatedScore: !!item.isOutdatedScore,
+      slaDeadlineAt: item.slaDeadlineAt ?? item.slaDueAt ?? null,
+      isSlaEscalated: !!item.isSlaEscalated,
+      slaOverrideReason: item.slaOverrideReason ?? null,
+
+      // V3 Enterprise Compliance mapping
+      interviewScore: item.interviewScore ?? (item.isAiOverriddenByHuman ? 85 : null),
+      isAiOverriddenByHuman: !!item.isAiOverriddenByHuman,
+      aiOverrideReason: item.aiOverrideReason ?? null,
+      offerStatus: item.offerStatus || (track === 'PROFESSIONAL' && mappedStatus === 'InterviewPassed' ? 'Offer_Pending' : 'Not_Required'),
+      offeredSalary: item.offeredSalary ?? null,
+      offerResponseNote: item.offerResponseNote ?? null,
+      transferredFromJobId: item.transferredFromJobId ?? null,
+      transferredFromJobTitle: item.transferredFromJobTitle ?? (item.transferReason ? 'Xưởng SMT' : null),
+      transferReason: item.transferReason ?? null,
+      isPiiMaskedBeforeAi: item.isPiiMaskedBeforeAi !== false,
+
+      // V5 Factory & HR Operations Complete
+      isExEmployeeRehire: !!item.isExEmployeeRehire,
+      previousEmployeeCode: item.previousEmployeeCode ?? null,
+      interviewRescheduleCount: item.interviewRescheduleCount ?? 0,
+      offerExpiresAt: item.offerExpiresAt ?? null,
+      isInTalentPool: !!item.isInTalentPool || item.status === 'Saved_In_Talent_Pool',
+      probation30DayStatus: item.probation30DayStatus ?? 'Not_Started',
+      interviewBatchId: item.interviewBatchId ?? null,
+      interviewBatchCode: item.interviewBatchCode ?? null
     };
+  }
+
+  // ── Logic 6: Duyệt thay khi quá hạn SLA ────────────────────────────────
+  isSlaOverdue(app: IndustrialApplication): boolean {
+    if (!app.slaDeadlineAt || app.isSlaEscalated) return false;
+    if (app.status === 'InterviewPassed' || app.status === 'Rejected') return false;
+    return new Date(app.slaDeadlineAt).getTime() < Date.now();
+  }
+
+  slaOverrideApprove(app: IndustrialApplication, event?: Event): void {
+    if (event) event.stopPropagation();
+    const reason = window.prompt(`Nhập lý do duyệt thay quá hạn SLA cho "${app.candidateName}":`, 'Quản đốc xưởng chưa phản hồi quá hạn SLA, HR duyệt thay để không chậm tiến độ tuyển dụng.');
+    if (!reason || !reason.trim()) return;
+
+    const apply = () => {
+      this.applications.update(list =>
+        list.map(a => a.applicationId === app.applicationId
+          ? { ...a, status: 'ScheduledInterview', isSlaEscalated: true, slaOverrideReason: reason.trim() }
+          : a)
+      );
+      this.toast.success('Đã duyệt thay quá hạn SLA', `Hồ sơ ${app.candidateName} đã được HR duyệt thay và đánh dấu Escalated.`);
+    };
+
+    const isGuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(app.applicationId);
+    if (!isGuid) {
+      apply();
+      return;
+    }
+
+    this.http.post<any>(`/api/applications/${app.applicationId}/sla-override`, {
+      slaOverrideReason: reason.trim(),
+      targetStatus: 'ScheduledInterview'
+    }).subscribe({
+      next: () => apply(),
+      error: (err) => this.toast.error('Không thể duyệt thay', err?.error?.message || 'Bạn không có quyền hoặc hồ sơ không hợp lệ.')
+    });
+  }
+
+  // ── V3 Enterprise Compliance: Human Override, Transfer Job & Offer Letter ──
+  openOverrideModal(app: IndustrialApplication, event?: Event): void {
+    if (event) event.stopPropagation();
+    this.overrideModalApp.set(app);
+    this.overrideReason.set(app.aiOverrideReason || 'CV viết sơ sài nhưng ứng viên có chứng chỉ nghề thực tế và kinh nghiệm làm việc tại KCN');
+    this.overrideToPassed.set(true);
+    this.showOverrideModal.set(true);
+  }
+
+  submitOverrideAi(): void {
+    const app = this.overrideModalApp();
+    if (!app || !this.overrideReason().trim()) {
+      this.toast.error('Lỗi', 'Vui lòng nhập lý do ghi đè kết quả AI.');
+      return;
+    }
+    const apply = () => {
+      app.isAiOverriddenByHuman = true;
+      app.aiOverrideReason = this.overrideReason().trim();
+      app.status = this.overrideToPassed() ? 'ScheduledInterview' : 'Rejected';
+      this.showOverrideModal.set(false);
+      this.toast.success('Thành công', 'Đã ghi đè kết quả AI (Human Override).');
+    };
+
+    const isGuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(app.applicationId);
+    if (!isGuid) {
+      apply();
+      return;
+    }
+
+    this.http.post<any>(`/api/applications/${app.applicationId}/override-ai`, {
+      overrideToPassed: this.overrideToPassed(),
+      overrideReason: this.overrideReason().trim(),
+      newStatus: this.overrideToPassed() ? 'Interview_Pending' : 'Rejected'
+    }).subscribe({
+      next: () => apply(),
+      error: (err) => this.toast.error('Lỗi ghi đè AI', err?.error?.message || 'Không thể ghi đè kết quả AI.')
+    });
+  }
+
+  openTransferModal(app: IndustrialApplication, event?: Event): void {
+    if (event) event.stopPropagation();
+    this.transferModalApp.set(app);
+    this.transferReason.set('Thị lực 8/10 không đạt chuẩn xưởng linh kiện điện tử SMT, điều chuyển sang Xưởng Kho Vận (WH_LOGS)');
+    this.showTransferModal.set(true);
+
+    this.http.get<any[]>('/api/jobs').subscribe({
+      next: (jobs) => {
+        const list = (jobs || [])
+          .filter(j => j.jobId !== app.jobId)
+          .map(j => ({ jobId: j.jobId, title: j.title, department: j.departmentName || j.department || 'Phân xưởng' }));
+        this.transferAvailableJobs.set(list);
+        if (list.length > 0) this.transferTargetJobId.set(list[0].jobId);
+      },
+      error: () => {
+        // Fallback danh sách chiến dịch mẫu
+        this.transferAvailableJobs.set(
+          this.jobCampaigns().map(c => ({ jobId: c.id, title: c.title, department: c.deptCode }))
+        );
+        if (this.jobCampaigns().length > 0) this.transferTargetJobId.set(this.jobCampaigns()[0].id);
+      }
+    });
+  }
+
+  submitTransferJob(): void {
+    const app = this.transferModalApp();
+    if (!app || !this.transferTargetJobId() || !this.transferReason().trim()) {
+      this.toast.error('Lỗi', 'Vui lòng chọn phân xưởng đích và nhập lý do điều chuyển.');
+      return;
+    }
+    const apply = () => {
+      const target = this.transferAvailableJobs().find(j => j.jobId === this.transferTargetJobId());
+      app.transferredFromJobTitle = app.jobTitle;
+      app.jobTitle = target ? target.title : app.jobTitle;
+      app.transferReason = this.transferReason().trim();
+      this.showTransferModal.set(false);
+      this.toast.success('Thành công', `Đã điều chuyển hồ sơ ${app.candidateName} sang phân xưởng mới.`);
+    };
+
+    const isGuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(app.applicationId);
+    if (!isGuid) {
+      apply();
+      return;
+    }
+
+    this.http.post<any>(`/api/applications/${app.applicationId}/transfer-job`, {
+      targetJobId: this.transferTargetJobId(),
+      transferReason: this.transferReason().trim()
+    }).subscribe({
+      next: () => apply(),
+      error: (err) => this.toast.error('Lỗi điều chuyển', err?.error?.message || 'Không thể điều chuyển hồ sơ.')
+    });
+  }
+
+  openOfferModal(app: IndustrialApplication, event?: Event): void {
+    if (event) event.stopPropagation();
+    this.offerModalApp.set(app);
+    this.offeredSalary.set(app.offeredSalary || 18000000);
+    this.offerNote.set(app.offerResponseNote || 'Lương cơ bản thỏa thuận 18.000.000 VNĐ Net + phụ cấp kỹ sư');
+    this.showOfferModal.set(true);
+  }
+
+  submitSendOffer(): void {
+    const app = this.offerModalApp();
+    if (!app || this.offeredSalary() <= 0) {
+      this.toast.error('Lỗi', 'Mức lương thỏa thuận phải lớn hơn 0.');
+      return;
+    }
+    const apply = () => {
+      app.offerStatus = 'Offer_Sent';
+      app.offeredSalary = this.offeredSalary();
+      app.offerResponseNote = this.offerNote().trim();
+      this.showOfferModal.set(false);
+      this.toast.success('Đã gửi Offer', `Đã gửi Offer Letter với mức lương ${this.offeredSalary().toLocaleString()} VNĐ cho ${app.candidateName}.`);
+    };
+
+    const isGuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(app.applicationId);
+    if (!isGuid) {
+      apply();
+      return;
+    }
+
+    this.http.post<any>(`/api/applications/${app.applicationId}/send-offer`, {
+      offeredSalary: this.offeredSalary(),
+      note: this.offerNote().trim()
+    }).subscribe({
+      next: () => apply(),
+      error: (err) => this.toast.error('Lỗi gửi Offer', err?.error?.message || 'Không thể gửi Offer Letter.')
+    });
+  }
+
+  submitRespondOffer(app: IndustrialApplication, accepted: boolean, event?: Event): void {
+    if (event) event.stopPropagation();
+    const promptMsg = accepted ? `Ghi chú xác nhận ứng viên ${app.candidateName} ĐỒNG Ý Offer:` : `Nhập lý do ứng viên ${app.candidateName} TỪ CHỐI Offer:`;
+    const note = window.prompt(promptMsg, accepted ? 'Ứng viên đã ký xác nhận qua email' : 'Mức lương chưa thỏa đáng với năng lực');
+    if (note === null) return;
+
+    const apply = () => {
+      app.offerStatus = accepted ? 'Offer_Accepted' : 'Offer_Declined';
+      app.offerResponseNote = note;
+      this.toast.success('Cập nhật Offer', accepted ? 'Ứng viên đã chấp nhận Offer. Đủ điều kiện chuyển Onboarding!' : 'Đã ghi nhận ứng viên từ chối Offer.');
+    };
+
+    const isGuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(app.applicationId);
+    if (!isGuid) {
+      apply();
+      return;
+    }
+
+    this.http.post<any>(`/api/applications/${app.applicationId}/respond-offer`, {
+      accepted,
+      responseNote: note
+    }).subscribe({
+      next: () => apply(),
+      error: (err) => this.toast.error('Lỗi phản hồi Offer', err?.error?.message || 'Không thể cập nhật phản hồi Offer.')
+    });
   }
 
   // ── Quick Actions & Selection ──────────────────────────────────────────
@@ -378,6 +678,84 @@ export class ApplicationsManagementComponent implements OnInit {
         this.selectedIds.set(new Set());
         this.toast.success('Xử lý lô thành công', `Đã thực hiện "${statusLabels[targetStatus]}" cho ${ids.length} ứng viên!`);
       }, 250);
+    }
+  }
+
+  // ── V5 Batch Interview Scheduling Methods ────────────────────────────
+  openBatchInterviewModal(): void {
+    if (this.selectedCount() === 0) {
+      this.toast.warning('Chưa chọn ứng viên', 'Vui lòng tích chọn ít nhất 1 ứng viên để xếp ca phỏng vấn.');
+      return;
+    }
+    this.showBatchInterviewModal.set(true);
+
+    this.http.get<any[]>('/api/hr-operations/batches').subscribe({
+      next: (batches) => {
+        if (Array.isArray(batches) && batches.length > 0) {
+          this.activeInterviewBatches.set(batches.map(b => ({
+            id: b.id,
+            batchCode: b.batchCode,
+            shiftSlot: b.shiftSlot,
+            shiftName: b.shiftSlot === 'MORNING_08_11' ? 'Ca Sáng (08:00 - 11:30)' : 'Ca Chiều (13:30 - 17:00)',
+            scheduledDate: new Date(b.scheduledDate).toLocaleDateString('vi-VN'),
+            currentCount: b.currentCount,
+            maxCapacity: b.maxCapacity
+          })));
+        }
+      },
+      error: () => {}
+    });
+  }
+
+  closeBatchInterviewModal(): void {
+    this.showBatchInterviewModal.set(false);
+  }
+
+  confirmScheduleBatches(): void {
+    const ids = Array.from(this.selectedIds());
+    if (ids.length === 0) return;
+
+    this.isSchedulingBatches.set(true);
+
+    const targetJobId = this.selectedJobId() !== 'ALL' && !this.selectedJobId().startsWith('job-')
+      ? this.selectedJobId()
+      : '00000000-0000-0000-0000-000000000001';
+
+    const validGuids = ids.filter(id => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id));
+
+    if (validGuids.length > 0) {
+      this.http.post<any>('/api/hr-operations/schedule-batches', {
+        jobId: targetJobId,
+        applicationIds: validGuids,
+        scheduledDate: this.batchInterviewDate(),
+        shiftSlot: this.batchShiftSlot(),
+        maxCapacity: this.batchMaxCapacity()
+      }).subscribe({
+        next: (res) => {
+          this.isSchedulingBatches.set(false);
+          this.showBatchInterviewModal.set(false);
+          this.selectedIds.set(new Set());
+          this.toast.success('Xếp ca thành công', res?.message || `Đã chia tách và xếp ca cho ${ids.length} ứng viên!`);
+          this.fetchBackendApplications();
+        },
+        error: (err) => {
+          this.isSchedulingBatches.set(false);
+          this.toast.error('Lỗi xếp ca', err?.error?.message || 'Không thể xếp ca phỏng vấn.');
+        }
+      });
+    } else {
+      setTimeout(() => {
+        this.isSchedulingBatches.set(false);
+        this.showBatchInterviewModal.set(false);
+        this.applications.update(list =>
+          list.map(app => ids.includes(app.applicationId)
+            ? { ...app, status: 'ScheduledInterview', interviewBatchCode: 'BATCH-SMT-NEW' }
+            : app)
+        );
+        this.selectedIds.set(new Set());
+        const splitText = ids.length > 50 ? `(Đã tự động chia làm ${Math.ceil(ids.length / 50)} ca)` : '';
+        this.toast.success('Xếp ca thành công (Demo)', `Đã xếp ${ids.length} ứng viên vào ca phỏng vấn ${splitText}!`);
+      }, 400);
     }
   }
 
@@ -623,6 +1001,85 @@ export class ApplicationsManagementComponent implements OnInit {
   // ── Mock Data Đa Dạng 2 Luồng: Kỹ Sư PDF & Công Nhân QR Form/Walk-in ───
   private getInitialIndustrialMockData(): IndustrialApplication[] {
     return [
+      {
+        applicationId: 'mock-rehire-01',
+        candidateId: 'cand-rehire-01',
+        jobId: 'job-smt-01',
+        jobTitle: 'Công nhân vận hành dây chuyền SMT (Tuyển gấp 100 người)',
+        jobCode: 'JOB-SMT-100',
+        departmentCode: 'PROD_LINE',
+        departmentName: 'Xưởng Sản Xuất & Lắp Ráp SMT',
+        candidateName: 'Nguyễn Văn Toàn',
+        phone: '0912345678',
+        email: 'toan.nguyen@rehire-ats.local',
+        yearOfBirth: '1999',
+        cccd: '027200001234',
+        hometown: 'Bắc Ninh',
+        educationLevel: 'THPT (12/12)',
+        recruitmentTrack: 'MASS_LABOR',
+        applicationSource: 'GOOGLE_FORM_QR',
+        scoringMethod: 'RULE_ENGINE',
+        aiMatchingScore: 98,
+        skillMatchPercent: 98,
+        experienceMatchPercent: 100,
+        shiftHealthPercent: 96,
+        aiSummary: 'Nhận diện nhân viên cũ tái ứng tuyển (NV-2024-0412). Nghỉ việc đúng quy trình tháng 11/2024. Đã tự động cộng +15 điểm ưu tiên kinh nghiệm đứng máy mounter SMT.',
+        tags: ['⭐ Nhân viên cũ tái ứng tuyển', 'Tay nghề cao SMT', '✅ Xoay ca 12h'],
+        shift12hReady: true,
+        isRuleRejected: false,
+        cvFileUrl: null,
+        rawResumeText: 'Tờ khai QR: Nguyễn Văn Toàn (Cựu nhân viên SMT). Nghỉ việc về giải quyết việc gia đình, nay có nguyện vọng quay lại làm việc.',
+        oralChecklist: {
+          handEyePass: true,
+          visionPass: true,
+          shift12hConfirmed: true,
+          attitudePass: true,
+          quickNote: 'Tay nghề cứng, đã từng làm tổ phó chuyền 2.'
+        },
+        status: 'PENDING',
+        appliedAt: '2026-11-07T08:00:00Z',
+        isExEmployeeRehire: true,
+        previousEmployeeCode: 'NV-2024-0412'
+      },
+      {
+        applicationId: 'mock-talent-01',
+        candidateId: 'cand-talent-01',
+        jobId: 'job-smt-01',
+        jobTitle: 'Công nhân vận hành dây chuyền SMT (Tuyển gấp 100 người)',
+        jobCode: 'JOB-SMT-100',
+        departmentCode: 'PROD_LINE',
+        departmentName: 'Xưởng Sản Xuất & Lắp Ráp SMT',
+        candidateName: 'Trịnh Thị Thúy',
+        phone: '0988776655',
+        email: 'thuy.trinh@talentpool.local',
+        yearOfBirth: '2001',
+        cccd: '037201004321',
+        hometown: 'Ninh Bình',
+        educationLevel: 'THPT (12/12)',
+        recruitmentTrack: 'MASS_LABOR',
+        applicationSource: 'GOOGLE_FORM_QR',
+        scoringMethod: 'RULE_ENGINE',
+        aiMatchingScore: 91,
+        skillMatchPercent: 90,
+        experienceMatchPercent: 92,
+        shiftHealthPercent: 95,
+        aiSummary: 'Hồ sơ đạt sơ loại xuất sắc nhưng chiến dịch trước đã đủ chỉ tiêu (Closed_Quota_Full). Đã tự động bảo lưu vào Kho ứng viên tiềm năng (Talent Pool) sẵn sàng điều chuyển.',
+        tags: ['💎 Bảo lưu Talent Pool', '✅ Xoay ca 12h', 'Sẵn sàng điều chuyển'],
+        shift12hReady: true,
+        isRuleRejected: false,
+        cvFileUrl: null,
+        rawResumeText: 'Hồ sơ bảo lưu từ chiến dịch tháng trước, đạt tiêu chuẩn thị lực và xoay ca.',
+        oralChecklist: {
+          handEyePass: true,
+          visionPass: true,
+          shift12hConfirmed: true,
+          attitudePass: true,
+          quickNote: 'Hồ sơ tiềm năng, ưu tiên điều chuyển sang chiến dịch mới.'
+        },
+        status: 'PENDING',
+        appliedAt: '2026-11-05T14:20:00Z',
+        isInTalentPool: true
+      },
       {
         applicationId: 'mock-prof-01',
         candidateId: 'cand-prof-01',

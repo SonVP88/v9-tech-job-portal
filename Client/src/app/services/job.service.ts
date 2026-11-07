@@ -20,6 +20,11 @@ export interface CreateJobRequest {
     deadline?: string; // ISO date string
     skillIds: string[];
     createCampaignQr?: boolean;
+    requireNightShift?: boolean;
+    requisitionStatus?: string;
+    requisitionNote?: string;
+    recruitmentTrack?: string;
+    targetQuantity?: number;
 }
 
 export interface CampaignQrDto {
@@ -91,6 +96,16 @@ export interface JobDto {
     campaignFormSource?: string;
     googleFormPublicUrl?: string;
     qrCodeImagePath?: string;
+
+    // V3 Enterprise Compliance (Phê duyệt định biên & ca đêm)
+    recruitmentTrack?: string;
+    targetQuantity?: number;
+    hiredCount?: number;
+    waitlistBufferPercent?: number;
+    requisitionStatus?: string; // 'Draft' | 'Pending_Approval' | 'Approved' | 'Rejected_Budget'
+    requisitionNote?: string;
+    requireNightShift?: boolean;
+    approvedAt?: string;
 }
 
 export interface JobDetailDto extends JobDto {
@@ -245,5 +260,12 @@ export class JobService {
 
     updateCustomFormUrl(jobId: string, formUrl: string): Observable<CampaignQrDto> {
         return this.http.put<CampaignQrDto>(`${this.apiUrl}/jobs/${jobId}/campaign-qr/custom-form`, { formUrl });
+    }
+
+    /**
+     * Phê duyệt định biên ngân sách chiến dịch (RequisitionStatus = 'Approved')
+     */
+    approveRequisition(jobId: string): Observable<{ success: boolean; message: string }> {
+        return this.http.post<{ success: boolean; message: string }>(`${this.apiUrl}/jobs/${jobId}/approve-requisition`, {});
     }
 }

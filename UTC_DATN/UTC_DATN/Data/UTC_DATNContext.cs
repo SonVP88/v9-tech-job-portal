@@ -123,8 +123,35 @@ public partial class UTC_DATNContext : DbContext
     /// <summary>Bảng Phòng ban / Khu vực chuyên môn của Khu Công nghiệp</summary>
     public virtual DbSet<Department> Departments { get; set; }
 
+    /// <summary>Bảng Danh sách đen ứng viên (CandidateBlacklists)</summary>
+    public virtual DbSet<CandidateBlacklist> CandidateBlacklists { get; set; }
+
+    /// <summary>Bảng Ca phỏng vấn tập trung</summary>
+    public virtual DbSet<InterviewBatch> InterviewBatches { get; set; }
+
+    /// <summary>Bảng Nhân sự cũ đã nghỉ việc (ExEmployees)</summary>
+    public virtual DbSet<ExEmployee> ExEmployees { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        // ════════════════════════════════════════════════════════════════════
+        // CANDIDATE BLACKLIST ENTITY - 7 Business Rules Guard
+        // ════════════════════════════════════════════════════════════════════
+        modelBuilder.Entity<CandidateBlacklist>(entity =>
+        {
+            entity.ToTable("CandidateBlacklists");
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.CitizenId, "IX_CandidateBlacklists_CitizenId");
+            entity.HasIndex(e => e.PhoneNormalized, "IX_CandidateBlacklists_PhoneNormalized");
+            entity.Property(e => e.CitizenId).HasMaxLength(20);
+            entity.Property(e => e.PhoneNormalized).HasMaxLength(20);
+            entity.Property(e => e.FullName).IsRequired().HasMaxLength(150);
+            entity.Property(e => e.Reason).IsRequired().HasMaxLength(500);
+            entity.Property(e => e.BanType).IsRequired().HasMaxLength(50).HasDefaultValue("PERMANENT");
+            entity.Property(e => e.CreatedBy).HasMaxLength(100);
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("(sysutcdatetime())");
+        });
+
         // ════════════════════════════════════════════════════════════════════
         // DEPARTMENT ENTITY - Matrix Organization
         // ════════════════════════════════════════════════════════════════════
@@ -265,6 +292,43 @@ public partial class UTC_DATNContext : DbContext
                 .IsRequired()
                 .HasMaxLength(30)
                 .HasDefaultValue("ACTIVE");
+
+            entity.HasIndex(e => e.CitizenId, "IX_Applications_CitizenId");
+            entity.HasIndex(e => e.PhoneNormalized, "IX_Applications_PhoneNormalized");
+            entity.HasIndex(e => e.ConvertedEmployeeCode, "UX_Applications_ConvertedEmployeeCode")
+                .IsUnique()
+                .HasFilter("[ConvertedEmployeeCode] IS NOT NULL");
+
+            entity.Property(e => e.ApplicationSource).HasMaxLength(30).HasDefaultValue("PDF_UPLOAD");
+            entity.Property(e => e.ScoringMethod).HasMaxLength(30).HasDefaultValue("GEMINI_AI");
+            entity.Property(e => e.CitizenId).HasMaxLength(20);
+            entity.Property(e => e.PhoneNormalized).HasMaxLength(20);
+            entity.Property(e => e.DuplicateCount).HasDefaultValue(1);
+            entity.Property(e => e.IsBlacklisted).HasDefaultValue(false);
+            entity.Property(e => e.BlacklistWarningNote).HasMaxLength(500);
+            entity.Property(e => e.IsScannedOrUnparseablePdf).HasDefaultValue(false);
+            entity.Property(e => e.AppliedScoringVersion).HasDefaultValue(1);
+            entity.Property(e => e.MedicalCheckStatus).HasMaxLength(30).HasDefaultValue("Pending");
+            entity.Property(e => e.BankAccountNumber).HasMaxLength(50);
+            entity.Property(e => e.BankName).HasMaxLength(100);
+            entity.Property(e => e.OnboardingDocsCompleted).HasDefaultValue(false);
+            entity.Property(e => e.ConvertedEmployeeCode).HasMaxLength(50);
+            entity.Property(e => e.IsSlaEscalated).HasDefaultValue(false);
+            entity.Property(e => e.SlaOverrideReason).HasMaxLength(500);
+            entity.Property(e => e.IsPiiMaskedBeforeAi).HasDefaultValue(true);
+            entity.Property(e => e.InterviewScore).HasPrecision(5, 2);
+            entity.Property(e => e.IsAiOverriddenByHuman).HasDefaultValue(false);
+            entity.Property(e => e.AiOverrideReason).HasMaxLength(500);
+            entity.Property(e => e.OfferStatus).HasMaxLength(30).HasDefaultValue("Not_Required");
+            entity.Property(e => e.OfferedSalary).HasPrecision(18, 2);
+            entity.Property(e => e.OfferResponseNote).HasMaxLength(500);
+            entity.Property(e => e.TransferReason).HasMaxLength(500);
+            entity.Property(e => e.IsExEmployeeRehire).HasDefaultValue(false);
+            entity.Property(e => e.PreviousEmployeeCode).HasMaxLength(50);
+            entity.Property(e => e.InterviewRescheduleCount).HasDefaultValue(0);
+            entity.Property(e => e.IsInTalentPool).HasDefaultValue(false);
+            entity.Property(e => e.Probation30DayStatus).HasMaxLength(30).HasDefaultValue("Not_Started");
+            entity.Property(e => e.RowVersion).IsRowVersion().IsConcurrencyToken();
 
             entity.HasOne(d => d.Candidate).WithMany(p => p.Applications)
                 .HasForeignKey(d => d.CandidateId)
@@ -909,6 +973,15 @@ public partial class UTC_DATNContext : DbContext
             entity.Property(e => e.GoogleFormPublicUrl).HasMaxLength(1000);
             entity.Property(e => e.GoogleFormEditUrl).HasMaxLength(1000);
             entity.Property(e => e.QrCodeImagePath).HasMaxLength(500);
+            entity.Property(e => e.RecruitmentTrack).HasMaxLength(30).HasDefaultValue("PROFESSIONAL");
+            entity.Property(e => e.TargetQuantity).HasDefaultValue(50);
+            entity.Property(e => e.HiredCount).HasDefaultValue(0);
+            entity.Property(e => e.WaitlistBufferPercent).HasDefaultValue(15);
+            entity.Property(e => e.CurrentScoringWeightVersion).HasDefaultValue(1);
+            entity.Property(e => e.GoogleFormUrl).HasMaxLength(500);
+            entity.Property(e => e.RequisitionStatus).HasMaxLength(30).HasDefaultValue("Approved");
+            entity.Property(e => e.RequisitionNote).HasMaxLength(500);
+            entity.Property(e => e.RequireNightShift).HasDefaultValue(false);
 
             entity.HasOne(d => d.CreatedByNavigation).WithMany(p => p.Jobs)
                 .HasForeignKey(d => d.CreatedBy)
