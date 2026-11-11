@@ -68,13 +68,13 @@ public class AiMatchingService : IAiMatchingService
     }
 
     /// <summary>
-    /// Chấm điểm CV bằng Google Gemini AI (Dùng kỹ thuật Document AI Native / Base64)
+    /// Chấm điểm CV bằng Google Gemini AI theo khuôn Rubric ATS chuẩn hóa (Dùng kỹ thuật Document AI Native / Base64)
     /// </summary>
-    public async Task<AiScoreResult> ScoreApplicationAsync(string cvFilePath, string jobDescription)
+    public async Task<AiScoreResult> ScoreApplicationAsync(string cvFilePath, string jobDescription, string recruitmentTrack = "PROFESSIONAL")
     {
         try
         {
-            _logger.LogInformation("Scoring application with AI Native PDF for file: {FilePath}", cvFilePath);
+            _logger.LogInformation("Scoring application with AI Native PDF for file: {FilePath}, Track: {Track}", cvFilePath, recruitmentTrack);
 
             // Kiểm tra file
             if (!System.IO.File.Exists(cvFilePath))
@@ -93,8 +93,8 @@ public class AiMatchingService : IAiMatchingService
             byte[] fileBytes = await System.IO.File.ReadAllBytesAsync(cvFilePath);
             string base64File = Convert.ToBase64String(fileBytes);
 
-            // Tạo prompt cho AI (Không nhét text CV vào nữa)
-            var prompt = CreateScoringPrompt(jobDescription);
+            // Tạo prompt cho AI theo khuôn ma trận tiêu chí chuẩn ATS
+            var prompt = CreateScoringPrompt(jobDescription, recruitmentTrack);
 
             // Tạo request body cho Gemini API (Sử dụng inlineData cho file PDF)
             var requestBody = new
@@ -148,36 +148,75 @@ public class AiMatchingService : IAiMatchingService
     }
 
     /// <summary>
-    /// Tạo prompt cho AI
+    /// Tạo prompt cho AI theo khuôn ma trận tiêu chuẩn tuyển dụng (Evaluation Framework / Rubric Matrix)
     /// </summary>
-    private string CreateScoringPrompt(string jobDescription)
+    private string CreateScoringPrompt(string jobDescription, string recruitmentTrack = "PROFESSIONAL")
     {
-        return $@"Bạn là một chuyên gia tuyển dụng chuyên nghiệp. Nhiệm vụ của bạn là đọc file CV (PDF) được đính kèm và đánh giá mức độ phù hợp của nó với mô tả công việc dưới đây.
+        return $@"Bạn là Hệ thống Trí tuệ Nhân tạo Đánh giá Ứng viên ATS chuyên nghiệp.
+Nhiệm vụ của bạn là đọc và phân tích file CV (PDF) đính kèm của ứng viên, đối chiếu khắt khe và công tâm với Yêu Cầu Tuyển Dụng dưới đây:
 
-**MÔ TẢ CÔNG VIỆC:**
+**THÔNG TIN CÔNG VIỆC CẦN TUYỂN:**
 {jobDescription}
 
-Hãy đọc kỹ file PDF CV đính kèm. Phân tích và đánh giá CV theo 4 tiêu chí:
-1. Kỹ năng kỹ thuật (technicalSkills): mức độ khớp kỹ năng kỹ thuật
-2. Kinh nghiệm (experience): số năm và mức độ liên quan của kinh nghiệm
-3. Học vấn (education): trình độ và ngành học phù hợp
-4. Kỹ năng mềm (softSkills): giao tiếp, teamwork, lãnh đạo, ngoại ngữ
+**LUỒNG TUYỂN DỤNG:** {recruitmentTrack}
 
-Trả về kết quả dưới dạng JSON (KHÔNG thêm markdown, chỉ trả về JSON thuần):
+---
+### KHUÔN MA TRẬN ĐÁNH GIÁ CHUẨN ATS (EVALUATION RUBRIC MATRIX):
+Hãy đọc kỹ file PDF CV đính kèm và đánh giá CV theo đúng khuôn 4 tiêu chí (thang điểm 0 - 100):
+
+1. **Khớp Kỹ Năng Chuyên Môn / Kỹ Thuật (technicalSkills - Trọng số 40%):**
+   - Đánh giá: Mức độ tương thích giữa công nghệ, thiết bị, kỹ năng thực tế trong CV với các yêu cầu kỹ thuật bắt buộc của công việc.
+   - **QUY TẮC RÀO CẢN BẮT BUỘC (CRUCIAL BARRIER RULE):**
+     + NẾU CV thuộc chuyên ngành hoặc lĩnh vực hoàn toàn khác biệt với công việc (Ví dụ: Công việc tuyển Kỹ sư Tự động hóa PLC/Điện tử/Cơ điện tử nhưng CV là Lập trình viên Web/Phần mềm C#/Angular; hoặc ngược lại tuyển Lập trình viên mà CV là Kế toán/Hành chính) thì technicalSkills BẮT BUỘC <= 15 điểm.
+     + Nếu CV chỉ có kỹ năng cơ bản hoặc phụ trợ: 30 - 50 điểm.
+     + Nếu CV đáp ứng được các kỹ năng trọng yếu: 70 - 85 điểm.
+     + Nếu chuyên gia xuất sắc, bao quát toàn bộ yêu cầu: 86 - 100 điểm.
+
+2. **Kinh Nghiệm Thực Tế & Dự Án Liên Quan (experience - Trọng số 35%):**
+   - Đánh giá: Số năm làm việc, quy mô dự án và môi trường làm việc trước đây so với vị trí cần tuyển.
+   - **QUY TẮC RÀO CẢN:**
+     + NẾU CV chưa từng làm dự án hay công việc nào liên quan đến lĩnh vực của vị trí tuyển dụng: experience BẮT BUỘC <= 15 điểm.
+     + Có kinh nghiệm tương tự nhưng khác môi trường: 40 - 60 điểm.
+     + Đúng ngành nghề, đúng vị trí từ 2 năm trở lên: 70 - 90 điểm.
+
+3. **Học Vấn & Bằng Cấp Chuyên Ngành (education - Trọng số 15%):**
+   - Đánh giá: Bằng cấp, ngành học tại trường có phù hợp với vị trí công việc.
+   - Ngành học không liên quan hoặc trái ngành: 30 - 50 điểm.
+   - Đúng chuyên ngành kỹ thuật theo yêu cầu: 75 - 100 điểm.
+
+4. **Kỹ Năng Mềm & Kỹ Năng Bổ Trợ (softSkills - Trọng số 10%):**
+   - Đánh giá: Ngoại ngữ, tác phong, tinh thần trách nhiệm, khả năng làm việc nhóm/giải quyết vấn đề. (Thang 40 - 90 điểm).
+
+---
+### CÔNG THỨC TÍNH ĐIỂM TỔNG THEO KHUÔN (OVERALL SCORE FORMULA):
+`calculatedScore = Round(technicalSkills * 0.40 + experience * 0.35 + education * 0.15 + softSkills * 0.10)`
+
+**ĐIỀU KIỆN CHỐT CHẶN (VETO RULE):**
+- NẾU `technicalSkills <= 20` HOẶC `experience <= 20` (Trái ngành / Không có kỹ năng cốt lõi), thì `score` TUYỆT ĐỐI KHÔNG ĐƯỢC VƯỢT QUÁ 30 điểm (Đánh giá Không phù hợp).
+- Ngược lại, `score` phải là giá trị làm tròn của `calculatedScore`.
+
+---
+### KHUÔN NHẬN XÉT ĐÁNH GIÁ (EXPLANATION FORMAT):
+Phần nhận xét `explanation` PHẢI viết theo khuôn mẫu 3 ý rõ ràng, súc tích (tiếng Việt có dấu):
+- Điểm phù hợp: [Nêu các điểm khớp nếu có, hoặc ghi rõ: ""Không có kỹ năng chuyên môn phù hợp""]
+- Khoảng cách kỹ năng & kinh nghiệm: [Liệt kê cụ thể công nghệ/kỹ năng/kinh nghiệm CV đang thiếu so với JD]
+- Kết luận: [Đạt tiêu chuẩn / Cần phỏng vấn thêm / Không phù hợp do trái ngành]
+
+---
+### ĐỊNH DẠNG ĐẦU RA JSON (CHỈ TRẢ VỀ JSON THUẦN, KHÔNG THÊM MARKDOWN):
 {{
-  ""score"": <điểm tổng 0-100, tính trung bình có trọng số>,
+  ""score"": <số nguyên 0-100 tính theo khuôn trên>,
   ""breakdown"": {{
-    ""technicalSkills"": <0-100>,
-    ""experience"": <0-100>,
-    ""education"": <0-100>,
-    ""softSkills"": <0-100>
+    ""technicalSkills"": <số nguyên 0-100>,
+    ""experience"": <số nguyên 0-100>,
+    ""education"": <số nguyên 0-100>,
+    ""softSkills"": <số nguyên 0-100>
   }},
-  ""explanation"": ""<giải thích ngắn gọn 2-3 câu>"",
-  ""matchedSkills"": [""<kỹ năng 1>"", ""<kỹ năng 2>"", ...],
-  ""missingSkills"": [""<kỹ năng thiếu 1>"", ""<kỹ năng thiếu 2>"", ...]
+  ""explanation"": ""<Nhận xét chuẩn theo khuôn 3 ý trên>"",
+  ""matchedSkills"": [""<kỹ năng khớp 1>"", ...],
+  ""missingSkills"": [""<kỹ năng còn thiếu 1>"", ...]
 }}
-
-Lưu ý: Score phải là số nguyên 0-100. CHỈ TRẢ VỀ JSON THUẦN.";
+Lưu ý: CHỈ TRẢ VỀ JSON THUẦN, KHÔNG DÙNG CÚ PHÁP MARKDOWN CODE BLOCK.";
     }
 
     /// <summary>
@@ -230,28 +269,38 @@ Lưu ý: Score phải là số nguyên 0-100. CHỈ TRẢ VỀ JSON THUẦN.";
             // Parse breakdown (Explainable AI)
             if (resultRoot.TryGetProperty("breakdown", out var bd))
             {
+                var ts = bd.TryGetProperty("technicalSkills", out var pTs) ? pTs.GetInt32() : 0;
+                var exVal = bd.TryGetProperty("experience", out var pEx) ? pEx.GetInt32() : 0;
+                var ed = bd.TryGetProperty("education", out var pEd) ? pEd.GetInt32() : 0;
+                var ss = bd.TryGetProperty("softSkills", out var pSs) ? pSs.GetInt32() : 0;
+
                 result.Breakdown = new UTC_DATN.DTOs.Ai.AiScoreBreakdown
                 {
-                    TechnicalSkills = bd.TryGetProperty("technicalSkills", out var ts) ? ts.GetInt32() : 0,
-                    Experience      = bd.TryGetProperty("experience",      out var ex) ? ex.GetInt32() : 0,
-                    Education       = bd.TryGetProperty("education",       out var ed) ? ed.GetInt32() : 0,
-                    SoftSkills      = bd.TryGetProperty("softSkills",      out var ss) ? ss.GetInt32() : 0,
+                    TechnicalSkills = Math.Clamp(ts, 0, 100),
+                    Experience      = Math.Clamp(exVal, 0, 100),
+                    Education       = Math.Clamp(ed, 0, 100),
+                    SoftSkills      = Math.Clamp(ss, 0, 100),
                 };
+
+                // Tính toán điểm tổng theo KHUÔN MA TRẬN CHUẨN ATS (Đảm bảo minh bạch 100%, không bị sai lệch)
+                int rubricScore = (int)Math.Round((result.Breakdown.TechnicalSkills * 0.40) + 
+                                                  (result.Breakdown.Experience * 0.35) + 
+                                                  (result.Breakdown.Education * 0.15) + 
+                                                  (result.Breakdown.SoftSkills * 0.10));
+
+                // Quy tắc rào cản Veto: Nếu Kỹ năng hoặc Kinh nghiệm hoàn toàn không khớp (<= 20) -> Tối đa 30 điểm
+                if (result.Breakdown.TechnicalSkills <= 20 || result.Breakdown.Experience <= 20)
+                {
+                    rubricScore = Math.Min(rubricScore, 30);
+                }
+
+                result.Score = Math.Clamp(rubricScore, 0, 100);
             }
-
-            // Parse matched skills
-            if (resultRoot.TryGetProperty("matchedSkills", out var matchedSkills))
-                foreach (var skill in matchedSkills.EnumerateArray())
-                    result.MatchedSkills.Add(skill.GetString() ?? "");
-
-            // Parse missing skills
-            if (resultRoot.TryGetProperty("missingSkills", out var missingSkills))
-                foreach (var skill in missingSkills.EnumerateArray())
-                    result.MissingSkills.Add(skill.GetString() ?? "");
-
-            // Validate score range
-            if (result.Score < 0) result.Score = 0;
-            if (result.Score > 100) result.Score = 100;
+            else
+            {
+                // Validate score range nếu không có breakdown
+                result.Score = Math.Clamp(result.Score, 0, 100);
+            }
 
             return result;
         }

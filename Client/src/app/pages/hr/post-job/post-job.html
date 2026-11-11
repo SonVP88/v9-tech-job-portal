@@ -280,16 +280,6 @@
         </div>
         <div *ngIf="skillsError" class="text-sm text-red-500 mt-1">Vui lòng chọn ít nhất 1 kỹ năng</div>
       </div>
-      <div class="col-span-1 md:col-span-2" *ngIf="!isEditMode">
-        <label class="flex items-start gap-3 rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3 cursor-pointer">
-          <input type="checkbox" formControlName="createCampaignQr" class="mt-1 h-4 w-4" />
-          <span>
-            <span class="block text-sm font-semibold text-emerald-800">Tạo Google Form + mã QR ngay khi đăng tin</span>
-            <span class="block text-xs text-emerald-700 mt-0.5">Công nhân quét QR để mở form ứng tuyển. Nếu chưa gắn tài khoản Google, hệ thống dùng form nội bộ.</span>
-          </span>
-        </label>
-      </div>
-
       <!-- Checkbox Ràng buộc ca đêm & Định biên ngân sách -->
       <div class="col-span-1 md:col-span-2 space-y-3">
         <label class="flex items-start gap-3 rounded-xl border border-purple-200 bg-purple-50/70 dark:bg-purple-950/30 dark:border-purple-800 px-4 py-3 cursor-pointer">

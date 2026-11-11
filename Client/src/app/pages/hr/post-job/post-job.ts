@@ -115,7 +115,7 @@ export class PostJob implements OnInit {
       requirements: ['', [Validators.maxLength(4000)]],
       benefits: ['', [Validators.maxLength(4000)]],
       numberOfPositions: [null, [Validators.min(1)]],
-      createCampaignQr: [true],
+      createCampaignQr: [false],
       requireNightShift: [false],
       requisitionNote: [''],
       recruitmentTrack: ['PROFESSIONAL'],

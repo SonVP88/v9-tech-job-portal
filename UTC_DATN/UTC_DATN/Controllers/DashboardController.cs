@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
+using System.Security.Claims;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -24,6 +26,92 @@ public class DashboardController : ControllerBase
     {
         _context = context;
         _logger = logger;
+    }
+
+    /// <summary>
+    /// GET /api/dashboard/sidebar-badges - Lấy số lượng badge động theo thời gian thực cho thanh menu Sidebar
+    /// </summary>
+    [HttpGet("sidebar-badges")]
+    [AllowAnonymous]
+    public async Task<IActionResult> GetSidebarBadges()
+    {
+        try
+        {
+            var now = DateTime.UtcNow;
+            var today = DateTime.UtcNow.Date;
+            var tomorrow = today.AddDays(1);
+
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            var userRoles = User.FindAll(ClaimTypes.Role).Select(r => r.Value.ToUpperInvariant()).ToList();
+            var isFullAccess = userRoles.Count == 0 || userRoles.Contains("ADMIN") || userRoles.Contains("SUPERADMIN") || userRoles.Contains("HR") || userRoles.Contains("HR_MANAGER");
+
+            Guid? userDeptId = null;
+            Guid? currentUserId = null;
+            if (Guid.TryParse(userIdClaim, out var uid))
+            {
+                currentUserId = uid;
+                if (!isFullAccess)
+                {
+                    var user = await _context.Users.AsNoTracking().FirstOrDefaultAsync(u => u.UserId == uid);
+                    userDeptId = user?.DepartmentId;
+                }
+            }
+
+            // 1. Số lượng việc làm đang mở tuyển (Active / Open)
+            var jobQuery = _context.Jobs.AsNoTracking().Where(j => !j.IsDeleted && (j.Status == "ACTIVE" || j.Status == "OPEN"));
+            if (userDeptId.HasValue)
+            {
+                jobQuery = jobQuery.Where(j => j.DepartmentId == userDeptId.Value);
+            }
+            var openJobs = await jobQuery.CountAsync();
+
+            // 2. Số lượng hồ sơ ứng tuyển đang hoạt động / chờ xử lý (không tính đã loại hoặc đã huỷ)
+            var appQuery = _context.Applications.AsNoTracking().Where(a => a.Status != "REJECTED" && a.Status != "HIRED" && a.Status != "WITHDRAWN" && !a.Job.IsDeleted);
+            if (userDeptId.HasValue)
+            {
+                appQuery = appQuery.Where(a => a.Job.DepartmentId == userDeptId.Value);
+            }
+            var pendingApplications = await appQuery.CountAsync();
+
+            // 3. Số lượng lịch phỏng vấn hôm nay hoặc sắp tới
+            var interviewQuery = _context.Interviews.AsNoTracking().Where(i => i.Status != "CANCELLED");
+            if (userDeptId.HasValue)
+            {
+                interviewQuery = interviewQuery.Where(i => i.InterviewerId == currentUserId || (i.Application != null && i.Application.Job != null && i.Application.Job.DepartmentId == userDeptId.Value));
+            }
+            else if (currentUserId.HasValue && !isFullAccess)
+            {
+                interviewQuery = interviewQuery.Where(i => i.InterviewerId == currentUserId);
+            }
+
+            var todayInterviews = await interviewQuery
+                .Where(i => i.ScheduledStart >= today && i.ScheduledStart < tomorrow)
+                .CountAsync();
+
+            // Nếu hôm nay không có lịch, đếm số lịch phỏng vấn sắp tới (Upcoming) chưa kết thúc
+            if (todayInterviews == 0)
+            {
+                todayInterviews = await interviewQuery
+                    .Where(i => i.ScheduledStart >= today && i.Status != "COMPLETED")
+                    .CountAsync();
+            }
+
+            return Ok(new
+            {
+                success = true,
+                data = new
+                {
+                    openJobs,
+                    pendingApplications,
+                    todayInterviews
+                }
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Lỗi khi lấy số liệu sidebar badges");
+            return StatusCode(500, new { success = false, message = "Lỗi khi lấy số liệu menu" });
+        }
     }
 
     /// <summary>

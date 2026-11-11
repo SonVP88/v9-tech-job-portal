@@ -6,7 +6,6 @@ import { JobDetail } from './pages/candidate/job-detail/job-detail';
 import { MyApplications } from './pages/candidate/my-applications/my-applications';
 import { Dashboard } from './pages/hr/dashboard/dashboard';
 import { HrLayout } from './layouts/hr-layout/hr-layout';
-import { ManageApplications } from './pages/hr/manage-applications/manage-applications';
 import { ApplicationsManagementComponent } from './pages/hr/applications-management/applications-management.component';
 import { EmployeeManagement } from './pages/admin/employee-management/employee-management';
 import { ForbiddenComponent } from './pages/forbidden/forbidden.component';
@@ -124,7 +123,7 @@ export const routes: Routes = [
       },
       {
         path: 'applications-legacy',
-        component: ManageApplications,
+        loadComponent: () => import('./pages/hr/manage-applications/manage-applications').then(m => m.ManageApplications),
         canActivate: [roleAccessGuard]
       },
       {

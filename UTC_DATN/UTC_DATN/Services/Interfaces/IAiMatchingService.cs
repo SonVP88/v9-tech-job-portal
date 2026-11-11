@@ -12,12 +12,13 @@ public interface IAiMatchingService
     Task<string> ExtractTextFromPdfAsync(string filePath);
 
     /// <summary>
-    /// Chấm điểm CV dựa trên Job Description bằng AI (Sử dụng Document AI Native)
+    /// Chấm điểm CV dựa trên Job Description bằng AI theo khuôn Rubric ATS chuẩn hóa
     /// </summary>
     /// <param name="cvFilePath">Đường dẫn tới file PDF của CV</param>
     /// <param name="jobDescription">Mô tả công việc</param>
+    /// <param name="recruitmentTrack">Luồng tuyển dụng: 'PROFESSIONAL' hoặc 'MASS_LABOR'</param>
     /// <returns>Kết quả chấm điểm</returns>
-    Task<AiScoreResult> ScoreApplicationAsync(string cvFilePath, string jobDescription);
+    Task<AiScoreResult> ScoreApplicationAsync(string cvFilePath, string jobDescription, string recruitmentTrack = "PROFESSIONAL");
 
     /// <summary>
     /// Tạo nội dung email bằng AI dựa trên trạng thái ứng tuyển

@@ -2,6 +2,7 @@ import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { Component, OnInit, ChangeDetectorRef, ChangeDetectionStrategy, inject, PLATFORM_ID } from '@angular/core';
 import { RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
+import { timeout } from 'rxjs';
 import { InterviewService, MyInterviewDto } from '../../services/interview.service';
 import { EvaluationService, EvaluationSubmitDto, EvaluationDetail } from '../../services/evaluation.service';
 import { AuthService } from '../../services/auth.service';
@@ -89,26 +90,31 @@ export class MyInterviews implements OnInit {
     this.errorMessage = '';
     this.cdr.markForCheck(); 
 
-    this.interviewService.getMyInterviews().subscribe({
+    this.interviewService.getMyInterviews().pipe(
+      timeout(10000)
+    ).subscribe({
       next: (response) => {
-        if (response.success) {
-          this.allInterviews = response.data;
+        if (response && response.success) {
+          this.allInterviews = response.data || [];
           this.isLoading = false; 
 
-          console.log(' Loaded interviews (Raw):', this.allInterviews.map(i => ({ id: i.interviewId, status: i.status })));
-
+          console.log(' Loaded interviews:', this.allInterviews.length);
           this.applyFilter();
         } else {
-          this.errorMessage = response.message || 'Không thể tải lịch phỏng vấn';
+          this.errorMessage = response?.message || 'Không thể tải lịch phỏng vấn';
           this.isLoading = false;
+          this.allInterviews = [];
+          this.applyFilter();
         }
         this.cdr.markForCheck(); 
         this.cdr.detectChanges(); 
       },
       error: (error) => {
         console.error(' Error loading interviews:', error);
-        this.errorMessage = 'Có lỗi xảy ra khi tải lịch phỏng vấn';
+        this.errorMessage = 'Có lỗi xảy ra hoặc thời gian phản hồi quá lâu khi tải lịch phỏng vấn';
         this.isLoading = false;
+        this.allInterviews = [];
+        this.applyFilter();
         this.cdr.markForCheck();
         this.cdr.detectChanges();
       }

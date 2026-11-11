@@ -16,6 +16,12 @@ public class ApplicationDto
     // Thông tin AI Scoring
     public int? MatchScore { get; set; }
     public string? AiExplanation { get; set; }
+    public int? SkillMatchPercent { get; set; }
+    public int? ExperienceMatchPercent { get; set; }
+    public int? EducationMatchPercent { get; set; }
+    public int? SoftSkillMatchPercent { get; set; }
+    public List<string>? MatchedSkills { get; set; }
+    public List<string>? MissingSkills { get; set; }
 
     // SLA theo stage hiện tại
     public string? CurrentStageCode { get; set; }

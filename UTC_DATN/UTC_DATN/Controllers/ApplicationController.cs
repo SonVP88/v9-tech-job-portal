@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 using UTC_DATN.Data;
+using UTC_DATN.Entities;
 using UTC_DATN.DTOs.Application;
 using UTC_DATN.DTOs.Interview;
 using UTC_DATN.Services.Implements;
@@ -21,6 +22,8 @@ public class ApplicationController : ControllerBase
     private readonly IConfiguration _configuration;
     private readonly ICampaignQrService _campaignQrService;
     private readonly IApplicationWorkflowGuardService _workflowGuard;
+    private readonly IWebHostEnvironment _environment;
+    private readonly IAiMatchingService _aiMatchingService;
 
     public ApplicationController(
         IApplicationService applicationService,
@@ -29,7 +32,9 @@ public class ApplicationController : ControllerBase
         UTC_DATNContext context,
         IConfiguration configuration,
         ICampaignQrService campaignQrService,
-        IApplicationWorkflowGuardService workflowGuard)
+        IApplicationWorkflowGuardService workflowGuard,
+        IWebHostEnvironment environment,
+        IAiMatchingService aiMatchingService)
     {
         _applicationService = applicationService;
         _interviewService = interviewService;
@@ -38,6 +43,8 @@ public class ApplicationController : ControllerBase
         _configuration = configuration;
         _campaignQrService = campaignQrService;
         _workflowGuard = workflowGuard;
+        _environment = environment;
+        _aiMatchingService = aiMatchingService;
     }
 
     /// <summary>
@@ -307,7 +314,7 @@ public class ApplicationController : ControllerBase
     /// Lấy toàn bộ danh sách hồ sơ ứng tuyển (Dành cho HR/Admin)
     /// </summary>
     [HttpGet]
-    [Authorize(Roles = "HR, ADMIN, INTERVIEWER")]
+    [Authorize(Roles = "HR, ADMIN, INTERVIEWER, SUPERADMIN, MANAGER, HR_MANAGER")]
     public async Task<IActionResult> GetAllApplications([FromQuery] IndustrialApplicationFilterQuery? filter = null)
     {
         try
@@ -424,6 +431,17 @@ public class ApplicationController : ControllerBase
                 })
                 .ToDictionaryAsync(x => x.ApplicationId);
 
+            // Truy vấn điểm AI thật từ bảng ApplicationAiScores (Lấy bản ghi chấm điểm mới nhất)
+            var latestScores = await _context.ApplicationAiScores
+                .AsNoTracking()
+                .Where(s => ids.Contains(s.ApplicationId))
+                .OrderByDescending(s => s.CreatedAt)
+                .ToListAsync();
+
+            var scoreByApp = latestScores
+                .GroupBy(s => s.ApplicationId)
+                .ToDictionary(g => g.Key, g => g.First());
+
             foreach (var app in allApps)
             {
                 if (!enrichMeta.TryGetValue(app.ApplicationId, out var m)) continue;
@@ -445,6 +463,53 @@ public class ApplicationController : ControllerBase
                 app.DepartmentId = m.JobDepartmentId;
                 app.DepartmentName = m.JobDepartmentName;
                 app.DepartmentCode = m.JobDepartmentCode;
+
+                // Enrich điểm AI thật từ Gemini và phân tích tiêu chí chi tiết
+                if (scoreByApp.TryGetValue(app.ApplicationId, out var aiScore))
+                {
+                    app.MatchScore = (int)aiScore.MatchingScore;
+                    if (!string.IsNullOrWhiteSpace(aiScore.MatchedSkillsJson))
+                    {
+                        try
+                        {
+                            using var doc = System.Text.Json.JsonDocument.Parse(aiScore.MatchedSkillsJson);
+                            if (doc.RootElement.TryGetProperty("explanation", out var exp))
+                            {
+                                app.AiExplanation = exp.GetString();
+                            }
+                            if (doc.RootElement.TryGetProperty("matched", out var ms))
+                            {
+                                app.MatchedSkills = ms.EnumerateArray().Select(x => x.GetString() ?? "").Where(x => !string.IsNullOrEmpty(x)).ToList();
+                            }
+                            if (doc.RootElement.TryGetProperty("missing", out var miss))
+                            {
+                                app.MissingSkills = miss.EnumerateArray().Select(x => x.GetString() ?? "").Where(x => !string.IsNullOrEmpty(x)).ToList();
+                            }
+                        }
+                        catch { /* ignore malformed json */ }
+                    }
+
+                    if (!string.IsNullOrWhiteSpace(aiScore.BreakdownJson))
+                    {
+                        try
+                        {
+                            using var bdDoc = System.Text.Json.JsonDocument.Parse(aiScore.BreakdownJson);
+                            if (bdDoc.RootElement.TryGetProperty("technicalSkills", out var ts))
+                                app.SkillMatchPercent = ts.GetInt32();
+                            if (bdDoc.RootElement.TryGetProperty("experience", out var ex))
+                                app.ExperienceMatchPercent = ex.GetInt32();
+                            if (bdDoc.RootElement.TryGetProperty("education", out var ed))
+                                app.EducationMatchPercent = ed.GetInt32();
+                            if (bdDoc.RootElement.TryGetProperty("softSkills", out var ss))
+                                app.SoftSkillMatchPercent = ss.GetInt32();
+                        }
+                        catch { /* ignore malformed json */ }
+                    }
+                }
+                else if (!string.IsNullOrWhiteSpace(m.AiAnalysisSummary))
+                {
+                    app.AiExplanation = m.AiAnalysisSummary;
+                }
 
                 // 7 Business Rules Metadata & Score Versioning (Logic 3)
                 app.CitizenId = m.CitizenId;
@@ -1021,6 +1086,97 @@ public class ApplicationController : ControllerBase
         {
             _logger.LogError(ex, "Lỗi khi lấy AI score cho ApplicationId: {Id}", id);
             return StatusCode(500, new { success = false, message = "Có lỗi xảy ra." });
+        }
+    }
+
+    /// <summary>
+    /// Kích hoạt chấm điểm lại CV bằng AI Gemini cho một Application (Re-score on-demand)
+    /// </summary>
+    [HttpPost("{id}/rescore-ai")]
+    [Authorize]
+    public async Task<IActionResult> RescoreWithAi(Guid id)
+    {
+        try
+        {
+            var app = await _context.Applications
+                .Include(a => a.Job)
+                .Include(a => a.ResumeDocument)
+                    .ThenInclude(rd => rd.File)
+                .FirstOrDefaultAsync(a => a.ApplicationId == id);
+
+            if (app == null) 
+                return NotFound(new { success = false, message = "Không tìm thấy hồ sơ ứng tuyển." });
+
+            var rawFilePath = app.ResumeDocument?.File?.LocalPath ?? app.CvFileUrl;
+            if (string.IsNullOrEmpty(rawFilePath))
+                return BadRequest(new { success = false, message = "Hồ sơ không có file PDF đính kèm." });
+
+            var webRoot = _environment.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
+            var fullPath = Path.Combine(webRoot, rawFilePath.TrimStart('/').Replace('/', Path.DirectorySeparatorChar));
+
+            if (!System.IO.File.Exists(fullPath))
+            {
+                var fileName = Path.GetFileName(rawFilePath);
+                fullPath = Path.Combine(webRoot, "uploads", "cvs", fileName);
+            }
+
+            if (!System.IO.File.Exists(fullPath))
+            {
+                return BadRequest(new { success = false, message = $"Không tìm thấy file CV vật lý trên ổ đĩa ({Path.GetFileName(rawFilePath)})." });
+            }
+
+            var fullJobDesc = $"Job Title: {app.Job.Title}\nJob Description:\n{app.Job.Description}\nJob Requirements:\n{app.Job.Requirements}";
+            var track = app.Job?.RecruitmentTrack ?? "PROFESSIONAL";
+            var aiResult = await _aiMatchingService.ScoreApplicationAsync(fullPath, fullJobDesc, track);
+
+            // Cập nhật hoặc lưu mới vào ApplicationAiScores
+            var existingScore = await _context.ApplicationAiScores.FirstOrDefaultAsync(s => s.ApplicationId == id);
+            if (existingScore != null)
+            {
+                _context.ApplicationAiScores.Remove(existingScore);
+            }
+
+            string? breakdownJson = aiResult.Breakdown != null ? System.Text.Json.JsonSerializer.Serialize(aiResult.Breakdown) : null;
+            var aiScore = new ApplicationAiScore
+            {
+                AiScoreId = Guid.NewGuid(),
+                ApplicationId = id,
+                MatchingScore = aiResult.Score,
+                MatchedSkillsJson = System.Text.Json.JsonSerializer.Serialize(new
+                {
+                    matched = aiResult.MatchedSkills,
+                    missing = aiResult.MissingSkills,
+                    explanation = aiResult.Explanation
+                }),
+                BreakdownJson = breakdownJson,
+                Model = "gemini-2.5-flash",
+                CreatedAt = DateTime.UtcNow
+            };
+
+            _context.ApplicationAiScores.Add(aiScore);
+            app.AiAnalysisSummary = aiResult.Explanation;
+            await _context.SaveChangesAsync();
+
+            _logger.LogInformation("✅ Re-score hoàn tất cho App {Id}: Score={Score}", id, aiResult.Score);
+
+            return Ok(new
+            {
+                success = true,
+                message = "Chấm điểm CV bằng Gemini AI thành công!",
+                data = new
+                {
+                    score = aiResult.Score,
+                    explanation = aiResult.Explanation,
+                    breakdown = aiResult.Breakdown,
+                    matchedSkills = aiResult.MatchedSkills,
+                    missingSkills = aiResult.MissingSkills
+                }
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Lỗi khi chấm điểm lại bằng AI cho Application {Id}", id);
+            return StatusCode(500, new { success = false, message = "Lỗi khi phân tích AI: " + ex.Message });
         }
     }
 

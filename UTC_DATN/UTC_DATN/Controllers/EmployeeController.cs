@@ -296,15 +296,54 @@ namespace UTC_DATN.Controllers
         [Authorize]
         public async Task<IActionResult> UpdateEmployee(Guid id, [FromBody] CreateEmployeeRequest request)
         {
-            // Check authorization
             var userRole = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value ?? "";
             if (userRole != "ADMIN" && userRole != "MANAGER")
             {
-                return StatusCode(403, new { message = " Bạn không có quyền chỉnh sửa thông tin nhân viên." });
+                return StatusCode(403, new { message = "Bạn không có quyền chỉnh sửa thông tin nhân viên." });
             }
-            
+
+            if (!Guid.TryParse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value, out Guid currentUserId))
+            {
+                return Unauthorized();
+            }
+
+            if (userRole == "MANAGER")
+            {
+                var currentDbUser = await _context.Users.IgnoreQueryFilters().FirstOrDefaultAsync(u => u.UserId == currentUserId);
+                var currentDeptId = currentDbUser?.DepartmentId;
+
+                var targetUser = await _context.Users
+                    .IgnoreQueryFilters()
+                    .Include(u => u.UserRoles)
+                        .ThenInclude(ur => ur.Role)
+                    .FirstOrDefaultAsync(u => u.UserId == id);
+
+                if (targetUser == null)
+                {
+                    return NotFound(new { message = "Không tìm thấy nhân sự." });
+                }
+
+                if (targetUser.DepartmentId != currentDeptId)
+                {
+                    return StatusCode(403, new { message = "Trưởng phòng chỉ được phép chỉnh sửa nhân sự trong phòng ban của mình." });
+                }
+
+                var targetRoles = targetUser.UserRoles.Select(ur => ur.Role.Code).ToList();
+                if (targetRoles.Any(r => r == "ADMIN" || (r == "MANAGER" && targetUser.UserId != currentUserId)))
+                {
+                    return StatusCode(403, new { message = "Trưởng phòng không được chỉnh sửa tài khoản Ban Giám Đốc hoặc Trưởng phòng khác." });
+                }
+
+                if (request.Role == "ADMIN" || (request.Role == "MANAGER" && targetUser.UserId != currentUserId))
+                {
+                    return StatusCode(403, new { message = "Trưởng phòng chỉ được phân quyền cấp dưới (HR / Hội đồng Phỏng vấn)." });
+                }
+
+                request.DepartmentId = currentDeptId;
+            }
+
             var employee = await _employeeService.UpdateEmployeeAsync(id, request);
-            
+
             if (employee == null)
             {
                 return BadRequest(new { message = "Email đã tồn tại hoặc dữ liệu không hợp lệ" });

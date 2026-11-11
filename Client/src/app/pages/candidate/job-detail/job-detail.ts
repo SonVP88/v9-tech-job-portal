@@ -146,6 +146,13 @@ export class JobDetail implements OnInit {
    * Load assessments for the job
    */
   private loadAssessmentsForJob(jobId: string): void {
+    const token = localStorage.getItem('authToken');
+    if (!token) {
+      this.assessments = [];
+      this.loadingAssessments = false;
+      return;
+    }
+
     this.loadingAssessments = true;
     
     this.http.get<any>(`${this.apiUrl}/assessments/jobs/${jobId}/assessments`)

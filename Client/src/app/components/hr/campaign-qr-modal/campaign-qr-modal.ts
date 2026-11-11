@@ -67,12 +67,18 @@ export class CampaignQrModalComponent implements OnChanges {
     if (changes['campaign'] && this.campaign) {
       this.ngrokApiUrl = this.campaign.publicApiBaseUrl || '';
       this.ngrokClientUrl = this.campaign.publicClientBaseUrl || '';
-      this.customFormUrl = this.campaign.source === 'GOOGLE_FORM' ? (this.campaign.formUrl || '') : '';
+      const url = (this.campaign.formUrl || '').trim();
+      this.customFormUrl = url && !url.includes('/apply/') ? url : '';
     }
   }
 
   get isGoogle(): boolean {
     return (this.campaign?.source || '').toUpperCase() === 'GOOGLE_FORM';
+  }
+
+  get hasValidQr(): boolean {
+    const url = (this.campaign?.formUrl || '').trim();
+    return !!url && !url.includes('/apply/') && !!this.campaign?.qrCodeDataUrl;
   }
 
   copyLink(): void {

@@ -58,33 +58,46 @@ public class GeminiApiKeyProvider : IGeminiApiKeyProvider
 
         // Lấy danh sách API keys từ configuration
         var apiKeysSection = configuration.GetSection("GeminiAI:ApiKeys");
-        
+        var singleKey = configuration["GeminiAI:ApiKey"];
+
         if (apiKeysSection.Exists())
         {
-            // Nếu cấu hình mảng ApiKeys
             var keys = apiKeysSection.Get<List<string>>();
             if (keys != null && keys.Count > 0)
             {
                 foreach (var k in keys)
                 {
-                    _apiKeys.Add(new ApiKeyInfo { Key = k });
+                    // Chỉ chấp nhận các key hợp lệ của Google Gemini (Bắt đầu bằng AIzaSy)
+                    if (!string.IsNullOrWhiteSpace(k) && k.Trim().StartsWith("AIzaSy"))
+                    {
+                        var trimmed = k.Trim();
+                        if (!_apiKeys.Any(x => x.Key == trimmed))
+                        {
+                            _apiKeys.Add(new ApiKeyInfo { Key = trimmed });
+                        }
+                    }
+                    else if (!string.IsNullOrWhiteSpace(k))
+                    {
+                        _logger.LogWarning("⚠️ Bỏ qua chuỗi không phải Gemini API Key hợp lệ: {KeyPrefix}...", k.Length > 8 ? k.Substring(0, 8) : k);
+                    }
                 }
             }
         }
-        else
+
+        // Bổ sung single ApiKey nếu chưa có
+        if (!string.IsNullOrWhiteSpace(singleKey) && singleKey.Trim().StartsWith("AIzaSy"))
         {
-            // Fallback: Kiểm tra single ApiKey (compatibility)
-            var singleKey = configuration["GeminiAI:ApiKey"];
-            if (!string.IsNullOrEmpty(singleKey))
+            var trimmed = singleKey.Trim();
+            if (!_apiKeys.Any(x => x.Key == trimmed))
             {
-                _apiKeys.Add(new ApiKeyInfo { Key = singleKey });
+                _apiKeys.Add(new ApiKeyInfo { Key = trimmed });
             }
         }
 
         if (_apiKeys.Count == 0)
         {
-            _logger.LogWarning("❌ Không có Gemini API keys được cấu hình!");
-            throw new InvalidOperationException("Không tìm thấy Gemini API keys trong configuration");
+            _logger.LogWarning("❌ Không có Gemini API keys hợp lệ được cấu hình!");
+            throw new InvalidOperationException("Không tìm thấy Gemini API keys hợp lệ trong configuration");
         }
 
         // Tạo module mapping

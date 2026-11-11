@@ -401,7 +401,7 @@ public class InterviewService : IInterviewService
     }
 
     /// <summary>
-    /// Lấy danh sách lịch phỏng vấn của người phỏng vấn (SECURE: Filter by InterviewerId)
+    /// Lấy danh sách lịch phỏng vấn của người phỏng vấn (Tối ưu truy vấn cao tốc AsNoTracking & Projection)
     /// </summary>
     public async Task<List<MyInterviewDto>> GetMyInterviewScheduleAsync(Guid interviewerId)
     {
@@ -410,43 +410,73 @@ public class InterviewService : IInterviewService
         {
             _logger.LogInformation("🕐 START GetMyInterviewSchedule for InterviewerId: {InterviewerId}", interviewerId);
 
-            // Query Interviews với điều kiện InterviewerId = currentUserId
-            var querySw = System.Diagnostics.Stopwatch.StartNew();
-            var interviews = await _context.Interviews
-                .Include(i => i.Application)
-                    .ThenInclude(a => a.Candidate)
-                .Include(i => i.Application)
-                    .ThenInclude(a => a.Job)
-                .Include(i => i.InterviewerUser) // NEW: Include Interviewer info
-                // .Where(i => i.InterviewerId == interviewerId) // REMOVED: Now gets ALL interviews
-                .OrderBy(i => i.ScheduledStart) // Sắp xếp theo thời gian
-                .ToListAsync();
-            querySw.Stop();
+            // Kiểm tra thông tin User và quyền hạn
+            var user = await _context.Users
+                .AsNoTracking()
+                .Include(u => u.UserRoles)
+                    .ThenInclude(ur => ur.Role)
+                .FirstOrDefaultAsync(u => u.UserId == interviewerId);
 
-            _logger.LogInformation("  ⏱️ Database Query: {QueryMs}ms - Found {Count} interviews", 
-                querySw.ElapsedMilliseconds, interviews.Count);
+            var roles = user?.UserRoles?.Select(ur => ur.Role?.Code?.ToUpperInvariant() ?? "").ToList() ?? new List<string>();
+            var isFullAccess = roles.Contains("ADMIN") || roles.Contains("SUPERADMIN") || roles.Contains("HR") || roles.Contains("HR_MANAGER");
+            var isManager = roles.Contains("MANAGER") || roles.Contains("DEPARTMENTMANAGER");
 
-            // Map to DTO
-            var result = interviews.Select(interview =>
+            var query = _context.Interviews.AsNoTracking();
+
+            if (!isFullAccess)
             {
-                var candidate = interview.Application?.Candidate;
-                var job = interview.Application?.Job;
-                var now = DateTime.UtcNow;
+                if (isManager && user?.DepartmentId != null)
+                {
+                    query = query.Where(i => i.InterviewerId == interviewerId || (i.Application != null && i.Application.Job != null && i.Application.Job.DepartmentId == user.DepartmentId));
+                }
+                else
+                {
+                    // Interviewer hoặc nhân viên
+                    var hasOwnInterviews = await _context.Interviews.AsNoTracking().AnyAsync(i => i.InterviewerId == interviewerId);
+                    if (hasOwnInterviews)
+                    {
+                        query = query.Where(i => i.InterviewerId == interviewerId);
+                    }
+                }
+            }
 
-                // Xác định status dựa trên trạng thái gốc và thời gian
+            // Tối ưu hóa: Dùng Projection trực tiếp từ SQL thay vì Include nhiều cấp nặng nề
+            var rawList = await query
+                .OrderBy(i => i.ScheduledStart)
+                .Select(i => new
+                {
+                    i.InterviewId,
+                    CandidateName = i.Application != null ? (i.Application.ContactName ?? (i.Application.Candidate != null ? i.Application.Candidate.FullName : "N/A")) : "N/A",
+                    JobTitle = i.Application != null && i.Application.Job != null ? i.Application.Job.Title : "N/A",
+                    ScheduledStart = i.ScheduledStart,
+                    ScheduledEnd = i.ScheduledEnd,
+                    Location = i.Location,
+                    MeetingLink = i.MeetingLink,
+                    RawStatus = i.Status,
+                    CandidateEmail = i.Application != null ? (i.Application.ContactEmail ?? (i.Application.Candidate != null ? i.Application.Candidate.Email : null)) : null,
+                    CandidatePhone = i.Application != null ? (i.Application.ContactPhone ?? (i.Application.Candidate != null ? i.Application.Candidate.Phone : null)) : null,
+                    InterviewerName = i.InterviewerUser != null ? i.InterviewerUser.FullName : "Chưa phân công",
+                    InterviewerEmail = i.InterviewerUser != null ? i.InterviewerUser.Email : null,
+                    InterviewerId = i.InterviewerId ?? Guid.Empty
+                })
+                .ToListAsync();
+
+            var now = DateTime.UtcNow;
+
+            var result = rawList.Select(interview =>
+            {
                 string status;
-                // Nếu trong DB đã chốt là COMPLETED hoặc CANCELLED thì ưu tiên lấy luôn trạng thái đó
-                if (string.Equals(interview.Status, "COMPLETED", StringComparison.OrdinalIgnoreCase))
+                if (string.Equals(interview.RawStatus, "COMPLETED", StringComparison.OrdinalIgnoreCase))
                 {
                     status = "completed";
                 }
-                else if (string.Equals(interview.Status, "CANCELLED", StringComparison.OrdinalIgnoreCase))
+                else if (string.Equals(interview.RawStatus, "CANCELLED", StringComparison.OrdinalIgnoreCase))
                 {
                     status = "cancelled";
                 }
                 else if (now > interview.ScheduledEnd)
                 {
-                    status = "overdue"; // Đã qua thời gian nhưng DB chưa ghi nhận COMPLETED (nghĩa là chưa chấm điểm)
+                    status = "overdue";
                 }
                 else if (now >= interview.ScheduledStart && now <= interview.ScheduledEnd)
                 {
@@ -460,9 +490,9 @@ public class InterviewService : IInterviewService
                 return new MyInterviewDto
                 {
                     InterviewId = interview.InterviewId,
-                    CandidateName = candidate?.FullName ?? "N/A",
-                    JobTitle = job?.Title ?? "N/A",
-                    Position = job?.Title ?? "N/A",
+                    CandidateName = interview.CandidateName,
+                    JobTitle = interview.JobTitle,
+                    Position = interview.JobTitle,
                     InterviewTime = interview.ScheduledStart,
                     FormattedTime = interview.ScheduledStart.ToString("HH:mm"),
                     FormattedDate = interview.ScheduledStart.ToString("dd/MM/yyyy"),
@@ -470,23 +500,24 @@ public class InterviewService : IInterviewService
                     MeetingLink = interview.MeetingLink,
                     LocationType = !string.IsNullOrEmpty(interview.MeetingLink) ? "online" : "offline",
                     Status = status,
-                    CandidateEmail = candidate?.Email ?? interview.Application?.ContactEmail,
-                    CandidatePhone = candidate?.Phone ?? interview.Application?.ContactPhone,
-                    InterviewerName = interview.InterviewerUser?.FullName ?? "N/A",
-                    InterviewerEmail = interview.InterviewerUser?.Email,
-                    InterviewerId = interview.InterviewerId ?? Guid.Empty
+                    CandidateEmail = interview.CandidateEmail,
+                    CandidatePhone = interview.CandidatePhone,
+                    InterviewerName = interview.InterviewerName,
+                    InterviewerEmail = interview.InterviewerEmail,
+                    InterviewerId = interview.InterviewerId
                 };
             }).ToList();
 
             totalSw.Stop();
-            _logger.LogInformation("✅ FINISH GetMyInterviewSchedule - Total Time: {TotalMs}ms", totalSw.ElapsedMilliseconds);
+            _logger.LogInformation("✅ FINISH GetMyInterviewSchedule - Total Time: {TotalMs}ms - Count: {Count}", 
+                totalSw.ElapsedMilliseconds, result.Count);
 
             return result;
         }
         catch (Exception ex)
         {
             totalSw.Stop();
-            _logger.LogError(ex, " Error getting interview schedule for InterviewerId: {InterviewerId} - Time: {TotalMs}ms", 
+            _logger.LogError(ex, "❌ Error getting interview schedule for InterviewerId: {InterviewerId} - Time: {TotalMs}ms", 
                 interviewerId, totalSw.ElapsedMilliseconds);
             throw;
         }

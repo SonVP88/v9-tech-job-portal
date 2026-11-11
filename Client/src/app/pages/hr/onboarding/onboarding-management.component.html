@@ -1,338 +1,292 @@
-<div class="min-h-screen bg-slate-50/70 pb-28">
-  <div class="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+<div class="min-h-screen bg-slate-50/60 pb-24">
+  <div class="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-5">
 
-    <!-- ═══════════════════════════════════════════════════════════════════════════
-         1. HEADER & NÚT TIỆN ÍCH (QR TỰ BỔ SUNG HỒ SƠ + XUẤT EXCEL THẺ TỪ & NGÂN HÀNG)
-         ═══════════════════════════════════════════════════════════════════════════ -->
-    <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
-      <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-        <div>
-          <div class="flex items-center gap-2.5">
-            <span class="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-              Tiếp nhận nhân sự
-            </span>
-            <span class="text-xs text-slate-400 font-medium">• Kiểm soát khám sức khỏe, CCCD, cấp mã nhân viên & dự bị</span>
-          </div>
-          <h1 class="mt-1.5 text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
-            Tiếp Nhận Nhân Sự Mới & Kiểm Soát Định Biên
-          </h1>
-          <p class="text-sm text-slate-500 mt-0.5">
-            Kiểm tra điều kiện bắt buộc (KSK và CCCD) trước khi cấp mã nhân viên, giới hạn định biên và xử lý trường hợp không nhận việc.
-          </p>
-        </div>
+    <!-- 1. HEADER -->
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div>
+        <h1 class="text-xl font-bold text-slate-900 tracking-tight">
+          Tiếp Nhận Nhân Sự & Cấp Mã Nhân Viên
+        </h1>
+        <p class="text-xs sm:text-sm text-slate-500 mt-0.5">
+          Hoàn tất hồ sơ trúng tuyển, xác nhận khám sức khỏe, cấp mã nhân viên và quản lý định biên.
+        </p>
+      </div>
 
-        <div class="flex flex-wrap items-center gap-2.5">
-          <button
-            type="button"
-            (click)="showSelfServiceQrModal.set(true)"
-            class="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs sm:text-sm font-semibold transition cursor-pointer">
-            <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path></svg>
-            <span>Liên kết bổ sung hồ sơ</span>
-          </button>
+      <div class="flex flex-wrap items-center gap-2.5">
+        <button
+          type="button"
+          (click)="showSelfServiceQrModal.set(true)"
+          class="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold transition cursor-pointer whitespace-nowrap">
+          <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path></svg>
+          <span>Link tự bổ sung hồ sơ</span>
+        </button>
 
-          <button
-            type="button"
-            (click)="exportBadgeAndBankExcel()"
-            class="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs sm:text-sm font-semibold shadow-sm transition cursor-pointer">
-            <svg class="w-4 h-4 text-emerald-100" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
-            <span>Xuất danh sách làm thẻ & ngân hàng</span>
-          </button>
-        </div>
+        <button
+          type="button"
+          (click)="exportBadgeAndBankExcel()"
+          class="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-xs transition cursor-pointer whitespace-nowrap">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+          <span>Xuất danh sách thẻ & NH</span>
+        </button>
       </div>
     </div>
 
-    <!-- ═══════════════════════════════════════════════════════════════════════════
-         2. BANNER THỐNG KÊ CHỈ TIÊU (QUOTA & WAITLIST BANNER)
-         ═══════════════════════════════════════════════════════════════════════════ -->
-    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-      <!-- Card 1: Chỉ tiêu đã tuyển (HiredCount / TargetQuantity) -->
-      <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm relative overflow-hidden">
-        <div class="flex items-start justify-between">
-          <div>
-            <p class="text-xs font-semibold uppercase tracking-wider text-slate-500">Chỉ Tiêu Định Biên</p>
-            <div class="mt-1.5 flex items-baseline gap-2">
-              <span class="text-2xl font-extrabold text-slate-900">{{ hiredCount() }} / {{ targetQuantity() }}</span>
-              <span class="text-xs font-semibold px-2 py-0.5 rounded-full"
-                [ngClass]="isQuotaFull() ? 'bg-rose-100 text-rose-700 border border-rose-200' : 'bg-emerald-100 text-emerald-700'">
-                {{ isQuotaFull() ? 'Đã đủ định biên' : 'Còn trống ' + remainingQuota() + ' chỉ tiêu' }}
-              </span>
-            </div>
-          </div>
-          <div class="w-10 h-10 rounded-lg bg-slate-100 text-slate-700 flex items-center justify-center font-bold text-sm">
-            {{ quotaPercent() }}%
-          </div>
+    <!-- 2. KPI SUMMARY CARDS -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+      <!-- Card 1: Chỉ tiêu định biên -->
+      <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-xs">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-semibold text-slate-500">Định biên tiếp nhận</span>
+          <span class="text-xs font-semibold px-2 py-0.5 rounded"
+            [ngClass]="isQuotaFull() ? 'bg-rose-50 text-rose-700' : 'bg-emerald-50 text-emerald-700'">
+            {{ isQuotaFull() ? 'Đã đủ chỉ tiêu' : 'Còn trống ' + remainingQuota() }}
+          </span>
         </div>
-        <div class="mt-3 w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+        <div class="mt-2 flex items-baseline justify-between">
+          <span class="text-2xl font-bold text-slate-900">{{ hiredCount() }} <span class="text-sm font-normal text-slate-400">/ {{ targetQuantity() }}</span></span>
+          <span class="text-xs font-semibold text-slate-500">{{ quotaPercent() }}%</span>
+        </div>
+        <div class="mt-2.5 w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
           <div
             class="h-full transition-all duration-300 rounded-full"
-            [ngClass]="isQuotaFull() ? 'bg-rose-600' : 'bg-emerald-600'"
+            [ngClass]="isQuotaFull() ? 'bg-rose-600' : 'bg-blue-600'"
             [style.width.%]="quotaPercent()">
           </div>
         </div>
-        <p class="mt-2 text-[11px] text-slate-500">
-          @if (isQuotaFull()) {
-            <span class="text-rose-600 font-semibold">Đã đạt định biên — Ứng viên đạt sau thời điểm này sẽ lưu danh sách dự bị.</span>
-          } @else {
-            <span>Tự động khóa khi đạt {{ targetQuantity() }}/{{ targetQuantity() }} nhân sự nhận việc thực tế.</span>
-          }
-        </p>
       </div>
 
-      <!-- Card 2: Chờ khám sức khỏe & bổ sung CCCD -->
+      <!-- Card 2: Chờ KSK & CCCD -->
       <div
         (click)="activeTab.set('PENDING_MEDICAL')"
-        class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm hover:border-amber-300 transition cursor-pointer">
-        <div class="flex items-start justify-between">
-          <div>
-            <p class="text-xs font-semibold uppercase tracking-wider text-slate-500">Chờ Khám Sức Khỏe & CCCD</p>
-            <p class="mt-1.5 text-2xl font-extrabold text-amber-600">{{ tabCounts().pendingMedical }}</p>
-          </div>
-          <span class="inline-flex items-center justify-center w-10 h-10 rounded-lg bg-amber-50 text-amber-600">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-3-3v6m9-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-          </span>
+        class="bg-white rounded-xl border border-slate-200 p-4 shadow-xs hover:border-slate-300 transition cursor-pointer">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-semibold text-slate-500">Chờ KSK & CCCD</span>
+          <span class="text-xs text-amber-600 font-medium">Cần hoàn thiện</span>
         </div>
-        <p class="mt-3 text-xs text-slate-500">
-          Cần hoàn tất KSK và số CCCD trước khi cấp mã nhân viên.
-        </p>
+        <div class="mt-2 flex items-baseline gap-2">
+          <span class="text-2xl font-bold text-slate-900">{{ tabCounts().pendingMedical }}</span>
+          <span class="text-xs text-slate-400">ứng viên</span>
+        </div>
       </div>
 
-      <!-- Card 3: Danh sách Dự bị (Waitlist Pool - Buffer 15%) -->
+      <!-- Card 3: Danh sách dự bị -->
       <div
         (click)="activeTab.set('WAITLIST')"
-        class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm hover:border-slate-300 transition cursor-pointer">
-        <div class="flex items-start justify-between">
-          <div>
-            <p class="text-xs font-semibold uppercase tracking-wider text-slate-500">Danh Sách Dự Bị (Waitlist)</p>
-            <div class="mt-1.5 flex items-baseline gap-2">
-              <span class="text-2xl font-extrabold text-slate-800">{{ tabCounts().waitlist }}</span>
-              <span class="text-xs text-slate-500">/ tối đa {{ maxWaitlistCap() }} ({{ waitlistBufferPercent() }}% dự phòng)</span>
-            </div>
-          </div>
-          <span class="inline-flex items-center justify-center w-10 h-10 rounded-lg bg-slate-100 text-slate-700">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-          </span>
+        class="bg-white rounded-xl border border-slate-200 p-4 shadow-xs hover:border-slate-300 transition cursor-pointer">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-semibold text-slate-500">Danh sách dự bị</span>
+          <span class="text-xs text-slate-400">Tối đa {{ maxWaitlistCap() }} ({{ waitlistBufferPercent() }}%)</span>
         </div>
-        <p class="mt-3 text-xs text-slate-500">
-          Sẵn sàng đôn người điểm cao nhất lên thay thế khi phát sinh no-show.
-        </p>
+        <div class="mt-2 flex items-baseline gap-2">
+          <span class="text-2xl font-bold text-slate-900">{{ tabCounts().waitlist }}</span>
+          <span class="text-xs text-slate-400">ứng viên dự phòng</span>
+        </div>
       </div>
 
-      <!-- Card 4: Bỏ việc ngày đầu (No-Show) -->
+      <!-- Card 4: Không nhận việc -->
       <div
         (click)="activeTab.set('NO_SHOW')"
-        class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm hover:border-rose-300 transition cursor-pointer">
-        <div class="flex items-start justify-between">
-          <div>
-            <p class="text-xs font-semibold uppercase tracking-wider text-slate-500">Không Nhận Việc (No-Show)</p>
-            <p class="mt-1.5 text-2xl font-extrabold text-rose-600">{{ tabCounts().noShow }}</p>
-          </div>
-          <span class="inline-flex items-center justify-center w-10 h-10 rounded-lg bg-rose-50 text-rose-600">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"></path></svg>
-          </span>
+        class="bg-white rounded-xl border border-slate-200 p-4 shadow-xs hover:border-slate-300 transition cursor-pointer">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-semibold text-slate-500">Không nhận việc (No-Show)</span>
+          <span class="text-xs text-rose-600 font-medium">Đã hoàn chỉ tiêu</span>
         </div>
-        <p class="mt-3 text-xs text-slate-500">
-          Đã thu hồi mã nhân viên và hoàn lại chỉ tiêu tuyển dụng cho xưởng.
-        </p>
+        <div class="mt-2 flex items-baseline gap-2">
+          <span class="text-2xl font-bold text-slate-900">{{ tabCounts().noShow }}</span>
+          <span class="text-xs text-slate-400">trường hợp</span>
+        </div>
       </div>
     </div>
 
-    <!-- ═══════════════════════════════════════════════════════════════════════════
-         3. SUB-TABS LỌC NHANH & BỘ LỌC TÌM KIẾM
-         ═══════════════════════════════════════════════════════════════════════════ -->
-    <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-4 space-y-4">
-      <!-- Sub-tabs -->
-      <div class="flex flex-wrap items-center gap-2 border-b border-slate-100 pb-3">
+    <!-- 3. MAIN TABLE CARD (TABS + FILTERS + DATA TABLE) -->
+    <div class="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
+
+      <!-- Tabs Bar -->
+      <div class="flex items-center gap-1 px-4 pt-3 border-b border-slate-200 overflow-x-auto">
         <button
           type="button"
           (click)="activeTab.set('ALL')"
-          class="px-3.5 py-2 rounded-lg text-xs sm:text-sm font-semibold transition cursor-pointer flex items-center gap-2"
-          [ngClass]="activeTab() === 'ALL' ? 'bg-slate-900 text-white shadow-xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'">
-          <span>Tất cả hồ sơ</span>
-          <span class="px-1.5 py-0.5 rounded-full text-[11px] bg-white/20">{{ tabCounts().all }}</span>
+          class="px-3.5 py-2.5 border-b-2 text-xs font-semibold transition cursor-pointer flex items-center gap-1.5 whitespace-nowrap"
+          [ngClass]="activeTab() === 'ALL' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-600 hover:text-slate-900'">
+          <span>Tất cả</span>
+          <span class="px-1.5 py-0.5 rounded-full text-[11px]"
+            [ngClass]="activeTab() === 'ALL' ? 'bg-blue-50 text-blue-700' : 'bg-slate-100 text-slate-600'">{{ tabCounts().all }}</span>
         </button>
 
         <button
           type="button"
           (click)="activeTab.set('PENDING_MEDICAL')"
-          class="px-3.5 py-2 rounded-lg text-xs sm:text-sm font-semibold transition cursor-pointer flex items-center gap-2"
-          [ngClass]="activeTab() === 'PENDING_MEDICAL' ? 'bg-amber-600 text-white shadow-xs' : 'bg-amber-50 text-amber-800 hover:bg-amber-100'">
-          <span>Chờ KSK & Bổ sung CCCD</span>
-          <span class="px-1.5 py-0.5 rounded-full text-[11px] bg-black/10">{{ tabCounts().pendingMedical }}</span>
+          class="px-3.5 py-2.5 border-b-2 text-xs font-semibold transition cursor-pointer flex items-center gap-1.5 whitespace-nowrap"
+          [ngClass]="activeTab() === 'PENDING_MEDICAL' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-600 hover:text-slate-900'">
+          <span>Chờ KSK & CCCD</span>
+          <span class="px-1.5 py-0.5 rounded-full text-[11px]"
+            [ngClass]="activeTab() === 'PENDING_MEDICAL' ? 'bg-blue-50 text-blue-700' : 'bg-slate-100 text-slate-600'">{{ tabCounts().pendingMedical }}</span>
         </button>
 
         <button
           type="button"
           (click)="activeTab.set('ELIGIBLE')"
-          class="px-3.5 py-2 rounded-lg text-xs sm:text-sm font-semibold transition cursor-pointer flex items-center gap-2"
-          [ngClass]="activeTab() === 'ELIGIBLE' ? 'bg-blue-600 text-white shadow-xs' : 'bg-blue-50 text-blue-700 hover:bg-blue-100'">
+          class="px-3.5 py-2.5 border-b-2 text-xs font-semibold transition cursor-pointer flex items-center gap-1.5 whitespace-nowrap"
+          [ngClass]="activeTab() === 'ELIGIBLE' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-600 hover:text-slate-900'">
           <span>Đủ điều kiện cấp mã</span>
-          <span class="px-1.5 py-0.5 rounded-full text-[11px] bg-black/10">{{ tabCounts().eligible }}</span>
+          <span class="px-1.5 py-0.5 rounded-full text-[11px]"
+            [ngClass]="activeTab() === 'ELIGIBLE' ? 'bg-blue-50 text-blue-700' : 'bg-slate-100 text-slate-600'">{{ tabCounts().eligible }}</span>
         </button>
 
         <button
           type="button"
           (click)="activeTab.set('WAITLIST')"
-          class="px-3.5 py-2 rounded-lg text-xs sm:text-sm font-semibold transition cursor-pointer flex items-center gap-2"
-          [ngClass]="activeTab() === 'WAITLIST' ? 'bg-purple-600 text-white shadow-xs' : 'bg-purple-50 text-purple-700 hover:bg-purple-100'">
-          <span>Danh sách dự bị (Waitlist)</span>
-          <span class="px-1.5 py-0.5 rounded-full text-[11px] bg-black/10">{{ tabCounts().waitlist }}</span>
+          class="px-3.5 py-2.5 border-b-2 text-xs font-semibold transition cursor-pointer flex items-center gap-1.5 whitespace-nowrap"
+          [ngClass]="activeTab() === 'WAITLIST' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-600 hover:text-slate-900'">
+          <span>Dự bị (Waitlist)</span>
+          <span class="px-1.5 py-0.5 rounded-full text-[11px]"
+            [ngClass]="activeTab() === 'WAITLIST' ? 'bg-blue-50 text-blue-700' : 'bg-slate-100 text-slate-600'">{{ tabCounts().waitlist }}</span>
         </button>
 
         <button
           type="button"
           (click)="activeTab.set('HIRED')"
-          class="px-3.5 py-2 rounded-lg text-xs sm:text-sm font-semibold transition cursor-pointer flex items-center gap-2"
-          [ngClass]="activeTab() === 'HIRED' ? 'bg-emerald-600 text-white shadow-xs' : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'">
+          class="px-3.5 py-2.5 border-b-2 text-xs font-semibold transition cursor-pointer flex items-center gap-1.5 whitespace-nowrap"
+          [ngClass]="activeTab() === 'HIRED' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-600 hover:text-slate-900'">
           <span>Đã cấp Mã NV</span>
-          <span class="px-1.5 py-0.5 rounded-full text-[11px] bg-black/10">{{ tabCounts().hired }}</span>
+          <span class="px-1.5 py-0.5 rounded-full text-[11px]"
+            [ngClass]="activeTab() === 'HIRED' ? 'bg-blue-50 text-blue-700' : 'bg-slate-100 text-slate-600'">{{ tabCounts().hired }}</span>
         </button>
 
         <button
           type="button"
           (click)="activeTab.set('NO_SHOW')"
-          class="px-3.5 py-2 rounded-lg text-xs sm:text-sm font-semibold transition cursor-pointer flex items-center gap-2"
-          [ngClass]="activeTab() === 'NO_SHOW' ? 'bg-rose-600 text-white shadow-xs' : 'bg-rose-50 text-rose-700 hover:bg-rose-100'">
-          <span>Không nhận việc (No-Show)</span>
-          <span class="px-1.5 py-0.5 rounded-full text-[11px] bg-black/10">{{ tabCounts().noShow }}</span>
+          class="px-3.5 py-2.5 border-b-2 text-xs font-semibold transition cursor-pointer flex items-center gap-1.5 whitespace-nowrap"
+          [ngClass]="activeTab() === 'NO_SHOW' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-600 hover:text-slate-900'">
+          <span>Không nhận việc</span>
+          <span class="px-1.5 py-0.5 rounded-full text-[11px]"
+            [ngClass]="activeTab() === 'NO_SHOW' ? 'bg-blue-50 text-blue-700' : 'bg-slate-100 text-slate-600'">{{ tabCounts().noShow }}</span>
         </button>
       </div>
 
-      <!-- Bộ lọc tìm kiếm & chọn nhanh -->
-      <div class="grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
-        <div class="md:col-span-5 relative">
+      <!-- Filter Bar -->
+      <div class="p-3.5 bg-slate-50/60 border-b border-slate-200 flex flex-col lg:flex-row items-stretch lg:items-center gap-2.5">
+        <div class="flex-1 relative">
           <input
             type="text"
             [ngModel]="searchKeyword()"
             (ngModelChange)="searchKeyword.set($event)"
-            placeholder="Tìm theo Họ tên, SĐT, Số CCCD, Mã nhân viên (NV-2026-...)..."
-            class="w-full pl-3.5 pr-4 py-2 rounded-lg border border-slate-300 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            placeholder="Tìm theo họ tên, SĐT, CCCD hoặc mã nhân viên..."
+            class="w-full pl-3.5 pr-4 py-1.5 rounded-lg border border-slate-300 bg-white text-xs sm:text-sm text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500" />
         </div>
 
-        <div class="md:col-span-3">
+        <div class="flex flex-wrap sm:flex-nowrap items-center gap-2">
           <select
             [ngModel]="selectedDepartment()"
             (ngModelChange)="selectedDepartment.set($event)"
-            class="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm text-slate-700 bg-white">
-            <option value="ALL">Tất cả Xưởng / Phòng ban</option>
-            <option value="PROD_LINE">Xưởng Sản Xuất Điện Tử (PROD_LINE)</option>
-            <option value="TECH_MNT">Kỹ Thuật & Bảo Trì (TECH_MNT)</option>
-            <option value="WH_LOGS">Kho Vận & Logistics (WH_LOGS)</option>
-            <option value="QA_QC">Quản Lý Chất Lượng (QA_QC)</option>
+            class="px-3 py-1.5 rounded-lg border border-slate-300 text-xs sm:text-sm text-slate-700 bg-white focus:outline-none focus:border-blue-500">
+            <option value="ALL">Tất cả phòng ban / xưởng</option>
+            <option value="PROD_LINE">Xưởng Sản Xuất Điện Tử</option>
+            <option value="TECH_MNT">Kỹ Thuật & Bảo Trì</option>
+            <option value="WH_LOGS">Kho Vận & Logistics</option>
+            <option value="QA_QC">Quản Lý Chất Lượng</option>
           </select>
-        </div>
 
-        <div class="md:col-span-2">
           <select
             [ngModel]="selectedTrack()"
             (ngModelChange)="selectedTrack.set($event)"
-            class="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm text-slate-700 bg-white">
+            class="px-3 py-1.5 rounded-lg border border-slate-300 text-xs sm:text-sm text-slate-700 bg-white focus:outline-none focus:border-blue-500">
             <option value="ALL">Tất cả các khối</option>
-            <option value="MASS_LABOR">Khối Sản xuất / Lao động</option>
-            <option value="PROFESSIONAL">Khối Kỹ thuật / Kỹ sư</option>
+            <option value="MASS_LABOR">Khối Sản xuất</option>
+            <option value="PROFESSIONAL">Khối Kỹ thuật</option>
           </select>
-        </div>
 
-        <div class="md:col-span-2 flex justify-end">
           <button
             type="button"
             (click)="toggleSelectAllEligible()"
-            class="w-full px-3 py-2 rounded-lg border border-blue-200 bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-semibold transition cursor-pointer">
+            class="px-3 py-1.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold transition cursor-pointer whitespace-nowrap">
             Chọn tất cả đủ ĐK
           </button>
         </div>
       </div>
-    </div>
 
-    <!-- ═══════════════════════════════════════════════════════════════════════════
-         4. BẢNG THAO TÁC NHANH TIẾP NHẬN & ONBOARDING
-         ═══════════════════════════════════════════════════════════════════════════ -->
-    <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+      <!-- Data Table -->
       <div class="overflow-x-auto">
         <table class="min-w-full divide-y divide-slate-200 text-left">
-          <thead class="bg-slate-50 text-[11px] font-bold uppercase tracking-wider text-slate-500">
+          <thead class="bg-slate-50/80 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
             <tr>
-              <th class="px-4 py-3.5 w-10 text-center">Chọn</th>
-              <th class="px-4 py-3.5">Ứng Viên & Luồng</th>
-              <th class="px-4 py-3.5">Vị Trí & Phân Chuyền</th>
-              <th class="px-4 py-3.5">Số CCCD & Ngân Hàng (Sửa Nhanh)</th>
-              <th class="px-4 py-3.5">Khám Sức Khỏe (1-Click)</th>
-              <th class="px-4 py-3.5 text-center">Tài Khoản ATS</th>
-              <th class="px-4 py-3.5">Trạng Thái & Mã NV</th>
-              <th class="px-4 py-3.5 text-right">Thao Tác</th>
+              <th class="px-3.5 py-3 w-10 text-center">Chọn</th>
+              <th class="px-3.5 py-3 min-w-[200px]">Ứng Viên</th>
+              <th class="px-3.5 py-3 min-w-[220px]">Vị Trí & Bộ Phận</th>
+              <th class="px-3.5 py-3 min-w-[260px]">CCCD & Tài Khoản Ngân Hàng</th>
+              <th class="px-3.5 py-3 min-w-[185px]">Khám Sức Khỏe</th>
+              <th class="px-3.5 py-3 min-w-[160px]">Trạng Thái / Mã NV</th>
+              <th class="px-3.5 py-3 text-right min-w-[150px]">Thao Tác</th>
             </tr>
           </thead>
 
           <tbody class="divide-y divide-slate-100 text-sm">
             @for (item of filteredRecords(); track item.applicationId) {
-              <tr class="hover:bg-slate-50/80 transition"
+              <tr class="hover:bg-slate-50/70 transition"
                 [ngClass]="{
-                  'bg-blue-50/40': isSelected(item.applicationId),
-                  'opacity-70 bg-rose-50/20': item.status === 'No_Show_Cancelled'
+                  'bg-blue-50/30': isSelected(item.applicationId),
+                  'opacity-65 bg-slate-50/40': item.status === 'No_Show_Cancelled'
                 }">
 
-                <!-- Checkbox chọn cấp mã NV hàng loạt -->
-                <td class="px-4 py-4 text-center align-top">
+                <!-- Checkbox -->
+                <td class="px-3.5 py-3.5 text-center align-middle">
                   <input
                     type="checkbox"
                     [checked]="isSelected(item.applicationId)"
                     [disabled]="!isEligibleForEmployeeCode(item)"
                     (change)="toggleSelection(item)"
                     title="Chỉ bật khi Đạt KSK và đã nhập đủ Số CCCD"
-                    class="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed" />
+                    class="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 disabled:opacity-35 cursor-pointer disabled:cursor-not-allowed" />
                 </td>
 
-                <!-- Thông tin Ứng viên & Luồng -->
-                <td class="px-4 py-4 align-top">
-                  <div class="flex items-start gap-2.5">
-                    <div class="w-9 h-9 rounded-full bg-slate-800 text-white font-bold text-xs flex items-center justify-center shrink-0">
+                <!-- Ứng viên -->
+                <td class="px-3.5 py-3.5 align-middle">
+                  <div class="flex items-center gap-2.5">
+                    <div class="w-8 h-8 rounded-full bg-slate-100 text-slate-700 border border-slate-200 font-bold text-xs flex items-center justify-center shrink-0">
                       {{ item.fullName.slice(0, 2).toUpperCase() }}
                     </div>
-                    <div>
-                      <div class="font-bold text-slate-900 flex items-center gap-1.5 flex-wrap">
-                        <span>{{ item.fullName }}</span>
-                        <span class="text-[11px] font-semibold px-1.5 py-0.5 rounded bg-slate-100 text-slate-700">
+                    <div class="min-w-0">
+                      <div class="flex items-center gap-1.5">
+                        <span class="font-semibold text-slate-900 text-xs sm:text-sm whitespace-nowrap">{{ item.fullName }}</span>
+                        <span class="text-[11px] font-medium px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 whitespace-nowrap">
                           {{ item.aiMatchingScore }}đ
                         </span>
                       </div>
-                      <div class="text-xs text-slate-500 mt-0.5 font-mono">{{ item.phone }}</div>
-                      <div class="mt-1.5 flex items-center gap-1.5 flex-wrap">
-                        @if (item.recruitmentTrack === 'PROFESSIONAL') {
-                          <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium bg-slate-100 text-slate-700 border border-slate-200">
-                            Khối Kỹ thuật / Kỹ sư
-                          </span>
-                        } @else {
-                          <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium bg-slate-100 text-slate-700 border border-slate-200">
-                            Khối Sản xuất / Lao động
-                          </span>
-                        }
+                      <div class="text-xs text-slate-500 mt-0.5 flex items-center gap-1.5 whitespace-nowrap">
+                        <span class="font-mono">{{ item.phone }}</span>
+                        <span class="text-slate-300">•</span>
+                        <span>{{ item.recruitmentTrack === 'PROFESSIONAL' ? 'Khối Kỹ thuật' : 'Khối Sản xuất' }}</span>
                       </div>
                     </div>
                   </div>
                 </td>
 
-                <!-- Vị trí & Phân chuyền -->
-                <td class="px-4 py-4 align-top">
-                  <div class="font-semibold text-slate-800 text-xs sm:text-sm line-clamp-1">{{ item.jobTitle }}</div>
-                  <div class="text-xs text-slate-500 mt-0.5">{{ item.departmentName }} ({{ item.jobCode }})</div>
-                  <div class="mt-1.5 inline-flex items-center gap-1 px-2 py-0.5 rounded bg-slate-100 text-slate-700 text-xs font-medium">
-                    <span>{{ item.lineAssignment }}</span>
+                <!-- Vị trí & Bộ phận -->
+                <td class="px-3.5 py-3.5 align-middle">
+                  <div class="font-medium text-slate-800 text-xs sm:text-sm line-clamp-1 max-w-[260px]" [title]="item.jobTitle">
+                    {{ item.jobTitle }}
+                  </div>
+                  <div class="text-xs text-slate-500 mt-0.5 flex items-center gap-1.5 whitespace-nowrap">
+                    <span>{{ item.departmentName }}</span>
+                    <span class="text-slate-300">•</span>
+                    <span class="text-slate-600 font-medium">{{ item.lineAssignment }}</span>
                   </div>
                 </td>
 
-                <!-- Sửa nhanh CitizenId (CCCD) & BankAccountNumber ngay trên dòng -->
-                <td class="px-4 py-4 align-top min-w-[260px]">
-                  <div class="space-y-2">
+                <!-- CCCD & Ngân hàng -->
+                <td class="px-3.5 py-3.5 align-middle">
+                  <div class="space-y-1.5 max-w-[270px]">
                     <div class="flex items-center gap-1.5">
-                      <span class="text-[11px] font-semibold text-slate-500 w-12 shrink-0">CCCD:</span>
+                      <span class="text-[11px] text-slate-500 w-10 shrink-0">CCCD</span>
                       <input
                         type="text"
                         [(ngModel)]="item.citizenId"
                         (blur)="saveInlineRowField(item)"
                         (keyup.enter)="saveInlineRowField(item)"
-                        placeholder="Nhập CCCD 12 số..."
+                        placeholder="Nhập 12 số CCCD..."
                         [disabled]="item.status === 'Hired' || item.status === 'No_Show_Cancelled'"
-                        class="w-full px-2.5 py-1 rounded border text-xs font-mono focus:outline-none focus:ring-1 focus:ring-blue-500"
-                        [ngClass]="isValidCitizenId(item.citizenId) ? 'border-slate-300 bg-white text-slate-800' : 'border-amber-400 bg-amber-50/50 text-amber-900 placeholder-amber-500'" />
+                        class="w-full px-2 py-1 rounded border text-xs font-mono focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:bg-slate-50 disabled:text-slate-500"
+                        [ngClass]="isValidCitizenId(item.citizenId) ? 'border-slate-200 bg-white text-slate-800' : 'border-amber-300 bg-amber-50/40 text-amber-900 placeholder-amber-400'" />
                     </div>
 
                     <div class="flex items-center gap-1.5">
@@ -340,7 +294,7 @@
                         [(ngModel)]="item.bankName"
                         (change)="saveInlineRowField(item)"
                         [disabled]="item.status === 'Hired' || item.status === 'No_Show_Cancelled'"
-                        class="w-28 px-1.5 py-1 rounded border border-slate-300 text-[11px] bg-white text-slate-700 shrink-0">
+                        class="w-24 px-1.5 py-1 rounded border border-slate-200 text-[11px] bg-white text-slate-700 shrink-0 disabled:bg-slate-50">
                         @for (b of bankOptions; track b) {
                           <option [value]="b">{{ b }}</option>
                         }
@@ -350,186 +304,160 @@
                         [(ngModel)]="item.bankAccountNumber"
                         (blur)="saveInlineRowField(item)"
                         (keyup.enter)="saveInlineRowField(item)"
-                        placeholder="Số TK nhận lương..."
+                        placeholder="Số tài khoản..."
                         [disabled]="item.status === 'Hired' || item.status === 'No_Show_Cancelled'"
-                        class="w-full px-2.5 py-1 rounded border border-slate-300 bg-white text-xs font-mono text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                        class="w-full px-2 py-1 rounded border border-slate-200 bg-white text-xs font-mono text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:bg-slate-50 disabled:text-slate-500" />
                     </div>
                   </div>
                 </td>
 
-                <!-- Nút 1-Click đổi MedicalCheckStatus -->
-                <td class="px-4 py-4 align-top">
-                  <div class="inline-flex rounded-lg border border-slate-200 p-0.5 bg-slate-100 gap-0.5">
+                <!-- Khám sức khỏe -->
+                <td class="px-3.5 py-3.5 align-middle">
+                  <div class="inline-flex rounded-lg border border-slate-200 p-0.5 bg-slate-100 gap-0.5 whitespace-nowrap">
                     <button
                       type="button"
                       (click)="setMedicalStatus(item, 'Pending')"
                       [disabled]="item.status === 'Hired' || item.status === 'No_Show_Cancelled'"
-                      class="px-2 py-1 rounded-md text-[11px] font-semibold transition cursor-pointer"
-                      [ngClass]="item.medicalCheckStatus === 'Pending' ? 'bg-amber-500 text-white shadow-xs' : 'text-slate-600 hover:bg-white'">
-                      Chờ KSK
+                      class="px-2.5 py-1 rounded-md text-[11px] font-semibold transition cursor-pointer whitespace-nowrap"
+                      [ngClass]="item.medicalCheckStatus === 'Pending' ? 'bg-amber-500 text-white shadow-2xs' : 'text-slate-600 hover:bg-white'">
+                      Chờ
                     </button>
                     <button
                       type="button"
                       (click)="setMedicalStatus(item, 'Passed')"
                       [disabled]="item.status === 'Hired' || item.status === 'No_Show_Cancelled'"
-                      class="px-2 py-1 rounded-md text-[11px] font-semibold transition cursor-pointer"
-                      [ngClass]="item.medicalCheckStatus === 'Passed' ? 'bg-emerald-600 text-white shadow-xs' : 'text-slate-600 hover:bg-white'">
+                      class="px-2.5 py-1 rounded-md text-[11px] font-semibold transition cursor-pointer whitespace-nowrap"
+                      [ngClass]="item.medicalCheckStatus === 'Passed' ? 'bg-emerald-600 text-white shadow-2xs' : 'text-slate-600 hover:bg-white'">
                       Đạt KSK
                     </button>
                     <button
                       type="button"
                       (click)="setMedicalStatus(item, 'Failed')"
                       [disabled]="item.status === 'Hired' || item.status === 'No_Show_Cancelled'"
-                      class="px-2 py-1 rounded-md text-[11px] font-semibold transition cursor-pointer"
-                      [ngClass]="item.medicalCheckStatus === 'Failed' ? 'bg-rose-600 text-white shadow-xs' : 'text-slate-600 hover:bg-white'">
+                      class="px-2.5 py-1 rounded-md text-[11px] font-semibold transition cursor-pointer whitespace-nowrap"
+                      [ngClass]="item.medicalCheckStatus === 'Failed' ? 'bg-rose-600 text-white shadow-2xs' : 'text-slate-600 hover:bg-white'">
                       Không đạt
                     </button>
                   </div>
 
                   @if (!isValidCitizenId(item.citizenId) || item.medicalCheckStatus !== 'Passed') {
-                    <div class="mt-1.5 text-[11px] text-amber-700 font-medium">
+                    <div class="mt-1 text-[11px] text-amber-600 whitespace-nowrap">
                       @if (item.medicalCheckStatus !== 'Passed') {
-                        <span>• Cần kết quả Đạt KSK</span>
+                        <span>Chưa đạt KSK</span>
                       }
                       @if (!isValidCitizenId(item.citizenId)) {
-                        <span class="ml-1">• Thiếu CCCD</span>
+                        <span>{{ item.medicalCheckStatus !== 'Passed' ? ' • ' : '' }}Thiếu CCCD</span>
                       }
                     </div>
                   } @else {
-                    <div class="mt-1.5 text-[11px] text-emerald-700 font-semibold">
+                    <div class="mt-1 text-[11px] text-emerald-600 font-medium whitespace-nowrap">
                       Đủ điều kiện cấp mã
                     </div>
                   }
                 </td>
 
-                <!-- Checkbox [Cấp User ATS] (chỉ bật cho PROFESSIONAL, khóa với MASS_LABOR) -->
-                <td class="px-4 py-4 align-top text-center">
-                  <label
-                    class="inline-flex flex-col items-center gap-1"
-                    [title]="item.recruitmentTrack === 'MASS_LABOR' ? 'Khóa đối với công nhân xưởng (MASS_LABOR) - Chỉ cấp Mã NV làm thẻ từ' : 'Tự động tạo tài khoản đăng nhập hệ thống cho Kỹ sư / Văn phòng'">
-                    <input
-                      type="checkbox"
-                      [(ngModel)]="item.createSystemAccount"
-                      [disabled]="item.recruitmentTrack === 'MASS_LABOR' || item.status === 'Hired' || item.status === 'No_Show_Cancelled'"
-                      class="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed" />
-                    <span class="text-[11px] font-medium"
-                      [ngClass]="item.recruitmentTrack === 'PROFESSIONAL' ? 'text-indigo-700' : 'text-slate-400'">
-                      Tạo tài khoản
-                    </span>
-                  </label>
-                </td>
-
-                <!-- Trạng thái & Mã nhân viên (ConvertedEmployeeCode) -->
-                <td class="px-4 py-4 align-top">
+                <!-- Trạng thái & Mã nhân viên -->
+                <td class="px-3.5 py-3.5 align-middle">
                   @if (item.status === 'Hired' || item.convertedEmployeeCode) {
-                    <div class="space-y-1">
-                      <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200 font-mono">
+                    <div class="space-y-0.5">
+                      <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 font-mono whitespace-nowrap">
                         {{ item.convertedEmployeeCode }}
                       </span>
-                      @if (item.systemAccountCreated) {
-                        <div class="text-[11px] text-indigo-600 font-medium">Đã tạo tài khoản</div>
-                      }
                       @if (item.probation30DayStatus === 'Passed_30Days') {
-                        <div class="text-[10px] text-emerald-700 font-semibold flex items-center gap-1">
-                          Đạt thử việc (30 ngày)
-                        </div>
+                        <div class="text-[11px] text-emerald-600 font-medium whitespace-nowrap">Đạt thử việc (30 ngày)</div>
                       } @else if (item.probation30DayStatus === 'Early_Resigned') {
-                        <div class="text-[10px] text-amber-700 font-semibold flex items-center gap-1">
-                          Nghỉ việc sớm (&lt;30 ngày)
-                        </div>
+                        <div class="text-[11px] text-amber-600 font-medium whitespace-nowrap">Nghỉ sớm (&lt;30 ngày)</div>
+                      } @else if (item.systemAccountCreated) {
+                        <div class="text-[11px] text-slate-500 whitespace-nowrap">Đã cấp tài khoản</div>
                       }
                     </div>
                   } @else if (item.status === 'Waitlisted') {
-                    <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold bg-purple-50 text-purple-700 border border-purple-200">
+                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-700 border border-slate-200 whitespace-nowrap">
                       Dự bị (Waitlist)
                     </span>
-                    <div class="text-[11px] text-purple-600 mt-1">Chờ trống chỉ tiêu</div>
+                    <div class="text-[11px] text-slate-400 mt-0.5 whitespace-nowrap">Chờ trống chỉ tiêu</div>
                   } @else if (item.status === 'No_Show_Cancelled') {
-                    <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200">
-                      Không nhận việc (No-Show)
+                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-rose-50 text-rose-700 border border-rose-200 whitespace-nowrap">
+                      Không nhận việc
                     </span>
                     @if (item.noShowReason) {
-                      <div class="text-[11px] text-rose-600 mt-1 max-w-[200px] line-clamp-2">{{ item.noShowReason }}</div>
+                      <div class="text-[11px] text-slate-500 mt-0.5 max-w-[160px] truncate" [title]="item.noShowReason">{{ item.noShowReason }}</div>
                     }
                   } @else {
-                    <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200">
-                      Trúng tuyển chờ cấp Mã
+                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200 whitespace-nowrap">
+                      Chờ cấp mã NV
                     </span>
+                    @if (item.recruitmentTrack === 'PROFESSIONAL') {
+                      <label class="mt-1 flex items-center gap-1.5 text-[11px] text-slate-600 cursor-pointer whitespace-nowrap">
+                        <input
+                          type="checkbox"
+                          [(ngModel)]="item.createSystemAccount"
+                          class="w-3.5 h-3.5 rounded border-slate-300 text-blue-600 focus:ring-blue-500" />
+                        <span>Kèm tài khoản ATS</span>
+                      </label>
+                    }
                   }
                 </td>
 
                 <!-- Cột Thao tác -->
-                <td class="px-4 py-4 align-top text-right">
-                  <div class="flex flex-col items-end gap-1.5">
-                    @if (item.status === 'InterviewPassed' && !item.convertedEmployeeCode) {
-                      <button
-                        type="button"
-                        (click)="convertSingleCandidate(item)"
-                        [disabled]="!isEligibleForEmployeeCode(item)"
-                        class="px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer"
-                        [ngClass]="isEligibleForEmployeeCode(item)
-                          ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-xs'
-                          : 'bg-slate-100 text-slate-400 cursor-not-allowed'">
-                        Cấp mã NV
-                      </button>
-                    }
+                <td class="px-3.5 py-3.5 align-middle text-right">
+                  <div class="inline-flex flex-col items-end gap-1.5">
+                    <div class="flex items-center justify-end gap-1.5 whitespace-nowrap">
+                      @if (item.status === 'InterviewPassed' && !item.convertedEmployeeCode) {
+                        <button
+                          type="button"
+                          (click)="convertSingleCandidate(item)"
+                          [disabled]="!isEligibleForEmployeeCode(item)"
+                          class="px-2.5 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer whitespace-nowrap"
+                          [ngClass]="isEligibleForEmployeeCode(item)
+                            ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-2xs'
+                            : 'bg-slate-100 text-slate-400 cursor-not-allowed'">
+                          Cấp mã NV
+                        </button>
+                      }
 
-                    @if (item.status === 'Waitlisted') {
-                      <button
-                        type="button"
-                        (click)="promoteWaitlistCandidate(item)"
-                        class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-900 text-white text-xs font-semibold shadow-xs transition cursor-pointer">
-                        Tiếp nhận thay thế
-                      </button>
-                    }
+                      @if (item.status === 'Waitlisted') {
+                        <button
+                          type="button"
+                          (click)="promoteWaitlistCandidate(item)"
+                          class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-900 text-white text-xs font-semibold transition cursor-pointer whitespace-nowrap">
+                          Tiếp nhận thay thế
+                        </button>
+                      }
 
-                    @if (item.status === 'Hired' || item.convertedEmployeeCode) {
-                      <!-- Hậu kiểm thử việc sau 30 ngày -->
-                      <div class="mt-2 pt-1.5 border-t border-slate-100 dark:border-slate-800 flex flex-col items-end gap-1">
-                        @if (item.probation30DayStatus === 'Passed_30Days') {
-                          <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">
-                            Đạt thử việc (30 ngày)
-                          </span>
-                        } @else if (item.probation30DayStatus === 'Early_Resigned') {
-                          <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-semibold bg-amber-50 text-amber-800 border border-amber-200">
-                            Nghỉ việc sớm (&lt;30 ngày)
-                          </span>
-                        } @else {
-                          <div class="text-[10px] text-slate-500 font-medium">Đánh giá thử việc 30 ngày:</div>
-                          <div class="flex items-center gap-1">
-                            <button
-                              type="button"
-                              (click)="updateProbationFeedback(item, 'Passed_30Days')"
-                              title="Xác nhận đạt thử việc sau 30 ngày"
-                              class="px-2 py-1 rounded-md bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-medium shadow-xs transition cursor-pointer">
-                              Đạt thử việc
-                            </button>
-                            <button
-                              type="button"
-                              (click)="updateProbationFeedback(item, 'Early_Resigned')"
-                              title="Ghi nhận nghỉ việc sớm trước 30 ngày"
-                              class="px-2 py-1 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-medium border border-slate-300 transition cursor-pointer">
-                              Nghỉ sớm
-                            </button>
-                          </div>
-                        }
+                      @if (item.status === 'Hired' || item.status === 'InterviewPassed') {
+                        <button
+                          type="button"
+                          (click)="openNoShowModal(item)"
+                          class="px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-rose-50 hover:text-rose-700 hover:border-rose-200 text-slate-600 text-xs font-medium transition cursor-pointer whitespace-nowrap">
+                          Báo No-Show
+                        </button>
+                      }
+                    </div>
+
+                    @if ((item.status === 'Hired' || item.convertedEmployeeCode) && item.probation30DayStatus !== 'Passed_30Days' && item.probation30DayStatus !== 'Early_Resigned') {
+                      <div class="flex items-center justify-end gap-1 whitespace-nowrap">
+                        <span class="text-[11px] text-slate-400 mr-0.5">Thử việc:</span>
+                        <button
+                          type="button"
+                          (click)="updateProbationFeedback(item, 'Passed_30Days')"
+                          class="px-2 py-0.5 rounded bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 text-[11px] font-medium transition cursor-pointer whitespace-nowrap">
+                          Đạt 30 ngày
+                        </button>
+                        <button
+                          type="button"
+                          (click)="updateProbationFeedback(item, 'Early_Resigned')"
+                          class="px-2 py-0.5 rounded bg-slate-100 hover:bg-slate-200 text-slate-600 text-[11px] font-medium transition cursor-pointer whitespace-nowrap">
+                          Nghỉ sớm
+                        </button>
                       </div>
-                    }
-
-                    @if (item.status === 'Hired' || item.status === 'InterviewPassed') {
-                      <button
-                        type="button"
-                        (click)="openNoShowModal(item)"
-                        class="px-2.5 py-1 rounded-lg border border-slate-200 bg-white hover:bg-rose-50 hover:text-rose-700 hover:border-rose-200 text-slate-600 text-[11px] font-medium transition cursor-pointer">
-                        Ghi nhận No-Show
-                      </button>
                     }
                   </div>
                 </td>
               </tr>
             } @empty {
               <tr>
-                <td colspan="8" class="px-6 py-12 text-center text-slate-500">
+                <td colspan="7" class="px-6 py-12 text-center text-slate-500 text-sm">
                   Không có hồ sơ ứng viên nào khớp với bộ lọc hiện tại.
                 </td>
               </tr>

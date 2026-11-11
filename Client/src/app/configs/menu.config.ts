@@ -73,10 +73,8 @@ export const SIDEBAR_MENU_GROUPS: MenuGroup[] = [
           if (!user) return false;
           const isSuper = user.role === 'SuperAdmin' || user.role === 'ADMIN' || user.departmentCode === 'ADMIN_SYS';
           const isHr = user.departmentCode === 'HR_TEAM' || user.role === 'HR';
-          const isPlantManager =
-            (user.role === 'DepartmentManager' || user.role === 'MANAGER') &&
-            ['PROD_LINE', 'WH_LOGS', 'TECH_MNT', 'QA_QC'].includes(user.departmentCode || '');
-          return isSuper || isHr || isPlantManager;
+          const isManager = user.role === 'DepartmentManager' || user.role === 'MANAGER';
+          return isSuper || isHr || isManager;
         },
         badge: {
           type: 'counter',
@@ -145,7 +143,8 @@ export const SIDEBAR_MENU_GROUPS: MenuGroup[] = [
           if (!user) return false;
           const isSuper = user.role === 'SuperAdmin' || user.role === 'ADMIN' || user.departmentCode === 'ADMIN_SYS';
           const isManager = user.role === 'DepartmentManager' || user.role === 'MANAGER';
-          return isSuper || isManager;
+          const isHr = user.departmentCode === 'HR_TEAM' || user.role === 'HR';
+          return isSuper || isManager || isHr;
         }
       },
       {
@@ -156,7 +155,8 @@ export const SIDEBAR_MENU_GROUPS: MenuGroup[] = [
           if (!user) return false;
           const isSuper = user.role === 'SuperAdmin' || user.role === 'ADMIN' || user.departmentCode === 'ADMIN_SYS';
           const isHr = user.departmentCode === 'HR_TEAM' || user.role === 'HR';
-          return isSuper || isHr;
+          const isManager = user.role === 'DepartmentManager' || user.role === 'MANAGER';
+          return isSuper || isHr || isManager;
         }
       },
       {
@@ -173,7 +173,8 @@ export const SIDEBAR_MENU_GROUPS: MenuGroup[] = [
           if (!user) return false;
           const isSuper = user.role === 'SuperAdmin' || user.role === 'ADMIN' || user.departmentCode === 'ADMIN_SYS';
           const isManager = user.role === 'DepartmentManager' || user.role === 'MANAGER';
-          return isSuper || isManager;
+          const isHr = user.departmentCode === 'HR_TEAM' || user.role === 'HR';
+          return isSuper || isManager || isHr;
         }
       }
     ]

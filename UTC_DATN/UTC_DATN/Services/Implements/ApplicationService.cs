@@ -1,4 +1,4 @@
-﻿using System.Text;
+using System.Text;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Cryptography;
 using UTC_DATN.Data;
@@ -57,6 +57,78 @@ public class ApplicationService : IApplicationService
         }
 
         return "Ứng viên";
+    }
+
+    /// <summary>
+    /// Sinh mẫu email HTML xác nhận nộp hồ sơ chuẩn Enterprise ATS
+    /// </summary>
+    private static string BuildApplicationConfirmationEmailHtml(string candidateName, string jobTitle, string departmentName, string applicationId, string sourceDescription)
+    {
+        var nowFormatted = DateTime.UtcNow.AddHours(7).ToString("dd/MM/yyyy HH:mm");
+        return $@"
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset=""UTF-8"">
+    <meta name=""viewport"" content=""width=device-width, initial-scale=1.0"">
+    <style>
+        body {{ font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #1e293b; background-color: #f8fafc; margin: 0; padding: 0; }}
+        .wrapper {{ max-width: 600px; margin: 20px auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border: 1px solid #e2e8f0; }}
+        .header {{ background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%); color: #ffffff; padding: 32px 24px; text-align: center; }}
+        .header h1 {{ margin: 0; font-size: 22px; font-weight: 700; }}
+        .header p {{ margin: 8px 0 0 0; font-size: 14px; opacity: 0.95; }}
+        .content {{ padding: 32px 28px; }}
+        .greeting {{ font-size: 16px; font-weight: 600; color: #0f172a; margin-bottom: 12px; }}
+        .card {{ background-color: #f8fafc; border-left: 4px solid #2563eb; padding: 18px; margin: 20px 0; border-radius: 6px; border: 1px solid #e2e8f0; border-left-width: 4px; }}
+        .status-badge {{ display: inline-block; background-color: #dbeafe; color: #1e40af; padding: 4px 12px; border-radius: 9999px; font-size: 12px; font-weight: 600; }}
+        .steps {{ background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 16px 20px; margin: 20px 0; }}
+        .steps h4 {{ margin: 0 0 10px 0; font-size: 14px; color: #166534; }}
+        .steps ul {{ margin: 0; padding-left: 20px; font-size: 13px; color: #15803d; }}
+        .steps li {{ margin-bottom: 6px; }}
+        .footer {{ background-color: #f8fafc; padding: 20px 24px; text-align: center; border-top: 1px solid #e2e8f0; font-size: 12px; color: #94a3b8; }}
+    </style>
+</head>
+<body>
+    <div class=""wrapper"">
+        <div class=""header"">
+            <h1>HỆ THỐNG TUYỂN DỤNG ATS INDUSTRIAL</h1>
+            <p>Xác nhận tiếp nhận hồ sơ ứng tuyển thành công</p>
+        </div>
+        <div class=""content"">
+            <div class=""greeting"">Kính gửi {candidateName},</div>
+            <p style=""font-size: 14px; color: #334155; margin: 0 0 16px 0;"">
+                Cảm ơn bạn đã quan tâm và nộp hồ sơ ứng tuyển vào vị trí công việc tại đơn vị chúng tôi. Hệ thống tuyển dụng đã tiếp nhận thành công hồ sơ của bạn với các thông tin chi tiết dưới đây:
+            </p>
+
+            <div class=""card"">
+                <div style=""margin-bottom: 8px; font-size: 14px;""><strong>👔 Vị trí ứng tuyển:</strong> <span style=""color: #1d4ed8; font-weight: 600;"">{jobTitle}</span></div>
+                <div style=""margin-bottom: 8px; font-size: 14px;""><strong>🏢 Đơn vị / Phòng ban:</strong> {departmentName}</div>
+                <div style=""margin-bottom: 8px; font-size: 14px;""><strong>⏰ Thời gian tiếp nhận:</strong> {nowFormatted} (Giờ VN)</div>
+                <div style=""margin-bottom: 8px; font-size: 14px;""><strong>📝 Hình thức ứng tuyển:</strong> {sourceDescription}</div>
+                <div style=""margin-bottom: 8px; font-size: 14px;""><strong>🆔 Mã hồ sơ:</strong> <code style=""background: #e2e8f0; padding: 2px 6px; border-radius: 4px; font-size: 12px;"">{applicationId}</code></div>
+                <div style=""margin-top: 10px;""><strong>📊 Trạng thái hiện tại:</strong> <span class=""status-badge"">Đã tiếp nhận - Đang xử lý</span></div>
+            </div>
+
+            <div class=""steps"">
+                <h4>Các bước tiếp theo:</h4>
+                <ul>
+                    <li>Bộ phận Tuyển dụng sẽ tiến hành sàng lọc và đối chiếu yêu cầu công việc.</li>
+                    <li>Nếu hồ sơ phù hợp, chúng tôi sẽ liên hệ trực tiếp với bạn qua Email hoặc Số điện thoại để gửi thư mời phỏng vấn.</li>
+                    <li>Vui lòng thường xuyên kiểm tra hộp thư đến (và hòm thư Spam) để không bỏ lỡ thông báo quan trọng.</li>
+                </ul>
+            </div>
+
+            <p style=""font-size: 14px; color: #334155; margin: 16px 0 0 0;"">
+                Chúc bạn đạt kết quả tốt nhất trong kỳ tuyển dụng!
+            </p>
+        </div>
+        <div class=""footer"">
+            <p style=""margin: 0 0 4px 0;""><strong>Ban Nhân Sự & Tuyển Dụng ATS Industrial</strong></p>
+            <p style=""margin: 0;"">Email này được gửi tự động từ hệ thống tuyển dụng. Vui lòng không trả lời trực tiếp email này.</p>
+        </div>
+    </div>
+</body>
+</html>";
     }
 
     private IQueryable<ApplicationDto> ProjectToApplicationDto(IQueryable<Entities.Application> query)
@@ -391,44 +463,14 @@ public class ApplicationService : IApplicationService
                     _logger.LogInformation("⚡ Đã gửi AI scoring task vào background");
                     // ===== END AI SCORING =====
 
-                    // ===== GỬI EMAIL XÁC NHẬN CHO CANDIDATE =====
-                    var candidateName = ResolveCandidateDisplayName(application);
-                    var candidateEmail = application.ContactEmail ?? candidate.Email;
-                    
-                    if (!string.IsNullOrWhiteSpace(candidateEmail))
-                    {
-                        _ = Task.Run(async () =>
-                        {
-                            try
-                            {
-                                using var scope = _serviceProvider.CreateScope();
-                                var scopedEmailService = scope.ServiceProvider.GetRequiredService<IEmailService>();
-                                var scopedAiService = scope.ServiceProvider.GetRequiredService<IAiMatchingService>();
-
-                                // Tạo nội dung email xác nhận
-                                var confirmationBody = $@"
-<h2>Xác nhận nộp hồ sơ</h2>
-<p>Xin chào <strong>{candidateName}</strong>,</p>
-<p>Cảm ơn bạn đã nộp hồ sơ ứng tuyển vị trí <strong>{job.Title}</strong>.</p>
-<p>Chúng tôi sẽ review hồ sơ của bạn sớm nhất và liên hệ với bạn trong thời gian sớm nhất.</p>
-<p>Chúc bạn may mắn!</p>
-<hr/>
-<p><em>Đây là email tự động từ hệ thống tuyển dụng. Vui lòng không reply email này.</em></p>
-";
-                                await scopedEmailService.SendEmailAsync(
-                                    candidateEmail,
-                                    $"Xác nhận nộp hồ sơ - Vị trí {job.Title}",
-                                    confirmationBody
-                                );
-                                _logger.LogInformation("✅ Đã gửi email xác nhận cho candidate: {Email}", candidateEmail);
-                            }
-                            catch (Exception emailEx)
-                            {
-                                _logger.LogError(emailEx, "❌ Lỗi khi gửi email xác nhận cho candidate: {Email}", candidateEmail);
-                            }
-                        });
-                    }
-                    // ===== END EMAIL CONFIRMATION =====
+                    // Thu thập thông tin chuẩn bị gửi email xác nhận sau khi Commit thành công
+                    var applicantEmail = !string.IsNullOrWhiteSpace(request.Email) 
+                        ? request.Email.Trim() 
+                        : (!string.IsNullOrWhiteSpace(application.ContactEmail) ? application.ContactEmail.Trim() : candidate.Email?.Trim());
+                    var applicantName = ResolveCandidateDisplayName(application);
+                    var capturedJobTitle = job.Title;
+                    var capturedDeptName = job.DepartmentNavigation?.DepartmentName ?? "Nhà máy";
+                    var capturedAppId = application.ApplicationId.ToString();
 
                     // Tạo thông báo cho ứng viên
                     if (userId.HasValue)
@@ -480,7 +522,40 @@ public class ApplicationService : IApplicationService
                     }
 
                     await transaction.CommitAsync();
-                    _logger.LogInformation("Hoàn thành nộp hồ sơ thành công");
+                    _logger.LogInformation("✅ Hoàn thành lưu hồ sơ ứng tuyển vào Database thành công.");
+
+                    // ===== GỬI EMAIL XÁC NHẬN CHO ỨNG VIÊN (ASYNC BACKGROUND TASK) =====
+                    if (!string.IsNullOrWhiteSpace(applicantEmail))
+                    {
+                        _ = Task.Run(async () =>
+                        {
+                            try
+                            {
+                                using var scope = _serviceProvider.CreateScope();
+                                var scopedEmailService = scope.ServiceProvider.GetRequiredService<IEmailService>();
+
+                                var confirmationBody = BuildApplicationConfirmationEmailHtml(
+                                    applicantName,
+                                    capturedJobTitle,
+                                    capturedDeptName,
+                                    capturedAppId,
+                                    "Nộp hồ sơ trực tuyến (Kèm CV)"
+                                );
+
+                                await scopedEmailService.SendEmailAsync(
+                                    applicantEmail,
+                                    $"[Xác nhận nộp hồ sơ] Vị trí {capturedJobTitle} - {capturedDeptName}",
+                                    confirmationBody
+                                );
+                                _logger.LogInformation("✅ Đã gửi email xác nhận thành công cho ứng viên: {Email}", applicantEmail);
+                            }
+                            catch (Exception emailEx)
+                            {
+                                _logger.LogError(emailEx, "❌ Lỗi khi gửi email xác nhận cho ứng viên: {Email} - Chi tiết: {Message}", applicantEmail, emailEx.Message);
+                            }
+                        });
+                    }
+                    // ===== END EMAIL CONFIRMATION =====
 
                     return true;
                 }
@@ -571,8 +646,9 @@ public class ApplicationService : IApplicationService
                 return;
             }
 
-            // Gọi AI chấm điểm
-            var aiResult = await scopedAiService.ScoreApplicationAsync(savedFilePath, fullJobDescription);
+            // Gọi AI chấm điểm theo khuôn chuẩn ATS
+            var track = application.Job?.RecruitmentTrack ?? "PROFESSIONAL";
+            var aiResult = await scopedAiService.ScoreApplicationAsync(savedFilePath, fullJobDescription, track);
 
             // Serialize breakdown thành JSON
             string? breakdownJson = null;
@@ -1134,8 +1210,6 @@ public class ApplicationService : IApplicationService
                         CreatedAt = DateTime.UtcNow
                     });
                 }
-                if (false) result.ImportedApplications.Add(new ImportedApplicationSummaryDto { AppliedAt = application.AppliedAt
-                });
 
                 existingPhoneSet.Add(cleanPhone);
             }
@@ -1355,6 +1429,47 @@ public class ApplicationService : IApplicationService
             {
                 _logger.LogWarning(notifEx, "Không thể gửi thông báo khi nhận webhook Google Form");
             }
+        }
+
+        // 8. Gửi email xác nhận tiếp nhận hồ sơ qua mã QR / Form trực tuyến cho ứng viên
+        var qrApplicantEmail = !string.IsNullOrWhiteSpace(request.Email) 
+            ? request.Email.Trim() 
+            : (!string.IsNullOrWhiteSpace(candidate.Email) && !candidate.Email.EndsWith("@mass-recruit.local") ? candidate.Email.Trim() : null);
+
+        if (!string.IsNullOrWhiteSpace(qrApplicantEmail))
+        {
+            var applicantName = request.FullName.Trim();
+            var jobTitle = job.Title;
+            var deptName = job.DepartmentNavigation?.DepartmentName ?? "Nhà máy";
+            var appId = application.ApplicationId.ToString();
+
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    using var scope = _serviceProvider.CreateScope();
+                    var scopedEmailService = scope.ServiceProvider.GetRequiredService<IEmailService>();
+
+                    var confirmationBody = BuildApplicationConfirmationEmailHtml(
+                        applicantName,
+                        jobTitle,
+                        deptName,
+                        appId,
+                        "Ứng tuyển nhanh qua mã QR / Form trực tuyến"
+                    );
+
+                    await scopedEmailService.SendEmailAsync(
+                        qrApplicantEmail,
+                        $"[Xác nhận nộp hồ sơ] Vị trí {jobTitle} - {deptName}",
+                        confirmationBody
+                    );
+                    _logger.LogInformation("✅ [QR-APPLY] Đã gửi email xác nhận thành công cho ứng viên: {Email}", qrApplicantEmail);
+                }
+                catch (Exception emailEx)
+                {
+                    _logger.LogError(emailEx, "❌ [QR-APPLY] Lỗi khi gửi email xác nhận cho ứng viên: {Email} - Chi tiết: {Message}", qrApplicantEmail, emailEx.Message);
+                }
+            });
         }
 
         return new GoogleFormWebhookResultDto

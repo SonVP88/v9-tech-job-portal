@@ -43,14 +43,7 @@ export class InterviewService {
             return of({ success: false, data: [] as MyInterviewDto[], message: 'SSR: Skipping call' });
         }
 
-        const token = localStorage.getItem('authToken');
-        const headers = new HttpHeaders({
-            'Authorization': `Bearer ${token}`
-        });
-
-        return this.http.get<ApiResponse<MyInterviewDto[]>>(
-            `${this.apiUrl}/my-schedule`,
-            { headers }
-        );
+        // authInterceptor sẽ tự động đính kèm token chuẩn xác
+        return this.http.get<ApiResponse<MyInterviewDto[]>>(`${this.apiUrl}/my-schedule`);
     }
 }

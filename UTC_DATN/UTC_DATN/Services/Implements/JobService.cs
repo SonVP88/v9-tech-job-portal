@@ -126,35 +126,7 @@ public class JobService : IJobService
         var job = await _context.Jobs.FirstOrDefaultAsync(j => j.JobId == jobId && !j.IsDeleted);
         if (job == null) return null;
 
-        if (string.IsNullOrWhiteSpace(job.GoogleFormPublicUrl) || (!string.IsNullOrWhiteSpace(customClientBase) && job.CampaignFormSource == "INTERNAL"))
-            return await EnsureCampaignQrAsync(jobId, forceRecreate: false, customApiBase, customClientBase);
-
-        var (apiBase, clientBase, secret) = _campaignQrService.GetPublicConfig();
-        if (!string.IsNullOrWhiteSpace(customApiBase)) apiBase = customApiBase.Trim().TrimEnd('/');
-        if (!string.IsNullOrWhiteSpace(customClientBase)) clientBase = customClientBase.Trim().TrimEnd('/');
-
-        var png = _campaignQrService.GeneratePngBytes(job.GoogleFormPublicUrl);
-        var webhookUrl = $"{apiBase}/api/applications/webhook-google-form";
-        var isPublic = !apiBase.Contains("localhost", StringComparison.OrdinalIgnoreCase)
-                       && !apiBase.Contains("127.0.0.1", StringComparison.OrdinalIgnoreCase);
-
-        return new CampaignQrDto
-        {
-            JobId = job.JobId,
-            JobTitle = job.Title,
-            Source = job.CampaignFormSource ?? "INTERNAL",
-            GoogleFormId = job.GoogleFormId,
-            FormUrl = job.GoogleFormPublicUrl,
-            FormEditUrl = job.GoogleFormEditUrl,
-            QrCodeDataUrl = "data:image/png;base64," + Convert.ToBase64String(png),
-            QrCodePath = job.QrCodeImagePath,
-            AppsScript = _campaignQrService.BuildWebhookAppsScript(job.JobId, apiBase),
-            PublicApiBaseUrl = apiBase,
-            PublicClientBaseUrl = clientBase,
-            WebhookUrl = webhookUrl,
-            WebhookSecret = secret,
-            IsUsingPublicUrl = isPublic
-        };
+        return await EnsureCampaignQrAsync(jobId, forceRecreate: false, customApiBase, customClientBase);
     }
 
     public async Task<CampaignQrDto> EnsureCampaignQrAsync(Guid jobId, bool forceRecreate = false, string? customApiBase = null, string? customClientBase = null)

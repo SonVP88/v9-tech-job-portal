@@ -27,7 +27,7 @@ namespace UTC_DATN.Controllers
         }
 
         [HttpGet("jobs/{jobId}/challenges")]
-        [Authorize]
+        [AllowAnonymous]
         public async Task<IActionResult> GetChallengesByJob(Guid jobId)
         {
             var result = await _aiCodeService.GetChallengesByJobAsync(jobId);

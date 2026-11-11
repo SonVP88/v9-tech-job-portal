@@ -86,57 +86,38 @@ public class CampaignQrService : ICampaignQrService
         }
 
         var (apiBase, clientBase, secret) = GetPublicConfig();
-        var fallbackUrl = $"{clientBase}/apply/{job.JobId}";
 
-        string formUrl = fallbackUrl;
-        string source = "INTERNAL";
-        string? formId = null;
-        string? editUrl = null;
-        string? warning = null;
-
-        if (!forceRecreate && !string.IsNullOrWhiteSpace(job.GoogleFormPublicUrl)
-            && !string.Equals(job.CampaignFormSource, "INTERNAL", StringComparison.OrdinalIgnoreCase))
+        // Chỉ sử dụng đường dẫn Google Form được gán trực tiếp, bỏ cơ chế tự động tạo form nội bộ ATS
+        string? existingUrl = null;
+        if (!string.IsNullOrWhiteSpace(job.GoogleFormPublicUrl)
+            && !job.GoogleFormPublicUrl.Contains("/apply/", StringComparison.OrdinalIgnoreCase))
         {
-            formUrl = job.GoogleFormPublicUrl;
-            source = string.IsNullOrWhiteSpace(job.CampaignFormSource) ? "GOOGLE_FORM" : job.CampaignFormSource;
-            formId = job.GoogleFormId;
-            editUrl = job.GoogleFormEditUrl;
+            existingUrl = job.GoogleFormPublicUrl.Trim();
         }
-        else if (!forceRecreate && string.Equals(job.CampaignFormSource, "INTERNAL", StringComparison.OrdinalIgnoreCase))
+        else if (!string.IsNullOrWhiteSpace(job.GoogleFormUrl)
+            && !job.GoogleFormUrl.Contains("/apply/", StringComparison.OrdinalIgnoreCase))
         {
-            formUrl = fallbackUrl;
-            source = "INTERNAL";
-        }
-        else
-        {
-            try
-            {
-                var google = await TryCreateGoogleFormAsync(job);
-                if (google != null)
-                {
-                    formUrl = google.Value.PublicUrl;
-                    formId = google.Value.FormId;
-                    editUrl = google.Value.EditUrl;
-                    source = "GOOGLE_FORM";
-                }
-                else
-                {
-                    warning = "Chưa cấu hình Google (Service Account hoặc Refresh Token). Hệ thống đã tạo form nội bộ + QR để demo.";
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Không tạo được Google Form cho Job {JobId}, dùng form nội bộ", job.JobId);
-                warning = $"Không tạo được Google Form ({ex.Message}). Đã dùng form nội bộ + QR.";
-            }
+            existingUrl = job.GoogleFormUrl.Trim();
         }
 
-        var png = GeneratePngBytes(formUrl);
-        var relativePath = await SaveQrPngAsync(job.JobId, png);
+        string formUrl = existingUrl ?? string.Empty;
+        string source = "GOOGLE_FORM";
+        string? formId = job.GoogleFormId;
+        string? editUrl = job.GoogleFormEditUrl;
+        string qrCodeDataUrl = string.Empty;
+        string? relativePath = job.QrCodeImagePath;
+
+        if (!string.IsNullOrWhiteSpace(formUrl))
+        {
+            var png = GeneratePngBytes(formUrl);
+            relativePath = await SaveQrPngAsync(job.JobId, png);
+            qrCodeDataUrl = ToDataUrl(png);
+        }
 
         job.CampaignFormSource = source;
         job.GoogleFormId = formId;
-        job.GoogleFormPublicUrl = formUrl;
+        job.GoogleFormPublicUrl = string.IsNullOrWhiteSpace(formUrl) ? null : formUrl;
+        job.GoogleFormUrl = string.IsNullOrWhiteSpace(formUrl) ? null : formUrl;
         job.GoogleFormEditUrl = editUrl;
         job.QrCodeImagePath = relativePath;
 
@@ -152,9 +133,9 @@ public class CampaignQrService : ICampaignQrService
             GoogleFormId = formId,
             FormUrl = formUrl,
             FormEditUrl = editUrl,
-            QrCodeDataUrl = ToDataUrl(png),
-            QrCodePath = relativePath,
-            Warning = warning,
+            QrCodeDataUrl = qrCodeDataUrl,
+            QrCodePath = relativePath ?? string.Empty,
+            Warning = null,
             AppsScript = BuildAppsScript(job.JobId, apiBase, secret),
             PublicApiBaseUrl = apiBase,
             PublicClientBaseUrl = clientBase,

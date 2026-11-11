@@ -140,10 +140,10 @@ public class InterviewController : ControllerBase
     }
 
     /// <summary>
-    /// API lấy lịch phỏng vấn cá nhân
+    /// API lấy lịch phỏng vấn cá nhân (Dành cho Giám đốc, Quản đốc, HR và Phỏng vấn viên)
     /// </summary>
     [HttpGet("my-schedule")]
-    [Authorize(Roles = "INTERVIEWER, HR, ADMIN")]
+    [Authorize]
     public async Task<IActionResult> GetMySchedule()
     {
         try

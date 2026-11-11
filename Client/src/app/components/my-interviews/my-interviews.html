@@ -122,7 +122,10 @@
             <td colspan="6" class="px-6 py-12 text-center">
               <div class="flex flex-col items-center gap-2">
                 <span class="material-symbols-outlined text-4xl text-gray-300 dark:text-slate-600">calendar_today</span>
-                <p class="text-gray-500 dark:text-slate-400">Không có lịch phỏng vấn nào</p>
+                <p class="text-gray-500 dark:text-slate-400">{{ errorMessage || 'Không có lịch phỏng vấn nào' }}</p>
+                <button *ngIf="errorMessage" (click)="loadMyInterviews()" type="button" class="mt-2 px-3 py-1.5 text-xs font-semibold bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors">
+                  Thử lại
+                </button>
               </div>
             </td>
           </tr>

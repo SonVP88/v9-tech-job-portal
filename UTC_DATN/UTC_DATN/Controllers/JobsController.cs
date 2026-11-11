@@ -281,15 +281,17 @@ public class JobsController : ControllerBase
 
             if (string.IsNullOrWhiteSpace(request.FormUrl))
             {
-                // Reset về form nội bộ
                 job.GoogleFormPublicUrl = null;
+                job.GoogleFormUrl = null;
                 job.GoogleFormId = null;
                 job.GoogleFormEditUrl = null;
-                job.CampaignFormSource = "INTERNAL";
+                job.CampaignFormSource = "GOOGLE_FORM";
             }
             else
             {
-                job.GoogleFormPublicUrl = request.FormUrl.Trim();
+                var cleanUrl = request.FormUrl.Trim();
+                job.GoogleFormPublicUrl = cleanUrl;
+                job.GoogleFormUrl = cleanUrl;
                 job.CampaignFormSource = "GOOGLE_FORM";
             }
 

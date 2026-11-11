@@ -5,32 +5,44 @@
   ═══════════════════════════════════════════════════════════════════════ -->
   <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
     <div>
-      <div class="flex items-center gap-3 flex-wrap">
-        <h1 class="text-2xl md:text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight">
+      <div class="flex items-center gap-2.5 flex-wrap">
+        <h1 class="text-2xl font-bold text-gray-900 dark:text-white tracking-tight">
           Cơ cấu Nhân sự &amp; Phân quyền
         </h1>
-        <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-sm">
-          <span class="material-symbols-outlined text-[14px]">factory</span>
-          Nhà máy Công nghiệp
+        <span *ngIf="isSuperAdmin()" class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-xs font-semibold bg-purple-50 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
+          <span class="material-symbols-outlined text-[14px]">military_tech</span>
+          ADMIN • Toàn quyền hệ thống
         </span>
-        <span *ngIf="isSuperAdmin()" class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
-          <span class="material-symbols-outlined text-[13px]">military_tech</span>
-          Toàn quyền
+        <span *ngIf="isDepartmentManager()" class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-xs font-semibold bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+          <span class="material-symbols-outlined text-[14px]">shield_person</span>
+          MANAGER • Quản lý cấp Phòng ban
+        </span>
+        <span *ngIf="!isSuperAdmin() && !isDepartmentManager()" class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-xs font-semibold bg-sky-50 text-sky-700 dark:bg-sky-950/60 dark:text-sky-300 border border-sky-200 dark:border-sky-800">
+          <span class="material-symbols-outlined text-[14px]">visibility</span>
+          HR • Chế độ tra cứu cơ cấu
         </span>
       </div>
       <p class="text-sm text-gray-500 dark:text-slate-400 mt-1">
-        {{ isSuperAdmin() ? 'Quản lý toàn bộ cơ cấu tổ chức – Giám đốc, Trưởng phòng, Chuyên viên HR & Hội đồng Phỏng vấn' : 'Đang xem phạm vi phòng ban của bạn: ' + currentUserDepartmentName() }}
+        {{ isSuperAdmin() ? 'Quản lý toàn bộ cơ cấu tổ chức & phân quyền 4 cấp: Ban Giám Đốc (Toàn quyền), Trưởng phòng, Chuyên viên HR & Hội đồng Phỏng vấn' : 'Đang xem phạm vi phòng ban của bạn: ' + currentUserDepartmentName() }}
       </p>
     </div>
 
-    <div class="flex items-center gap-3 flex-shrink-0">
+    <div class="flex items-center gap-2.5 flex-shrink-0">
+      <button (click)="setViewMode(viewMode() === 'permissions' ? 'table' : 'permissions')"
+        [ngClass]="viewMode() === 'permissions'
+          ? 'bg-slate-900 text-white border-slate-900 dark:bg-white dark:text-slate-900'
+          : 'bg-white dark:bg-slate-900 text-gray-700 dark:text-slate-300 border-gray-300 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-800'"
+        class="inline-flex items-center gap-2 px-3.5 py-2 border rounded-xl text-sm font-semibold transition-all shadow-sm">
+        <span class="material-symbols-outlined text-[18px] text-purple-600 dark:text-purple-400">admin_panel_settings</span>
+        {{ viewMode() === 'permissions' ? 'Quay lại Danh sách' : 'Bảng Phân quyền 4 Role' }}
+      </button>
       <button (click)="exportToExcel()" [disabled]="filteredEmployees().length === 0"
         class="inline-flex items-center gap-2 px-3.5 py-2 border border-gray-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-900 text-sm font-medium text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800 transition-all shadow-sm disabled:opacity-50">
         <span class="material-symbols-outlined text-[18px] text-emerald-600">download</span>
         Xuất Excel
       </button>
-      <button (click)="openAddModal()" *ngIf="isSuperAdmin() || isDepartmentManager()"
-        class="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-semibold transition-all shadow-sm shadow-blue-500/20">
+      <button (click)="openAddModal()" *ngIf="canManageEmployees()"
+        class="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-semibold transition-all shadow-sm">
         <span class="material-symbols-outlined text-[20px]">person_add</span>
         Thêm nhân sự
       </button>
@@ -219,6 +231,14 @@
             <span class="material-symbols-outlined text-[16px]">domain</span>
             <span>Phòng ban</span>
           </button>
+
+          <button (click)="setViewMode('permissions')"
+            [ngClass]="viewMode() === 'permissions' ? 'bg-white dark:bg-slate-800 shadow-sm text-purple-600 dark:text-purple-400' : 'text-gray-500 dark:text-slate-400 hover:text-gray-700'"
+            class="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5"
+            title="Ma trận phân quyền 4 Role">
+            <span class="material-symbols-outlined text-[16px]">admin_panel_settings</span>
+            <span>Phân quyền Role</span>
+          </button>
         </div>
       </div>
     </div>
@@ -230,10 +250,10 @@
         <select [(ngModel)]="filterRole" (change)="applyFilters()"
           class="w-full px-3 py-2 bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-xl text-sm dark:text-white">
           <option value="">Tất cả vai trò</option>
-          <option value="ADMIN">Ban Giám Đốc / Admin</option>
-          <option value="MANAGER">Trưởng Phòng / Quản Lý</option>
-          <option value="HR">Chuyên viên Nhân sự</option>
-          <option value="INTERVIEWER">Hội đồng Phỏng vấn</option>
+          <option value="ADMIN">Ban Giám Đốc / Admin (Toàn quyền)</option>
+          <option value="MANAGER">Trưởng Phòng / Quản Lý (Cấp bộ phận)</option>
+          <option value="HR">Chuyên viên Nhân sự (Vận hành tuyển dụng)</option>
+          <option value="INTERVIEWER">Hội đồng Phỏng vấn (Chấm điểm ứng viên)</option>
         </select>
       </div>
       <div>
@@ -293,7 +313,7 @@
           <tr>
             <th class="px-5 py-3.5 text-left text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Nhân sự &amp; Cơ cấu</th>
             <th class="px-5 py-3.5 text-left text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Phòng ban</th>
-            <th class="px-5 py-3.5 text-left text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Vai trò</th>
+            <th class="px-5 py-3.5 text-left text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Vai trò &amp; Phạm vi quyền</th>
             <th class="px-5 py-3.5 text-left text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Quản lý trực tiếp</th>
             <th class="px-5 py-3.5 text-center text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Cấp dưới</th>
             <th class="px-5 py-3.5 text-left text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider">SĐT</th>
@@ -324,15 +344,15 @@
                     {{ getInitials(row.node.employee.fullName) }}
                   </div>
                   <span *ngIf="row.node.employee.role === 'ADMIN'"
-                    class="absolute -bottom-1 -right-1 w-5 h-5 bg-gradient-to-r from-amber-400 to-amber-500 text-amber-950 rounded-full flex items-center justify-center shadow ring-2 ring-white dark:ring-slate-900">
+                    class="absolute -bottom-1 -right-1 w-5 h-5 bg-amber-400 text-amber-950 rounded-full flex items-center justify-center shadow ring-2 ring-white dark:ring-slate-900">
                     <span class="material-symbols-outlined text-[12px]">military_tech</span>
                   </span>
                   <span *ngIf="row.node.employee.role === 'MANAGER'"
-                    class="absolute -bottom-1 -right-1 w-5 h-5 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-full flex items-center justify-center shadow ring-2 ring-white dark:ring-slate-900">
+                    class="absolute -bottom-1 -right-1 w-5 h-5 bg-blue-600 text-white rounded-full flex items-center justify-center shadow ring-2 ring-white dark:ring-slate-900">
                     <span class="material-symbols-outlined text-[12px]">shield_person</span>
                   </span>
                   <span *ngIf="row.node.employee.role === 'INTERVIEWER'"
-                    class="absolute -bottom-1 -right-1 w-5 h-5 bg-gradient-to-r from-teal-400 to-emerald-500 text-white rounded-full flex items-center justify-center shadow ring-2 ring-white dark:ring-slate-900">
+                    class="absolute -bottom-1 -right-1 w-5 h-5 bg-teal-600 text-white rounded-full flex items-center justify-center shadow ring-2 ring-white dark:ring-slate-900">
                     <span class="material-symbols-outlined text-[12px]">rate_review</span>
                   </span>
                 </div>
@@ -359,13 +379,18 @@
               </span>
             </td>
 
-            <!-- Vai trò -->
+            <!-- Vai trò & Phạm vi quyền -->
             <td class="px-5 py-3.5 whitespace-nowrap">
-              <span [ngClass]="getRoleBadge(row.node.employee.role)"
-                class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold border">
-                <span class="material-symbols-outlined text-[14px]">{{ getRoleIcon(row.node.employee.role) }}</span>
-                {{ row.node.employee.roleName || row.node.employee.role }}
-              </span>
+              <div class="flex flex-col items-start gap-1">
+                <span [ngClass]="getRoleBadge(row.node.employee.role)"
+                  class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold border">
+                  <span class="material-symbols-outlined text-[14px]">{{ getRoleIcon(row.node.employee.role) }}</span>
+                  {{ row.node.employee.roleName || row.node.employee.role }}
+                </span>
+                <span class="text-[11px] text-gray-500 dark:text-slate-400">
+                  {{ getRoleScopeSummary(row.node.employee.role) }}
+                </span>
+              </div>
             </td>
 
             <!-- Quản lý trực tiếp -->
@@ -418,13 +443,16 @@
             <!-- Thao tác: Sửa & Toggle Switch Khóa/Mở Khóa (Soft Delete) -->
             <td class="px-5 py-3.5 whitespace-nowrap text-right">
               <div class="flex items-center justify-end gap-3">
-                <button (click)="viewEmployee(row.node.employee)"
+                <button *ngIf="canEditEmployee(row.node.employee)" (click)="viewEmployee(row.node.employee)"
                   class="px-2.5 py-1 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/40 rounded-lg transition-colors flex items-center gap-1 text-xs font-semibold">
                   <span class="material-symbols-outlined text-[16px]">edit</span>Sửa
                 </button>
+                <span *ngIf="!canEditEmployee(row.node.employee)" class="text-[11px] text-gray-400 dark:text-slate-500 italic">
+                  Chỉ xem
+                </span>
 
                 <!-- TOGGLE SWITCH (BẬT/TẮT TRẠNG THÁI ACTIVE THAY CHO NÚT XÓA) -->
-                <div class="flex items-center gap-1.5" [title]="row.node.employee.isActive ? 'Gạt để khóa tài khoản' : 'Gạt để mở khóa tài khoản'">
+                <div *ngIf="canManageEmployees()" class="flex items-center gap-1.5" [title]="row.node.employee.isActive ? 'Gạt để khóa tài khoản' : 'Gạt để mở khóa tài khoản'">
                   <button 
                     type="button"
                     role="switch"
@@ -474,37 +502,35 @@
   </div>
 
   <!-- ═══════════════════════════════════════════════════════════════════════
-       VIEW 2: NESTED CARDS – Cơ cấu Tổ chức (MAIN UPGRADE)
+       VIEW 2: NESTED CARDS – Cơ cấu Tổ chức
   ═══════════════════════════════════════════════════════════════════════ -->
   <div *ngIf="!isLoading() && viewMode() === 'hierarchy'" class="space-y-6">
 
-    <!-- Header Banner -->
-    <div class="relative overflow-hidden rounded-2xl bg-gradient-to-r from-slate-900 via-blue-950 to-indigo-950 p-6 text-white shadow-lg">
-      <div class="absolute inset-0 opacity-10"
-        style="background-image: radial-gradient(circle at 20% 50%, #3b82f6 0%, transparent 50%), radial-gradient(circle at 80% 20%, #6366f1 0%, transparent 50%)"></div>
-      <div class="relative flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div class="flex items-center gap-4">
-          <div class="w-14 h-14 rounded-2xl bg-white/10 backdrop-blur-sm border border-white/20 flex items-center justify-center flex-shrink-0">
-            <span class="material-symbols-outlined text-[30px] text-amber-400">account_tree</span>
+    <!-- Header Banner (Clean Enterprise Style) -->
+    <div class="rounded-2xl bg-white dark:bg-slate-950 border border-gray-200 dark:border-slate-800 p-5 shadow-sm">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div class="flex items-center gap-3.5">
+          <div class="w-12 h-12 rounded-xl bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-900 flex items-center justify-center flex-shrink-0">
+            <span class="material-symbols-outlined text-[26px] text-blue-600 dark:text-blue-400">account_tree</span>
           </div>
           <div>
-            <h2 class="text-xl font-extrabold tracking-tight">Sơ đồ Cơ cấu Tổ chức</h2>
-            <p class="text-sm text-blue-200 mt-0.5">
+            <h2 class="text-lg font-bold text-gray-900 dark:text-white tracking-tight">Sơ đồ Cơ cấu Tổ chức</h2>
+            <p class="text-xs text-gray-500 dark:text-slate-400 mt-0.5">
               {{ isSuperAdmin() ? 'Toàn bộ phân cấp: Ban Giám Đốc → Trưởng phòng → Nhân sự trực thuộc' : 'Cấu trúc phòng ban: ' + currentUserDepartmentName() }}
             </p>
           </div>
         </div>
         <div class="flex flex-wrap gap-2">
-          <span class="px-3 py-1.5 rounded-xl bg-white/10 border border-white/20 text-xs font-semibold flex items-center gap-1.5">
-            <span class="material-symbols-outlined text-[14px] text-amber-400">military_tech</span>
+          <span class="px-3 py-1.5 rounded-xl bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800 text-purple-700 dark:text-purple-300 text-xs font-semibold flex items-center gap-1.5">
+            <span class="material-symbols-outlined text-[14px]">military_tech</span>
             {{ totalDirectors() }} Giám Đốc
           </span>
-          <span class="px-3 py-1.5 rounded-xl bg-white/10 border border-white/20 text-xs font-semibold flex items-center gap-1.5">
-            <span class="material-symbols-outlined text-[14px] text-blue-300">shield_person</span>
+          <span class="px-3 py-1.5 rounded-xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 text-xs font-semibold flex items-center gap-1.5">
+            <span class="material-symbols-outlined text-[14px]">shield_person</span>
             {{ totalManagers() }} Trưởng phòng
           </span>
-          <span class="px-3 py-1.5 rounded-xl bg-white/10 border border-white/20 text-xs font-semibold flex items-center gap-1.5">
-            <span class="material-symbols-outlined text-[14px] text-teal-300">group</span>
+          <span class="px-3 py-1.5 rounded-xl bg-teal-50 dark:bg-teal-950/40 border border-teal-200 dark:border-teal-800 text-teal-700 dark:text-teal-300 text-xs font-semibold flex items-center gap-1.5">
+            <span class="material-symbols-outlined text-[14px]">group</span>
             {{ totalHr() + totalInterviewers() }} Nhân viên
           </span>
         </div>
@@ -518,27 +544,27 @@
         <!-- Outer Card: Manager / Director -->
         <div class="rounded-2xl border shadow-sm overflow-hidden transition-all"
           [ngClass]="grp.manager.role === 'ADMIN'
-            ? 'border-purple-200 dark:border-purple-900/60 bg-gradient-to-br from-purple-50 to-white dark:from-purple-950/20 dark:to-slate-950'
-            : 'border-blue-200 dark:border-blue-900/60 bg-gradient-to-br from-blue-50 to-white dark:from-blue-950/20 dark:to-slate-950'">
+            ? 'border-purple-200 dark:border-purple-900/60 bg-white dark:bg-slate-950'
+            : 'border-blue-200 dark:border-blue-900/60 bg-white dark:bg-slate-950'">
 
           <!-- Manager Header Row -->
-          <div class="px-5 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div class="px-5 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-gray-50/70 dark:bg-slate-900/60">
             <div class="flex items-center gap-4">
               <!-- Avatar -->
               <div class="relative flex-shrink-0">
                 <div [ngClass]="grp.manager.role === 'ADMIN'
-                    ? 'bg-gradient-to-br from-purple-600 to-violet-700'
-                    : 'bg-gradient-to-br from-blue-600 to-indigo-700'"
-                  class="w-14 h-14 rounded-2xl flex items-center justify-center font-bold text-lg text-white shadow-md">
+                    ? 'bg-purple-600'
+                    : 'bg-blue-600'"
+                  class="w-14 h-14 rounded-2xl flex items-center justify-center font-bold text-lg text-white shadow-sm">
                   {{ getInitials(grp.manager.fullName) }}
                 </div>
                 <!-- Crown / Shield Badge -->
                 <span *ngIf="grp.manager.role === 'ADMIN'"
-                  class="absolute -bottom-1 -right-1 w-6 h-6 bg-gradient-to-r from-amber-400 to-yellow-500 rounded-full flex items-center justify-center shadow-md ring-2 ring-white dark:ring-slate-900">
+                  class="absolute -bottom-1 -right-1 w-6 h-6 bg-amber-400 rounded-full flex items-center justify-center shadow ring-2 ring-white dark:ring-slate-900">
                   <span class="material-symbols-outlined text-[14px] text-amber-900">military_tech</span>
                 </span>
                 <span *ngIf="grp.manager.role === 'MANAGER'"
-                  class="absolute -bottom-1 -right-1 w-6 h-6 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full flex items-center justify-center shadow-md ring-2 ring-white dark:ring-slate-900">
+                  class="absolute -bottom-1 -right-1 w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center shadow ring-2 ring-white dark:ring-slate-900">
                   <span class="material-symbols-outlined text-[14px] text-white">shield_person</span>
                 </span>
               </div>
@@ -580,7 +606,7 @@
                 <span class="material-symbols-outlined text-[14px]">people</span>
                 Quản lý {{ grp.subordinates.length }} nhân sự
               </span>
-              <button (click)="viewEmployee(grp.manager)"
+              <button *ngIf="canEditEmployee(grp.manager)" (click)="viewEmployee(grp.manager)"
                 class="px-3 py-1.5 rounded-xl text-xs font-bold bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-800 transition-all shadow-sm flex items-center gap-1.5">
                 <span class="material-symbols-outlined text-[15px] text-blue-600">edit</span>
                 Chỉnh sửa
@@ -591,8 +617,7 @@
           <!-- Subordinates Section (Inner Card) -->
           <div class="px-5 pb-5">
             <!-- Section Title -->
-            <div class="flex items-center gap-2 mb-3 pt-4 border-t"
-              [ngClass]="grp.manager.role === 'ADMIN' ? 'border-purple-100 dark:border-purple-900/40' : 'border-blue-100 dark:border-blue-900/40'">
+            <div class="flex items-center gap-2 mb-3 pt-4 border-t border-gray-100 dark:border-slate-800">
               <span class="material-symbols-outlined text-[16px] text-gray-400">subdirectory_arrow_right</span>
               <span class="text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider">
                 NHÂN SỰ BÁO CÁO TRỰC TIẾP
@@ -631,7 +656,7 @@
                       title="Đang hoạt động"></span>
                   </div>
                   <!-- Edit Button -->
-                  <button (click)="viewEmployee(sub)"
+                  <button *ngIf="canEditEmployee(sub)" (click)="viewEmployee(sub)"
                     class="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-800 text-gray-500 flex-shrink-0">
                     <span class="material-symbols-outlined text-[16px]">edit</span>
                   </button>
@@ -683,7 +708,7 @@
       <div *ngFor="let grp of getDepartmentGroups()"
         class="bg-white dark:bg-slate-950 rounded-2xl border border-gray-200 dark:border-slate-800 shadow-sm overflow-hidden flex flex-col">
         <!-- Dept Header -->
-        <div class="px-5 py-4 bg-gradient-to-r from-gray-50 to-white dark:from-slate-900 dark:to-slate-950 border-b border-gray-100 dark:border-slate-800 flex items-center justify-between">
+        <div class="px-5 py-4 bg-gray-50/80 dark:bg-slate-900 border-b border-gray-100 dark:border-slate-800 flex items-center justify-between">
           <div class="flex items-center gap-3">
             <div class="w-9 h-9 rounded-lg bg-blue-100 dark:bg-blue-950/60 text-blue-600 flex items-center justify-center flex-shrink-0">
               <span class="material-symbols-outlined text-[18px]">apartment</span>
@@ -727,8 +752,178 @@
     </div>
   </div>
 
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       VIEW 4: MA TRẬN PHÂN QUYỀN 4 ROLE (RBAC PERMISSIONS & MATRIX)
+  ═══════════════════════════════════════════════════════════════════════ -->
+  <div *ngIf="!isLoading() && viewMode() === 'permissions'" class="space-y-6">
+
+    <!-- 1. TỔNG QUAN 4 VAI TRÒ TRONG HỆ THỐNG -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div *ngFor="let rg of roleGuides"
+        class="bg-white dark:bg-slate-950 rounded-2xl border border-gray-200 dark:border-slate-800 p-5 shadow-sm flex flex-col justify-between">
+        <div>
+          <!-- Card Header -->
+          <div class="flex items-start justify-between gap-3 pb-3.5 border-b border-gray-100 dark:border-slate-800">
+            <div class="flex items-center gap-3">
+              <div [ngClass]="getRoleBadge(rg.code)" class="w-11 h-11 rounded-xl border flex items-center justify-center flex-shrink-0">
+                <span class="material-symbols-outlined text-[22px]">{{ getRoleIcon(rg.code) }}</span>
+              </div>
+              <div>
+                <div class="flex items-center gap-2 flex-wrap">
+                  <h3 class="text-base font-bold text-gray-900 dark:text-white">{{ rg.title }}</h3>
+                  <span class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-slate-300">
+                    {{ rg.code }}
+                  </span>
+                </div>
+                <p class="text-xs text-gray-500 dark:text-slate-400 mt-0.5">{{ rg.subtitle }}</p>
+              </div>
+            </div>
+            <span [ngClass]="getRoleBadge(rg.code)" class="px-2.5 py-1 rounded-lg text-[11px] font-bold border whitespace-nowrap">
+              {{ rg.badgeText }}
+            </span>
+          </div>
+
+          <!-- Phạm vi dữ liệu -->
+          <div class="mt-3 p-2.5 rounded-xl bg-gray-50 dark:bg-slate-900 border border-gray-100 dark:border-slate-800 text-xs text-gray-700 dark:text-slate-300 flex items-center gap-2">
+            <span class="material-symbols-outlined text-[16px] text-blue-600 flex-shrink-0">database</span>
+            <span><strong>Phạm vi dữ liệu:</strong> {{ rg.dataScope }}</span>
+          </div>
+
+          <!-- Quyền được phép & Giới hạn -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4">
+            <!-- Được làm gì -->
+            <div class="p-3 rounded-xl bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/40">
+              <p class="text-xs font-bold text-emerald-800 dark:text-emerald-300 mb-2 flex items-center gap-1.5">
+                <span class="material-symbols-outlined text-[15px]">check_circle</span>
+                Được phép thực hiện
+              </p>
+              <ul class="space-y-1.5">
+                <li *ngFor="let item of rg.allowedActions" class="text-xs text-gray-700 dark:text-slate-300 flex items-start gap-1.5 leading-relaxed">
+                  <span class="text-emerald-600 font-bold mt-0.5">•</span>
+                  <span>{{ item }}</span>
+                </li>
+              </ul>
+            </div>
+
+            <!-- Giới hạn -->
+            <div class="p-3 rounded-xl bg-amber-50/50 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-900/40">
+              <p class="text-xs font-bold text-amber-800 dark:text-amber-300 mb-2 flex items-center gap-1.5">
+                <span class="material-symbols-outlined text-[15px]">gpp_maybe</span>
+                Giới hạn / Không được phép
+              </p>
+              <ul class="space-y-1.5">
+                <li *ngFor="let item of rg.restrictedActions" class="text-xs text-gray-700 dark:text-slate-300 flex items-start gap-1.5 leading-relaxed">
+                  <span class="text-amber-600 font-bold mt-0.5">•</span>
+                  <span>{{ item }}</span>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <!-- Card Footer -->
+        <div class="mt-4 pt-3 border-t border-gray-100 dark:border-slate-800 flex items-center justify-between">
+          <span class="text-[11px] text-gray-400">Mã phân quyền chuẩn RBAC: <strong>{{ rg.code }}</strong></span>
+          <button (click)="filterRole = rg.code; applyFilters(); setViewMode('table')"
+            class="text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline inline-flex items-center gap-1">
+            Xem danh sách nhân sự {{ rg.code }}
+            <span class="material-symbols-outlined text-[14px]">arrow_forward</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2. BẢNG MA TRẬN PHÂN QUYỀN 12 PHÂN HỆ (PERMISSION MATRIX) -->
+    <div class="bg-white dark:bg-slate-950 rounded-2xl border border-gray-200 dark:border-slate-800 shadow-sm overflow-hidden">
+      <div class="px-5 py-4 bg-gray-50/80 dark:bg-slate-900 border-b border-gray-200 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+        <div>
+          <h3 class="text-base font-bold text-gray-900 dark:text-white flex items-center gap-2">
+            <span class="material-symbols-outlined text-[20px] text-purple-600">table_chart</span>
+            Ma trận Phân quyền chi tiết theo 12 Phân hệ chức năng
+          </h3>
+          <p class="text-xs text-gray-500 dark:text-slate-400 mt-0.5">
+            Đối chiếu rõ Role nào được toàn quyền (ADMIN), Role nào quản lý theo phòng ban (MANAGER), Role nào vận hành tuyển dụng (HR) và Role nào chấm điểm phỏng vấn (INTERVIEWER).
+          </p>
+        </div>
+      </div>
+
+      <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200 dark:divide-slate-800 text-xs">
+          <thead class="bg-gray-50 dark:bg-slate-900/90">
+            <tr>
+              <th class="px-4 py-3.5 text-left font-bold text-gray-600 dark:text-slate-300 uppercase tracking-wider w-[24%]">Phân hệ chức năng</th>
+              <th class="px-4 py-3.5 text-left font-bold text-purple-700 dark:text-purple-300 uppercase tracking-wider w-[19%]">
+                <div class="flex items-center gap-1.5">
+                  <span class="material-symbols-outlined text-[15px]">military_tech</span>
+                  ADMIN (Ban Giám Đốc)
+                </div>
+              </th>
+              <th class="px-4 py-3.5 text-left font-bold text-blue-700 dark:text-blue-300 uppercase tracking-wider w-[19%]">
+                <div class="flex items-center gap-1.5">
+                  <span class="material-symbols-outlined text-[15px]">shield_person</span>
+                  MANAGER (Trưởng Phòng)
+                </div>
+              </th>
+              <th class="px-4 py-3.5 text-left font-bold text-sky-700 dark:text-sky-300 uppercase tracking-wider w-[19%]">
+                <div class="flex items-center gap-1.5">
+                  <span class="material-symbols-outlined text-[15px]">badge</span>
+                  HR (Chuyên viên Nhân sự)
+                </div>
+              </th>
+              <th class="px-4 py-3.5 text-left font-bold text-teal-700 dark:text-teal-300 uppercase tracking-wider w-[19%]">
+                <div class="flex items-center gap-1.5">
+                  <span class="material-symbols-outlined text-[15px]">rate_review</span>
+                  INTERVIEWER (Hội đồng PV)
+                </div>
+              </th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-100 dark:divide-slate-800 bg-white dark:bg-slate-950">
+            <tr *ngFor="let m of permissionMatrix" class="hover:bg-gray-50/80 dark:hover:bg-slate-900/50 transition-colors">
+              <td class="px-4 py-3">
+                <div class="font-bold text-gray-900 dark:text-white">{{ m.featureName }}</div>
+                <div class="text-[11px] text-gray-400 dark:text-slate-500 mt-0.5">{{ m.description }}</div>
+              </td>
+              <td class="px-4 py-3 bg-purple-50/20 dark:bg-purple-950/10">
+                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300">
+                  ✓ {{ m.admin.note }}
+                </span>
+              </td>
+              <td class="px-4 py-3">
+                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold border"
+                  [ngClass]="m.manager.status === 'NONE'
+                    ? 'bg-gray-50 text-gray-400 border-gray-200 dark:bg-slate-900 dark:text-slate-500 dark:border-slate-800'
+                    : 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800'">
+                  {{ m.manager.status === 'NONE' ? '✕' : '✓' }} {{ m.manager.note }}
+                </span>
+              </td>
+              <td class="px-4 py-3">
+                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold border"
+                  [ngClass]="m.hr.status === 'NONE'
+                    ? 'bg-gray-50 text-gray-400 border-gray-200 dark:bg-slate-900 dark:text-slate-500 dark:border-slate-800'
+                    : m.hr.status === 'VIEW'
+                      ? 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800'
+                      : 'bg-sky-50 text-sky-700 border-sky-200 dark:bg-sky-950/40 dark:text-sky-300 dark:border-sky-800'">
+                  {{ m.hr.status === 'NONE' ? '✕' : '✓' }} {{ m.hr.note }}
+                </span>
+              </td>
+              <td class="px-4 py-3">
+                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold border"
+                  [ngClass]="m.interviewer.status === 'NONE'
+                    ? 'bg-gray-50 text-gray-400 border-gray-200 dark:bg-slate-900 dark:text-slate-500 dark:border-slate-800'
+                    : 'bg-teal-50 text-teal-700 border-teal-200 dark:bg-teal-950/40 dark:text-teal-300 dark:border-teal-800'">
+                  {{ m.interviewer.status === 'NONE' ? '✕' : '✓' }} {{ m.interviewer.note }}
+                </span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
   <!-- Empty State -->
-  <div *ngIf="!isLoading() && filteredEmployees().length === 0"
+  <div *ngIf="!isLoading() && viewMode() !== 'permissions' && filteredEmployees().length === 0"
     class="bg-white dark:bg-slate-950 rounded-2xl p-16 border border-gray-100 dark:border-slate-800 text-center mt-4">
     <span class="material-symbols-outlined text-[56px] text-gray-300 dark:text-slate-700 mb-3 block">person_search</span>
     <h3 class="text-base font-bold text-gray-900 dark:text-white">Không tìm thấy nhân sự</h3>
@@ -743,10 +938,10 @@
   ═══════════════════════════════════════════════════════════════════════ -->
   <div *ngIf="showModal()" class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
     <div class="bg-white dark:bg-slate-950 rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto border border-gray-200 dark:border-slate-800">
-      <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-slate-800 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20">
+      <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-slate-800 bg-gray-50 dark:bg-slate-900">
         <h2 class="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
           <span class="material-symbols-outlined text-blue-600">person_add</span>
-          Thêm nhân sự &amp; Phân bổ phòng ban
+          Thêm nhân sự &amp; Phân bổ quyền
         </h2>
         <button (click)="closeModal()" class="text-gray-400 hover:text-gray-600 dark:hover:text-slate-200 rounded-lg p-1 hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors">
           <span class="material-symbols-outlined">close</span>
@@ -786,17 +981,36 @@
         </div>
 
         <div>
-          <label class="block text-xs font-bold text-gray-700 dark:text-slate-300 mb-1.5">Vai trò / Chức danh <span class="text-red-500">*</span></label>
+          <label class="block text-xs font-bold text-gray-700 dark:text-slate-300 mb-1.5">Vai trò / Chức danh (Role) <span class="text-red-500">*</span></label>
           <select formControlName="role"
             class="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 dark:border-slate-700 dark:bg-slate-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500">
-            <option *ngIf="isSuperAdmin()" value="ADMIN">Ban Giám Đốc / Quản trị hệ thống (Toàn quyền)</option>
-            <option *ngIf="isSuperAdmin()" value="MANAGER">Trưởng Phòng / Quản lý bộ phận</option>
-            <option value="HR">Chuyên viên Nhân sự (HR / Staff)</option>
-            <option value="INTERVIEWER">Hội đồng Phỏng vấn (Interviewer / TeamLeader)</option>
+            <option *ngIf="isSuperAdmin()" value="ADMIN">ADMIN – Ban Giám Đốc / Quản trị hệ thống (Toàn quyền 100%)</option>
+            <option *ngIf="isSuperAdmin()" value="MANAGER">MANAGER – Trưởng Phòng / Quản đốc xưởng (Quản lý cấp bộ phận)</option>
+            <option value="HR">HR – Chuyên viên Nhân sự (Vận hành tuyển dụng toàn nhà máy)</option>
+            <option value="INTERVIEWER">INTERVIEWER – Hội đồng Phỏng vấn (Chấm điểm ứng viên được giao)</option>
           </select>
           <p *ngIf="isDepartmentManager()" class="text-[11px] text-slate-500 mt-1">
-            * Theo quy định ủy quyền, Trưởng phòng chỉ được cấp tài khoản cấp dưới (HR / Hội đồng PV).
+            * Theo quy định ủy quyền, Trưởng phòng chỉ được cấp tài khoản cấp dưới (HR / Hội đồng PV) trong phòng ban của mình.
           </p>
+
+          <!-- Khung Tóm tắt Quyền hạn theo Role đang chọn -->
+          <div *ngIf="getSelectedRoleGuide() as guide"
+            class="mt-2.5 p-3 rounded-xl border border-gray-200 dark:border-slate-800 bg-gray-50/80 dark:bg-slate-900/80 text-xs space-y-1.5">
+            <div class="flex items-center justify-between gap-2">
+              <span class="font-bold text-gray-900 dark:text-white flex items-center gap-1.5">
+                <span class="material-symbols-outlined text-[15px]">{{ getRoleIcon(guide.code) }}</span>
+                {{ guide.title }}
+              </span>
+              <span [ngClass]="getRoleBadge(guide.code)" class="px-2 py-0.5 rounded text-[10px] font-bold border">{{ guide.badgeText }}</span>
+            </div>
+            <p class="text-[11px] text-gray-600 dark:text-slate-400"><strong>Phạm vi:</strong> {{ guide.dataScope }}</p>
+            <div class="text-[11px] text-emerald-700 dark:text-emerald-400">
+              <strong>Được làm:</strong> {{ guide.allowedActions[0] }}; {{ guide.allowedActions[1] }}
+            </div>
+            <div class="text-[11px] text-amber-700 dark:text-amber-400">
+              <strong>Giới hạn:</strong> {{ guide.restrictedActions[0] }}
+            </div>
+          </div>
         </div>
 
         <div>
@@ -850,10 +1064,10 @@
   ═══════════════════════════════════════════════════════════════════════ -->
   <div *ngIf="showEditModal()" class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
     <div class="bg-white dark:bg-slate-950 rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto border border-gray-200 dark:border-slate-800">
-      <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-slate-800 bg-gradient-to-r from-indigo-50 to-blue-50 dark:from-indigo-950/20 dark:to-blue-950/20">
+      <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-slate-800 bg-gray-50 dark:bg-slate-900">
         <h2 class="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
           <span class="material-symbols-outlined text-indigo-600">manage_accounts</span>
-          Chỉnh sửa thông tin nhân sự
+          Chỉnh sửa thông tin &amp; Phân quyền nhân sự
         </h2>
         <button (click)="closeEditModal()" class="text-gray-400 hover:text-gray-600 dark:hover:text-slate-200 rounded-lg p-1 hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors">
           <span class="material-symbols-outlined">close</span>
@@ -871,7 +1085,7 @@
             <p class="text-sm font-extrabold text-gray-900 dark:text-white">{{ selectedEmployee()!.fullName }}</p>
             <p class="text-xs text-gray-500 font-mono">{{ selectedEmployee()!.email }}</p>
             <span [ngClass]="getRoleBadgeClass(selectedEmployee()!.role)" class="mt-1 inline-flex px-2 py-0.5 rounded text-[10px] font-bold">
-              {{ selectedEmployee()!.role }}
+              {{ selectedEmployee()!.role }} • {{ getRoleScopeSummary(selectedEmployee()!.role) }}
             </span>
           </div>
         </div>
@@ -893,18 +1107,39 @@
               class="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 dark:border-slate-700 dark:bg-slate-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500">
           </div>
           <div>
-            <label class="block text-xs font-bold text-gray-700 dark:text-slate-300 mb-1.5">Vai trò / Chức danh *</label>
+            <label class="block text-xs font-bold text-gray-700 dark:text-slate-300 mb-1.5">Vai trò / Chức danh (Role) *</label>
             <select formControlName="role"
               class="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 dark:border-slate-700 dark:bg-slate-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500">
-              <option value="ADMIN">Ban Giám Đốc / Quản trị hệ thống</option>
-              <option value="MANAGER">Trưởng Phòng / Quản lý bộ phận</option>
-              <option value="HR">Chuyên viên Nhân sự</option>
-              <option value="INTERVIEWER">Hội đồng Phỏng vấn</option>
+              <option *ngIf="isSuperAdmin()" value="ADMIN">ADMIN – Ban Giám Đốc / Quản trị hệ thống (Toàn quyền)</option>
+              <option *ngIf="isSuperAdmin()" value="MANAGER">MANAGER – Trưởng Phòng / Quản lý bộ phận</option>
+              <option value="HR">HR – Chuyên viên Nhân sự</option>
+              <option value="INTERVIEWER">INTERVIEWER – Hội đồng Phỏng vấn</option>
             </select>
+
+            <!-- Khung Tóm tắt Quyền hạn theo Role đang chọn -->
+            <div *ngIf="getSelectedRoleGuide() as guide"
+              class="mt-2.5 p-3 rounded-xl border border-gray-200 dark:border-slate-800 bg-gray-50/80 dark:bg-slate-900/80 text-xs space-y-1.5">
+              <div class="flex items-center justify-between gap-2">
+                <span class="font-bold text-gray-900 dark:text-white flex items-center gap-1.5">
+                  <span class="material-symbols-outlined text-[15px]">{{ getRoleIcon(guide.code) }}</span>
+                  {{ guide.title }}
+                </span>
+                <span [ngClass]="getRoleBadge(guide.code)" class="px-2 py-0.5 rounded text-[10px] font-bold border">{{ guide.badgeText }}</span>
+              </div>
+              <p class="text-[11px] text-gray-600 dark:text-slate-400"><strong>Phạm vi:</strong> {{ guide.dataScope }}</p>
+              <div class="text-[11px] text-emerald-700 dark:text-emerald-400">
+                <strong>Được làm:</strong> {{ guide.allowedActions[0] }}; {{ guide.allowedActions[1] }}
+              </div>
+              <div class="text-[11px] text-amber-700 dark:text-amber-400">
+                <strong>Giới hạn:</strong> {{ guide.restrictedActions[0] }}
+              </div>
+            </div>
           </div>
           <div>
             <label class="block text-xs font-bold text-gray-700 dark:text-slate-300 mb-1.5">Phòng ban trực thuộc</label>
             <select formControlName="departmentId"
+              [class.bg-gray-100]="employeeForm.get('departmentId')?.disabled"
+              [class.cursor-not-allowed]="employeeForm.get('departmentId')?.disabled"
               class="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 dark:border-slate-700 dark:bg-slate-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500">
               <option value="">-- Chưa phân bổ --</option>
               <option *ngFor="let d of departments()" [value]="d.departmentId">{{ d.departmentName }} ({{ d.departmentCode }})</option>

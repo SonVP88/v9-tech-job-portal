@@ -1,6 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal, ChangeDetectorRef } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { ActivatedRoute } from '@angular/router';
@@ -103,6 +103,7 @@ export class ApplicationsManagementComponent implements OnInit {
   private sanitizer = inject(DomSanitizer);
   private route = inject(ActivatedRoute);
   private toast = inject(ToastService);
+  private cdr = inject(ChangeDetectorRef);
 
   // ── State Signals ──────────────────────────────────────────────────────
   applications = signal<IndustrialApplication[]>([]);
@@ -162,6 +163,7 @@ export class ApplicationsManagementComponent implements OnInit {
   offerModalApp = signal<IndustrialApplication | null>(null);
   offeredSalary = signal<number>(18000000);
   offerNote = signal<string>('Lương cơ bản thỏa thuận 18.000.000 VNĐ Net + phụ cấp kỹ sư');
+  isRescoring = signal<boolean>(false);
 
   // ── V5 Factory & HR Operations State ──
   showBatchInterviewModal = signal<boolean>(false);
@@ -305,7 +307,11 @@ export class ApplicationsManagementComponent implements OnInit {
       || (item.source?.includes('GOOGLE') ? 'GOOGLE_FORM_QR' : item.source === 'WALK_IN' ? 'WALK_IN' : hasPdf ? 'PDF_UPLOAD' : 'GOOGLE_FORM_QR');
     const track: RecruitmentTrack = item.recruitmentTrack || (source === 'PDF_UPLOAD' ? 'PROFESSIONAL' : 'MASS_LABOR');
     const scoring: ScoringMethod = item.scoringMethod || (track === 'PROFESSIONAL' ? 'GEMINI_AI' : 'RULE_ENGINE');
-    const score = item.matchScore ?? item.aiScore ?? (track === 'PROFESSIONAL' ? 84 : 88);
+    
+    // Xử lý điểm AI: Lấy điểm thật từ Backend, KHÔNG hardcode số ảo
+    const rawScore = item.matchScore ?? item.aiScore;
+    const hasAiScore = rawScore !== null && rawScore !== undefined;
+    const score = hasAiScore ? Math.round(Number(rawScore)) : 0;
 
     let checklist: OralInterviewChecklist = {
       handEyePass: true,
@@ -329,6 +335,18 @@ export class ApplicationsManagementComponent implements OnInit {
       : rawStatus === 'REJECTED' ? 'Rejected'
       : 'PENDING';
 
+    // Nhận xét AI: Lấy explanation thật, KHÔNG lấy text thô CV
+    let cleanExplanation = '';
+    if (item.aiExplanation && item.aiExplanation.trim() !== 'AI đã phân tích kỹ năng ứng viên') {
+      cleanExplanation = item.aiExplanation.trim();
+    } else if (item.aiAnalysisSummary && item.aiAnalysisSummary.trim() !== '') {
+      cleanExplanation = item.aiAnalysisSummary.trim();
+    } else if (hasAiScore) {
+      cleanExplanation = 'AI đã hoàn thành phân tích hồ sơ ứng viên.';
+    } else {
+      cleanExplanation = 'Hồ sơ đang trong hàng đợi AI phân tích độ phù hợp với chiến dịch.';
+    }
+
     return {
       applicationId: item.applicationId || `api-${idx}`,
       candidateId: item.candidateId || '',
@@ -348,17 +366,15 @@ export class ApplicationsManagementComponent implements OnInit {
       applicationSource: source,
       scoringMethod: scoring,
       aiMatchingScore: score,
-      skillMatchPercent: Math.min(100, score + 4),
-      experienceMatchPercent: Math.max(50, score - 5),
-      shiftHealthPercent: track === 'MASS_LABOR' ? 95 : 85,
-      aiSummary: item.aiExplanation || item.rawResumeText || (track === 'PROFESSIONAL'
-        ? 'Hồ sơ phù hợp tốt với yêu cầu kỹ thuật và kinh nghiệm thực tế tại nhà máy.'
-        : 'Đáp ứng tiêu chí độ tuổi, sức khỏe và cam kết làm xoay ca 12h.'),
+      skillMatchPercent: item.skillMatchPercent != null ? item.skillMatchPercent : (hasAiScore ? score : 0),
+      experienceMatchPercent: item.experienceMatchPercent != null ? item.experienceMatchPercent : (hasAiScore ? score : 0),
+      shiftHealthPercent: item.softSkillMatchPercent != null ? item.softSkillMatchPercent : (track === 'MASS_LABOR' ? 95 : (hasAiScore ? score : 0)),
+      aiSummary: cleanExplanation,
       tags: track === 'PROFESSIONAL'
         ? ['PLC Mitsubishi', 'AutoCAD', 'Bảo trì dây chuyền', 'ISO 9001']
         : ['✅ Xoay ca 12h', '✅ Thị lực 10/10', 'Đã làm KCN'],
       shift12hReady: true,
-      isRuleRejected: mappedStatus === 'Rejected' || score < 50,
+      isRuleRejected: mappedStatus === 'Rejected' || (hasAiScore && score < 50),
       cvFileUrl: item.cvFileUrl || item.cvUrl || null,
       rawResumeText: item.rawResumeText || `Họ tên: ${item.candidateName}\nSĐT: ${item.phone}\nEmail: ${item.email}`,
       oralChecklist: checklist,
@@ -799,6 +815,51 @@ export class ApplicationsManagementComponent implements OnInit {
     }
   }
 
+  /**
+   * Kích hoạt gọi Gemini AI chấm điểm lại thực tế cho hồ sơ (On-demand AI Scoring)
+   */
+  rescoreWithAi(app: IndustrialApplication): void {
+    if (!app || this.isRescoring()) return;
+    this.isRescoring.set(true);
+    this.toast.info('Đang phân tích', 'Hệ thống đang gửi CV đến Google Gemini AI để đối chiếu yêu cầu công việc...');
+
+    this.http.post<any>(`/api/applications/${app.applicationId}/rescore-ai`, {}).subscribe({
+      next: (res) => {
+        this.isRescoring.set(false);
+        if (res && res.success && res.data) {
+          const newScore = Math.round(Number(res.data.score || 0));
+          const bd = res.data.breakdown || {};
+          const explanation = res.data.explanation || 'Phân tích hoàn tất.';
+          
+          const updatedApp: Partial<IndustrialApplication> = {
+            aiMatchingScore: newScore,
+            skillMatchPercent: bd.technicalSkills ?? newScore,
+            experienceMatchPercent: bd.experience ?? newScore,
+            shiftHealthPercent: app.recruitmentTrack === 'PROFESSIONAL' 
+              ? (bd.education ?? bd.softSkills ?? newScore)
+              : (bd.softSkills ?? 95),
+            aiSummary: explanation,
+            isRuleRejected: newScore < 50
+          };
+
+          // Cập nhật selectedApp hiện tại
+          this.selectedApp.update(curr => curr ? { ...curr, ...updatedApp } : null);
+
+          // Cập nhật danh sách applications
+          this.applications.update(list => list.map(a => a.applicationId === app.applicationId ? { ...a, ...updatedApp } : a));
+
+          this.toast.success('Phân tích AI thành công', `Độ phù hợp: ${newScore}/100.`);
+          this.cdr.detectChanges();
+        }
+      },
+      error: (err) => {
+        this.isRescoring.set(false);
+        this.toast.error('Lỗi phân tích AI', err.error?.message || 'Không thể chấm điểm AI lúc này. Vui lòng thử lại sau.');
+        this.cdr.detectChanges();
+      }
+    });
+  }
+
   // ── Tạo mới nhanh ứng viên Walk-in tại cổng nhà máy ────────────────────
   submitWalkInCandidate(): void {
     if (!this.walkInForm.fullName.trim() || !this.walkInForm.phone.trim()) {
@@ -955,10 +1016,15 @@ export class ApplicationsManagementComponent implements OnInit {
   }
 
   cleanAiSummary(text: string | null | undefined): string {
-    if (!text) return '';
-    return text
+    if (!text) return 'Chưa có nhận xét phân tích từ AI.';
+    const trimmed = text
       .replace(/^(Gemini 2\.5 Flash|Gemini AI|Gemini|AI Sàng Lọc|Rule Engine \(Tự động\)|Rule Engine|Tờ khai QR Google Form):\s*/i, '')
       .trim();
+    // Ngăn chặn hiển thị toàn văn nội dung CV thô trích xuất từ PDF vào ô nhận xét
+    if (trimmed.includes('MỤC TIÊU NGHỀ NGHIỆP') || trimmed.includes('KINH NGHIỆM LÀM VIỆC') || trimmed.includes('HỌC VẤN') || trimmed.includes('GPA:')) {
+      return 'Hồ sơ chưa có nhận xét đánh giá. Vui lòng bấm "Phân tích lại với Gemini AI" để chạy phân tích theo khuôn năng lực.';
+    }
+    return trimmed;
   }
 
   calculateChecklistScore(cl: OralInterviewChecklist | undefined | null): number {
